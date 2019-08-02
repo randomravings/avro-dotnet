@@ -11,7 +11,7 @@ namespace Avro.Schemas
             : base(type, "time-nanos")
         {
             if (!(type is LongSchema))
-                throw new SchemaParseException("Expected 'long' as type for logical type 'time-nanos'");
+                throw new AvroParseException("Expected 'long' as type for logical type 'time-nanos'");
         }
     }
 }

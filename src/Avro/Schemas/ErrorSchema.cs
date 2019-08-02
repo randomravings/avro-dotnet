@@ -15,9 +15,6 @@ namespace Avro.Schemas
         public ErrorSchema(string name, string ns)
             : base(name, ns) { }
 
-        public ErrorSchema(IEnumerable<Field> fields)
-            : base(fields) { }
-
         public ErrorSchema(string name, IEnumerable<Field> fields)
             : base(name, fields) { }
 

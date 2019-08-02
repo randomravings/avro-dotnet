@@ -1,22 +1,17 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Avro.Schemas
 {
-    public class UnionSchema : Schema, IList<Schema>
+    public class UnionSchema : Schema, IEnumerable<Schema>
     {
         private readonly IList<Schema> _types;
 
         public UnionSchema()
         {
             _types = new List<Schema>();
-        }
-
-        public UnionSchema(IEnumerable<Schema> schemas)
-            : this()
-        {
-            foreach (var schema in schemas)
-                Add(schema);
         }
 
         public UnionSchema(params Schema[] schemas)
@@ -29,10 +24,21 @@ namespace Avro.Schemas
 
         private void ValidateType(Schema item)
         {
-            if (item is UnionSchema)
-                throw new SchemaParseException($"Unions within unions is not supported.");
-            if (Contains(item))
-                throw new SchemaParseException($"Union already contains schema.");
+            switch (item)
+            {
+                case UnionSchema s:
+                    throw new AvroParseException($"Unions within unions is not supported.");
+                case ArraySchema s when _types.FirstOrDefault(r => r.GetType().Equals(s.GetType())) != null:
+                    throw new AvroParseException($"Union already contains an array schema.");
+                case MapSchema s when _types.FirstOrDefault(r => r.GetType().Equals(s.GetType())) != null:
+                    throw new AvroParseException($"Union already contains a map schema.");
+                case NamedSchema s when _types.Contains(item):
+                    throw new AvroParseException($"Unions already contains a schema with name: {s.FullName}.");
+                default:
+                    if (_types.Contains(item))
+                        throw new AvroParseException($"Unions already contains a schema of: {item.ToString()}.");
+                    break;
+            }
         }
 
         public void Add(Schema item)
@@ -43,34 +49,19 @@ namespace Avro.Schemas
 
         public override string ToString() => "union";
 
+        public override void AddTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
+        public override void AddTags(IEnumerable<KeyValuePair<string, object>> tags) => throw new NotSupportedException("Unions do not support tags");
+        public override void SetTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
+        public override void RemoveTag(string key) => throw new NotSupportedException("Unions do not support tags");
+
         public IEnumerator<Schema> GetEnumerator() => _types.GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => _types.GetEnumerator();
 
         public int Count => _types.Count;
 
-        public bool IsReadOnly => _types.IsReadOnly;
-
-        Schema IList<Schema>.this[int index] { get { return _types[index]; } set { ValidateType(value); _types[index] = value; } }
-
-        public int IndexOf(Schema item) => _types.IndexOf(item);
-
-        public void Insert(int index, Schema item)
-        {
-            ValidateType(item);
-            _types.Insert(index, item);
-        }
-
-        public void RemoveAt(int index) => _types.RemoveAt(index);
-
         public void Clear() => _types.Clear();
 
-        public bool Contains(Schema item) => _types.Contains(item);
-
-        public void CopyTo(Schema[] array, int arrayIndex) => _types.CopyTo(array, arrayIndex);
-
-        public bool Remove(Schema item) => _types.Remove(item);
-
-        public Schema this[int index] { get { return _types[index]; } set { ValidateType(value); _types[index] = value; } }
+        public Schema this[int index] { get { return _types[index]; } }
     }
 }

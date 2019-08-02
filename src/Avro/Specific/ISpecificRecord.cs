@@ -1,8 +1,5 @@
 namespace Avro.Specific
 {
-    /// <summary>
-    /// Interface class for generated classes
-    /// </summary>
     public interface ISpecificRecord
     {
         Schema Schema { get; }

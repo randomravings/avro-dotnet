@@ -1,5 +1,4 @@
 using Avro.Schemas;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,34 +6,31 @@ namespace Avro.Generic
 {
     public class GenericRecord
     {
-        private class GenericField
-        {
-            public string FieldName { get; set; }
-            public Type FieldType { get; set; }
-            public object FieldValue { get; set; }
-        }
-        public RecordSchema Schema { get; private set; }
-
-        private readonly GenericField[] _values;
-
-        private readonly IDictionary<string, GenericField> _fieldMap;
+        private readonly object[] _values;
+        private readonly IDictionary<string, int> _fieldMap;
 
         public GenericRecord(RecordSchema schema)
         {
             Schema = schema;
-            _values = schema.Select(r => new GenericField() { FieldName = r.Name, FieldType = typeof(object), FieldValue = null }).ToArray();
-            _fieldMap = _values.ToDictionary(r => r.FieldName);
+            _values = new object[schema.Count];
+            _fieldMap = new SortedList<string, int>(schema.Count);
+            for (int i = 0; i < schema.Count; i++)
+                _fieldMap.Add(schema.ElementAt(i).Name, i);
         }
+
+        public RecordSchema Schema { get; private set; }
 
         public object this[string name]
         {
             get
             {
-                return _fieldMap[name].FieldValue;
+                var index = _fieldMap[name];
+                return this[index];
             }
             set
             {
-                _fieldMap[name].FieldValue = value;
+                var index = _fieldMap[name];
+                this[index] = value;
             }
         }
 
@@ -42,11 +38,11 @@ namespace Avro.Generic
         {
             get
             {
-                return _values[index].FieldValue;
+                return _values[index];
             }
             set
             {
-                _values[index].FieldValue = value;
+                _values[index] = value;
             }
         }
     }

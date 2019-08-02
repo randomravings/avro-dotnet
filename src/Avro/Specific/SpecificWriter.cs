@@ -5,7 +5,7 @@ namespace Avro.Specific
 {
     public sealed class SpecificWriter<T> : IDatumWriter<T>
     {
-        private Action<IEncoder, T> _writer;
+        private readonly Action<IEncoder, T> _writer;
         public SpecificWriter(Schema writerSchema)
         {
             _writer = SpecificResolver.ResolveWriter<T>(writerSchema);

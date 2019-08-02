@@ -11,7 +11,7 @@ namespace Avro.Schemas
             : base(type, "timestamp-micros")
         {
             if (!(type is LongSchema))
-                throw new SchemaParseException("Expected 'long' as type for logical type 'timestamp-micros'");
+                throw new AvroParseException("Expected 'long' as type for logical type 'timestamp-micros'");
         }
     }
 }

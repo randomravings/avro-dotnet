@@ -58,7 +58,7 @@ namespace Avro.Generic
             new Action<IEncoder, object>((s, v) => s.WriteTimestampNS((DateTime)v));
 
         private static readonly dynamic ENCODE_DURATION =
-            new Action<IEncoder, object>((s, v) => s.WriteDuration((Tuple<int, int, int>)v));
+            new Action<IEncoder, object>((s, v) => s.WriteDuration((ValueTuple<int, int, int>)v));
         #endregion
 
         #region Static Decoders
@@ -153,7 +153,7 @@ namespace Avro.Generic
             new Tuple<Func<IDecoder, object>, Action<IDecoder>>(new Func<IDecoder, object>(s => s.ReadTimestampMS()), new Action<IDecoder>(s => s.SkipTimestampMS()));
 
         private static readonly Tuple<Func<IDecoder, object>, Action<IDecoder>> DECODE_DURATION =
-            new Tuple<Func<IDecoder, object>, Action<IDecoder>>(new Func<IDecoder, Tuple<int, int, int>>(s => s.ReadDuration()), new Action<IDecoder>(s => s.SkipDuration()));
+            new Tuple<Func<IDecoder, object>, Action<IDecoder>>(new Func<IDecoder, object>(s => s.ReadDuration()), new Action<IDecoder>(s => s.SkipDuration()));
         #endregion
 
         public static Action<IEncoder, object> ResolveWriter(Schema writerSchema)
@@ -199,10 +199,10 @@ namespace Avro.Generic
                     switch (decimalWriter.Type)
                     {
                         case BytesSchema t:
-                            return new Action<IEncoder, object>((s, v) => s.WriteDecimal((decimal)v));
+                            return new Action<IEncoder, object>((s, v) => s.WriteDecimal((decimal)v, r.Scale));
                         case FixedSchema t:
                             var decimalLength = (decimalWriter.Type as FixedSchema).Size;
-                            return new Action<IEncoder, object>((s, v) => s.WriteDecimal((decimal)v, decimalLength));
+                            return new Action<IEncoder, object>((s, v) => s.WriteDecimal((decimal)v, r.Scale, decimalLength));
                     }
                     break;
 
@@ -219,7 +219,13 @@ namespace Avro.Generic
                     var fieldWriters = new Action<IEncoder, object>[r.Count];
                     for (int i = 0; i < fieldWriters.Length; i++)
                         fieldWriters[i] = ResolveWriter(r.ElementAt(i).Type);
-                    return new Action<IEncoder, object>((s, v) => s.WriteFixed((byte[])v));
+                    return new Action<IEncoder, object>(
+                        (s, v) =>
+                        {
+                            var record = v as GenericRecord;
+                            for (int i = 0; i < fieldWriters.Length; i++)
+                                fieldWriters[i].Invoke(s, record[i]);
+                        });
             }
             throw new AvroException($"Unable to resolve writer for: '{writerSchema}'.");
         }

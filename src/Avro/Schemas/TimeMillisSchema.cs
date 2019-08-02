@@ -11,7 +11,7 @@ namespace Avro.Schemas
             : base(type, "time-millis")
         {
             if (!(type is IntSchema))
-                throw new SchemaParseException("Expected 'int' as type for logical type 'time-millis'");
+                throw new AvroParseException("Expected 'int' as type for logical type 'time-millis'");
         }
     }
 }

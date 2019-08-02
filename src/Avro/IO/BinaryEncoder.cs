@@ -9,7 +9,12 @@ namespace Avro.IO
 {
     public class BinaryEncoder : IEncoder
     {
-        private Stream _stream;
+        private readonly Stream _stream;
+
+        public BinaryEncoder()
+        {
+            _stream = new MemoryStream();
+        }
 
         public BinaryEncoder(Stream stream)
         {
@@ -90,21 +95,20 @@ namespace Avro.IO
             WriteBytes(bytes);
         }
 
-        public void WriteDecimal(decimal value)
+        public void WriteDecimal(decimal value, int scale)
         {
-            var bits = decimal.GetBits(value);
-            var scale = (bits[3] >> 16) & 0x7F;
-            var bytes = new BigInteger(value * (int)Math.Pow(10, scale)).ToByteArray(isBigEndian: true);
+            var bytes = new BigInteger(value * (long)Math.Pow(10, scale)).ToByteArray(isBigEndian: true);
             WriteBytes(bytes);
         }
 
-        public void WriteDecimal(decimal value, int len)
+        public void WriteDecimal(decimal value, int scale, int len)
         {
-            var bits = decimal.GetBits(value);
-            var scale = (bits[3] >> 16) & 0x7F;
-            var bytes = new BigInteger(value * (int)Math.Pow(10, scale)).ToByteArray(isBigEndian: true);
+            var bytes = new BigInteger(value * (long)Math.Pow(10, scale)).ToByteArray(isBigEndian: true);
             var fix = new byte[len];
-            bytes.CopyTo(fix, 0);
+            var offset = len - bytes.Length;
+            if (value < 0)
+                Array.Fill(fix, (byte)0xFF, 0, offset);
+            bytes.CopyTo(fix, offset);
             WriteFixed(fix);
         }
 
@@ -156,7 +160,7 @@ namespace Avro.IO
             WriteLong(nanosecond);
         }
 
-        public void WriteDuration(Tuple<int, int, int> value)
+        public void WriteDuration(ValueTuple<int, int, int> value)
         {
             WriteInt(value.Item1);
             WriteInt(value.Item2);
@@ -171,20 +175,67 @@ namespace Avro.IO
 
         public void WriteArray<T>(IList<T> items, Action<IEncoder, T> itemsWriter)
         {
-            WriteLong(items.Count);
+            if (items.Count > 0)
+            {
+                WriteLong(items.Count);
+                foreach (var item in items)
+                    itemsWriter.Invoke(this, item);
+            }
+            WriteLong(0);
+        }
+
+        public void WriteArrayBlock<T>(IList<T> items, Action<IEncoder, T> itemsWriter)
+        {
+            if (items.Count == 0)
+                return;
+
+            var localEncoder = new BinaryEncoder();
+            localEncoder.WriteLong(items.Count);
             foreach (var item in items)
-                itemsWriter.Invoke(this, item);
+                itemsWriter.Invoke(localEncoder, item);
+            WriteLong(-1 * localEncoder._stream.Length);
+            localEncoder._stream.Seek(0, SeekOrigin.Begin);
+            localEncoder._stream.CopyTo(_stream);
+        }
+
+        public void WriteArrayEnd()
+        {
             WriteLong(0);
         }
 
         public void WriteMap<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
         {
-            WriteLong(keyValues.Count);
+            if (keyValues.Count > 0)
+            {
+                WriteLong(keyValues.Count);
+                foreach (var keyValue in keyValues)
+                {
+                    WriteString(keyValue.Key);
+                    valuesWriter.Invoke(this, keyValue.Value);
+                }
+            }
+            WriteLong(0);
+        }
+
+        public void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
+        {
+            if (keyValues.Count == 0)
+                return;
+
+            var localEncoder = new BinaryEncoder();
+            localEncoder.WriteLong(keyValues.Count);
             foreach (var keyValue in keyValues)
             {
-                WriteString(keyValue.Key);
-                valuesWriter.Invoke(this, keyValue.Value);
+                localEncoder.WriteString(keyValue.Key);
+                valuesWriter.Invoke(localEncoder, keyValue.Value);
             }
+            WriteLong(-1 * localEncoder._stream.Length);
+            localEncoder._stream.Seek(0, SeekOrigin.Begin);
+            localEncoder._stream.CopyTo(_stream);
+        }
+
+        public void WriteMapEnd()
+        {
             WriteLong(0);
         }
 
@@ -192,7 +243,33 @@ namespace Avro.IO
 
         public void Dispose()
         {
-            _stream = null;
+            _stream.Dispose();
+        }
+
+        public void WriteNullableObject<T>(T value, Action<IEncoder, T> valueWriter, long nullIndex) where T : class
+        {
+            if (value == null)
+            {
+                WriteLong(nullIndex % 2);
+            }
+            else
+            {
+                WriteLong((nullIndex + 1) % 2);
+                valueWriter.Invoke(this, value);
+            }
+        }
+
+        public void WriteNullableValue<T>(T? value, Action<IEncoder, T> valueWriter, long nullIndex) where T : struct
+        {
+            if (value.HasValue)
+            {
+                WriteLong((nullIndex + 1) % 2);
+                valueWriter.Invoke(this, value.Value);
+            }
+            else
+            {
+                WriteLong(nullIndex % 2);
+            }
         }
     }
 }

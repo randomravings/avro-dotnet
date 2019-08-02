@@ -1,19 +1,17 @@
-using Avro.Schemas;
 using System;
-using System.IO;
-using System.Text;
 
 namespace Avro
 {
-    public abstract class Schema : IEquatable<Schema>
+    public abstract class Schema : AvroObject, IEquatable<Schema>
     {
-        public Schema() { }
-
-        public static Schema Parse(string text) => SchemaParser.Parse(text);
+        public Schema()
+            : base() { }
 
         public virtual bool Equals(Schema other)
         {
             return GetType() == other.GetType();
         }
+
+        public static Schema Parse(string text) => AvroReader.ReadSchema(text);
     }
 }

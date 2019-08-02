@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Avro.Schemas
 {
     public class DurationSchema : LogicalSchema
@@ -11,7 +9,7 @@ namespace Avro.Schemas
             : base(type, "duration")
         {
             if (!(type is FixedSchema) || (type as FixedSchema).Size != 12)
-                throw new SchemaParseException("Expected 'fixed' with size '12' as type for logical type 'duration'");
+                throw new AvroParseException("Expected 'fixed' with size '12' as type for logical type 'duration'");
         }
     }
 }

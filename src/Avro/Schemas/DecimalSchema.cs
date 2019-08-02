@@ -5,10 +5,10 @@ namespace Avro.Schemas
     public class DecimalSchema : LogicalSchema
     {
         public DecimalSchema()
-            : this(new BytesSchema(), 12, 2) { }
+            : this(new BytesSchema(), 15, 2) { }
 
         public DecimalSchema(Schema underlyingType)
-            : this(new BytesSchema(), 12, 2) { }
+            : this(underlyingType, 15, 2) { }
 
         public DecimalSchema(int precision, int scale)
             : this(new BytesSchema(), precision, scale) { }
@@ -17,11 +17,11 @@ namespace Avro.Schemas
             : base(underlyingType, "decimal")
         {
             if (!(underlyingType is BytesSchema || underlyingType is FixedSchema))
-                throw new SchemaParseException("Expected 'bytes' or 'fixed' as type for logical type 'decimal'");
+                throw new AvroParseException("Expected 'bytes' or 'fixed' as type for logical type 'decimal'");
             if (precision < 1)
-                throw new SchemaParseException("Decimal precision must be a postive non zero number");
+                throw new AvroParseException("Decimal precision must be a postive non zero number");
             if (scale < 0 || scale > precision)
-                throw new SchemaParseException("Decimal scale must be a postive or zero and less or equal to precision");
+                throw new AvroParseException("Decimal scale must be a postive or zero and less or equal to precision");
             Precision = precision;
             Scale = scale;
         }

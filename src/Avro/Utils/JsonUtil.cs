@@ -5,60 +5,54 @@ using System.Linq;
 
 namespace Avro.Utils
 {
-    internal static class JsonUtil
+    public static class JsonUtil
     {
-        internal static void AssertKeys(JToken jToken, ISet<string> keys, ISet<string> optionalKeys = null)
+        public static void AssertKeys(JToken jToken, ISet<string> keys, ISet<string> optionalKeys, out IDictionary<string, object> additionalTags)
         {
-            if (jToken == null || jToken.Type != JTokenType.Object)
-                throw new ArgumentNullException("jToken", "jToken cannot be null and must be a JSON Object.");
+            additionalTags = new Dictionary<string, object>();
+            if (jToken.Type != JTokenType.Object)
+                throw new ArgumentException("jToken", "jToken must be a JSON Object.");
 
-            if (keys == null || keys.Count < 1)
-                throw new ArgumentNullException("keys", "keys cannot be null and must contain one or more items.");
+            if (keys.Count == 0)
+                throw new ArgumentException("keys", "keys must contain one or more items.");
 
             var tokenKeys = (jToken as JObject).Properties().Select(r => r.Name);
 
             var missingKeys = keys.Except(tokenKeys);
             if (missingKeys.Count() > 0)
-                throw new ArgumentNullException($"Missing keys [{string.Join(",", missingKeys)}]");
+                throw new KeyNotFoundException($"Missing keys [{string.Join(",", missingKeys)}]");
 
             var allKeys = keys;
             if (optionalKeys != null)
                 allKeys = keys.Union(optionalKeys).ToHashSet();
 
-            var unexpectedKeys = tokenKeys.Except(allKeys);
-            if (unexpectedKeys.Count() > 0)
-                throw new ArgumentException($"Unexpected keys [{string.Join(",", unexpectedKeys)}]");
+            var additionalKeys = tokenKeys.Except(allKeys);
+            foreach (var additionalKey in additionalKeys)
+                additionalTags.Add(additionalKey, jToken[additionalKey]);
         }
 
-        internal static void AssertValue<T>(JToken jToken, string key, T expectedVaue)
+        public static void AssertValue(JToken jToken, string key, string expectedVaue)
         {
             var value = GetToken(jToken, key, true, JTokenType.String).ToString();
             if (!Equals(value, expectedVaue))
-                throw new ArgumentNullException($"Expected value for '{key}': '{expectedVaue}' - was '{value}'.");
+                throw new ArgumentException($"Expected value for '{key}': '{expectedVaue}' - was '{value}'.");
         }
 
-        internal static void AssertValues<T>(JToken jToken, string key, params T[] expectedVaues)
+        public static void AssertValues(JToken jToken, string key, params string[] expectedVaues)
         {
             var value = GetToken(jToken, key, true, JTokenType.String).ToString();
             foreach (var expectedVaue in expectedVaues)
                 if (Equals(value, expectedVaue))
                     return;
-            throw new ArgumentNullException($"Expected value for '{key}': '{string.Join(",", expectedVaues)}' - was '{value}'.");
+            throw new ArgumentException($"Expected value for '{key}': '{string.Join(",", expectedVaues)}' - was '{value}'.");
         }
 
-        internal static T GetValue<T>(JToken jToken, string key)
+        public static T GetValue<T>(JToken jToken, string key)
         {
-            try
-            {
-                return GetToken(jToken, key, true).Value<T>();
-            }
-            catch (InvalidCastException ex)
-            {
-                throw new ArgumentException($"Unexpected JSON token type for '{key}', expected: '{nameof(T)}'", ex);
-            }
+            return GetToken(jToken, key, true).Value<T>();
         }
 
-        internal static bool TryGetValue<T>(JToken jToken, string key, out T value)
+        public static bool TryGetValue<T>(JToken jToken, string key, out T value)
         {
             value = default;
             var temp = GetToken(jToken, key, false);
@@ -68,32 +62,28 @@ namespace Avro.Utils
             return true;
         }
 
-        internal static IDictionary<string, JToken> GetKeyValues(JToken jToken)
+        public static IDictionary<string, JToken> GetKeyValues(JToken jToken)
         {
-            if (jToken == null || jToken.Type != JTokenType.Object)
-                throw new ArgumentNullException("jToken", "jToken cannot be null and must be a JSON Object.");
-            return (jToken as JObject).ToObject<IDictionary<string, JToken>>(); 
+            if (jToken.Type != JTokenType.Object)
+                throw new ArgumentException("jToken", "jToken cannot be null and must be a JSON Object.");
+            return (jToken as JObject).ToObject<IDictionary<string, JToken>>();
         }
 
-        private static JToken GetToken(JToken jToken, string key, bool required, params JTokenType[] expectedTypes)
+        public static JToken GetToken(JToken jToken, string key, bool required, JTokenType? expectedType = null)
         {
-            if (jToken == null)
-                throw new ArgumentNullException("jToken", "jToken cannot be null.");
-
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException("key", "key cannot be null.");
+            if (jToken.Type != JTokenType.Object)
+                throw new ArgumentException("jToken", "jToken cannot be null and must be a JSON Object.");
 
             var value = jToken[key];
 
             if (value == null)
                 if (required)
-                    throw new ArgumentNullException($"Key not found: '{key}'");
+                    throw new ArgumentException($"Key not found: '{key}'");
                 else
                     return null;
 
-            if (expectedTypes != null && expectedTypes.Length > 0)
-                if (!expectedTypes.Contains(value.Type))
-                    throw new ArgumentException($"Value type for '{key}' is not in [{string.Join(",", expectedTypes)}]");
+            if (expectedType.HasValue && expectedType.Value != value.Type)
+                throw new ArgumentException($"Value type for '{key}' is not of type: {expectedType.Value}]");
 
             return value;
         }

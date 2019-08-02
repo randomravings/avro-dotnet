@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Text;
-
 namespace Avro.Schemas
 {
     public class FixedSchema : NamedSchema
@@ -26,13 +23,16 @@ namespace Avro.Schemas
 
         public override bool Equals(Schema other)
         {
-            return base.Equals(other) && (other is FixedSchema) && (other as FixedSchema).Size == Size;
+            return base.Equals(other) &&
+                (other is FixedSchema) &&
+                (other as FixedSchema).Size == Size
+            ;
         }
 
         private static void ValidateSize(int size)
         {
             if (size < 0)
-                throw new SchemaParseException("Size for fixed type must zero or a positive number");
+                throw new AvroParseException("Size for fixed type must zero or a positive number");
         }
     }
 }

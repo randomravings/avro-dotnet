@@ -6,6 +6,7 @@ namespace Avro.IO
     public interface IDecoder : IDisposable
     {
         IList<T> ReadArray<T>(Func<IDecoder, T> itemsReader);
+        bool ReadArrayBlock<T>(Func<IDecoder, T> itemsReader, out IList<T> array);
         bool ReadBoolean();
         byte[] ReadBytes();
         byte[] ReadBytes(byte[] bytes);
@@ -13,13 +14,14 @@ namespace Avro.IO
         decimal ReadDecimal(int scale);
         decimal ReadDecimal(int scale, int len);
         double ReadDouble();
-        Tuple<int, int, int> ReadDuration();
+        ValueTuple<int, int, int> ReadDuration();
         byte[] ReadFixed(byte[] bytes);
         byte[] ReadFixed(int len);
         float ReadFloat();
         int ReadInt();
         long ReadLong();
         IDictionary<string, T> ReadMap<T>(Func<IDecoder, T> valuesReader);
+        bool ReadMapBlock<T>(Func<IDecoder, T> valuesReader, out IDictionary<string, T> map);
         object ReadNull();
         T ReadNullableObject<T>(Func<IDecoder, T> reader, long nullIndex) where T : class;
         T? ReadNullableValue<T>(Func<IDecoder, T> reader, long nullIndex) where T : struct;
@@ -30,7 +32,6 @@ namespace Avro.IO
         DateTime ReadTimestampNS();
         DateTime ReadTimestampUS();
         TimeSpan ReadTimeUS();
-        object ReadUnion(Func<IDecoder, object>[] readers);
         Guid ReadUuid();
         void SkipArray(Action<IDecoder> itemsSkipper);
         void SkipBoolean();
@@ -40,7 +41,7 @@ namespace Avro.IO
         void SkipDecimal(int len);
         void SkipDouble();
         void SkipDuration();
-        void SkipFixed(long len);
+        void SkipFixed(int len);
         void SkipFloat();
         void SkipInt();
         void SkipLong();
@@ -54,7 +55,6 @@ namespace Avro.IO
         void SkipTimestampNS();
         void SkipTimestampUS();
         void SkipTimeUS();
-        void SkipUnion(Action<IDecoder>[] skippers);
         void SkipUuid();
     }
 }

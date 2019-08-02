@@ -1,4 +1,4 @@
-using Avro.CodeDom;
+using Avro.Code;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -139,13 +139,15 @@ namespace Avro
             try
             {
                 var text = File.ReadAllText(infile);
-                var schema = Schema.Parse(text);
+                var schema = AvroReader.ReadSchema(text, out var schemas);
 
-                var codegen = new CodeGen();
+                var codeGen = new CodeGen();
+                var codeWriter = new CodeWriter();
                 //foreach (var entry in namespaceMapping)
                 //    codegen.NamespaceMapping[entry.Key] = entry.Value;
-                codegen.AddSchema(schema);
-                codegen.CreateProject(outdir);
+                codeGen.AddSchemas(schemas);
+                codeWriter.WriteProject(outdir, codeGen);
+
             }
             catch (Exception ex)
             {

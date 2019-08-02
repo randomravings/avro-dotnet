@@ -5,8 +5,8 @@ namespace Avro.Specific
 {
     public sealed class SpecificReader<T> : IDatumReader<T>
     {
-        private Func<IDecoder, T> _reader;
-        private Action<IDecoder> _skipper;
+        private readonly Func<IDecoder, T> _reader;
+        private readonly Action<IDecoder> _skipper;
         public SpecificReader(Schema readerSchema, Schema writerSchema)
         {
             var methods = SpecificResolver.ResolveReader<T>(readerSchema, writerSchema);

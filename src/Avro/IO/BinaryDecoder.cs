@@ -9,7 +9,7 @@ namespace Avro.IO
 {
     public sealed class BinaryDecoder : IDecoder
     {
-        private Stream _stream;
+        private readonly Stream _stream;
 
         public BinaryDecoder(Stream stream)
         {
@@ -33,6 +33,26 @@ namespace Avro.IO
             }
             while (len != 0);
             return array;
+        }
+
+        public bool ReadArrayBlock<T>(Func<IDecoder, T> itemsReader, out IList<T> array)
+        {
+            array = new List<T>();
+            var len = ReadLong();
+            if (len == 0)
+                return false;
+            if (len < 0)
+                len = ReadLong();
+            for (int i = 0; i < len; i++)
+            {
+                var value = itemsReader.Invoke(this);
+                array.Add(value);
+            }
+            len = _stream.ReadByte();
+            if (len == 0)
+                return false;
+            _stream.Seek(-1, SeekOrigin.Current);
+            return true;
         }
 
         public bool ReadBoolean()
@@ -60,8 +80,6 @@ namespace Avro.IO
         public byte[] ReadBytes(byte[] bytes)
         {
             var len = ReadLong();
-            if (len > bytes.LongLength)
-                throw new IndexOutOfRangeException("Stream range exceeds input array.");
             _stream.Read(bytes, 0, (int)len);
             return bytes;
         }
@@ -76,13 +94,10 @@ namespace Avro.IO
 
         public decimal ReadDecimal(int scale, int len)
         {
-            var bytes = new byte[len];
-            bytes = ReadFixed(bytes);
-            var x = 1;
-            while (bytes[x] != 0 && x < len)
-                x++;
-            var unscaled = new BigInteger(bytes.AsSpan(0, x), isBigEndian: true);
-            var value = (decimal)unscaled / (decimal)Math.Pow(10, scale);
+            var bytes = ReadFixed(len);
+            var index = 0;
+            var unscaled = new BigInteger(bytes.AsSpan(index), isBigEndian: true);
+            var value = (decimal)unscaled / (long)Math.Pow(10, scale);
             return value;
         }
 
@@ -103,14 +118,14 @@ namespace Avro.IO
             return BitConverter.Int64BitsToDouble(bits);
         }
 
-        public Tuple<int, int, int> ReadDuration()
+        public ValueTuple<int, int, int> ReadDuration()
         {
             var mm = ReadInt();
             var dd = ReadInt();
             var ms = ReadInt();
-            return new Tuple<int, int, int>(mm, dd, ms);
+            return new ValueTuple<int, int, int>(mm, dd, ms);
         }
-        
+
         public byte[] ReadFixed(int len)
         {
             var bytes = new byte[len];
@@ -136,7 +151,7 @@ namespace Avro.IO
             ;
             return BitConverter.Int32BitsToSingle(bits);
         }
-        
+
         public int ReadInt()
         {
             var b = (byte)_stream.ReadByte();
@@ -185,6 +200,27 @@ namespace Avro.IO
             }
             while (len != 0);
             return map;
+        }
+
+        public bool ReadMapBlock<T>(Func<IDecoder, T> valuesReader, out IDictionary<string, T> map)
+        {
+            map = new Dictionary<string, T>() as IDictionary<string, T>;
+            var len = ReadLong();
+            if (len == 0)
+                return false;
+            if (len < 0)
+                len = ReadLong();
+            for (int i = 0; i < len; i++)
+            {
+                var key = ReadString();
+                var value = valuesReader.Invoke(this);
+                map.Add(key, value);
+            }
+            len = _stream.ReadByte();
+            if (len == 0)
+                return false;
+            _stream.Seek(-1, SeekOrigin.Current);
+            return true;
         }
 
         public object ReadNull()
@@ -250,12 +286,6 @@ namespace Avro.IO
             return Constants.UNIX_EPOCH.AddTicks(val);
         }
 
-        public object ReadUnion(Func<IDecoder, object>[] readers)
-        {
-            var index = ReadLong();
-            return readers[index].Invoke(this);
-        }
-
         public Guid ReadUuid()
         {
             var s = ReadString();
@@ -270,7 +300,7 @@ namespace Avro.IO
                 len = ReadLong();
                 if (len < 0)
                 {
-                    SkipFixed(-1 * len);
+                    _stream.Seek(-1 * len, SeekOrigin.Current);
                     continue;
                 }
 
@@ -290,7 +320,7 @@ namespace Avro.IO
             var len = ReadLong();
             _stream.Seek(len, SeekOrigin.Current);
         }
-        
+
         public void SkipDate()
         {
             SkipInt();
@@ -313,10 +343,12 @@ namespace Avro.IO
 
         public void SkipDuration()
         {
-            SkipFixed(12);
+            SkipInt();
+            SkipInt();
+            SkipInt();
         }
 
-        public void SkipFixed(long len)
+        public void SkipFixed(int len)
         {
             _stream.Seek(len, SeekOrigin.Current);
         }
@@ -348,7 +380,7 @@ namespace Avro.IO
                 len = ReadLong();
                 if (len < 0)
                 {
-                    SkipFixed(-1 * len);
+                    _stream.Seek(-1 * len, SeekOrigin.Current);
                     continue;
                 }
 
@@ -407,12 +439,6 @@ namespace Avro.IO
             SkipLong();
         }
 
-        public void SkipUnion(Action<IDecoder>[] skippers)
-        {
-            var index = ReadLong();
-            skippers[index].Invoke(this);
-        }
-
         public void SkipUuid()
         {
             SkipString();
@@ -420,7 +446,7 @@ namespace Avro.IO
 
         public void Dispose()
         {
-            _stream = null;
+            _stream.Dispose();
         }
     }
 }
