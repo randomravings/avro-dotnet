@@ -118,12 +118,30 @@ namespace Avro.IO
             return BitConverter.Int64BitsToDouble(bits);
         }
 
-        public ValueTuple<int, int, int> ReadDuration()
+        public ValueTuple<uint, uint, uint> ReadDuration()
         {
-            var mm = ReadInt();
-            var dd = ReadInt();
-            var ms = ReadInt();
-            return new ValueTuple<int, int, int>(mm, dd, ms);
+            var mm =
+                (uint)(_stream.ReadByte() & 0xFF) << 24 |
+                (uint)(_stream.ReadByte() & 0xFF) << 16 |
+                (uint)(_stream.ReadByte() & 0xFF) << 8 |
+                (uint)(_stream.ReadByte() & 0xFF)
+            ;
+
+            var dd =
+                (uint)(_stream.ReadByte() & 0xFF) << 24 |
+                (uint)(_stream.ReadByte() & 0xFF) << 16 |
+                (uint)(_stream.ReadByte() & 0xFF) << 8 |
+                (uint)(_stream.ReadByte() & 0xFF)
+            ;
+
+            var ms =
+                (uint)(_stream.ReadByte() & 0xFF) << 24 |
+                (uint)(_stream.ReadByte() & 0xFF) << 16 |
+                (uint)(_stream.ReadByte() & 0xFF) << 8 |
+                (uint)(_stream.ReadByte() & 0xFF)
+            ;
+
+            return new ValueTuple<uint, uint, uint>(mm, dd, ms);
         }
 
         public byte[] ReadFixed(int len)
@@ -343,9 +361,7 @@ namespace Avro.IO
 
         public void SkipDuration()
         {
-            SkipInt();
-            SkipInt();
-            SkipInt();
+            _stream.Seek(12, SeekOrigin.Current);
         }
 
         public void SkipFixed(int len)
@@ -444,9 +460,6 @@ namespace Avro.IO
             SkipString();
         }
 
-        public void Dispose()
-        {
-            _stream.Dispose();
-        }
+        public void Dispose() { }
     }
 }

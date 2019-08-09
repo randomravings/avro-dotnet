@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    public class MD5 : Avro.Specific.ISpecificFixed
+    public class MD5 : ISpecificFixed
     {
         public static readonly Avro.Schema _SCHEMA = Avro.Schema.Parse("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");
         public const int _SIZE = 16;
@@ -22,5 +22,7 @@ namespace org.apache.avro.ipc
             get;
             private set;
         }
+
+        public bool Equals(byte[] other) => Value.Equals(other);
     }
 }

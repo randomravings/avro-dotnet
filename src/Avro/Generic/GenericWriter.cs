@@ -3,15 +3,15 @@ using System;
 
 namespace Avro.Generic
 {
-    public class GenericWriter : IDatumWriter<object>
+    public class GenericWriter<T> : IDatumWriter<T>
     {
-        private readonly Action<IEncoder, object> _writer;
+        private readonly Action<IEncoder, dynamic> _writer;
         public GenericWriter(Schema writerSchema)
         {
-            _writer = GenericResolver.ResolveWriter(writerSchema);
+            _writer = GenericResolver.ResolveWriter<T>(writerSchema);
             WriterSchema = writerSchema;
         }
         public Schema WriterSchema { get; private set; }
-        public void Write(IEncoder stream, object value) => _writer.Invoke(stream, value);
+        public void Write(IEncoder stream, T value) => _writer.Invoke(stream, value);
     }
 }

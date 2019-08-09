@@ -75,77 +75,77 @@ namespace Avro.Test.Schemas
 
             public IEnumerator GetEnumerator()
             {
-                yield return new TestCaseData(
+                yield return new object[] {
                     new NullSchema(),
                     @"""null""",
                     @"""null""",
                     @"{ ""type"": ""null"" }"
-                ).SetName("Null Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new BooleanSchema(),
                     @"""boolean""",
                     @"""boolean""",
                     @"{ ""type"": ""boolean"" }"
-                ).SetName("Boolean Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new IntSchema(),
                     @"""int""",
                     @"""int""",
                     @"{ ""type"": ""int"" }"
-                ).SetName("Int Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new LongSchema(),
                     @"""long""",
                     @"""long""",
                     @"{ ""type"": ""long"" }"
-                ).SetName("Long Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new FloatSchema(),
                     @"""float""",
                     @"""float""",
                     @"{ ""type"": ""float"" }"
-                ).SetName("Float Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new DoubleSchema(),
                     @"""double""",
                     @"""double""",
                     @"{ ""type"": ""double"" }"
-                ).SetName("Double Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new BytesSchema(),
                     @"""bytes""",
                     @"""bytes""",
                     @"{ ""type"": ""bytes"" }"
-                ).SetName("Bytes Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new StringSchema(),
                     @"""string""",
                     @"""string""",
                     @"{ ""type"": ""string"" }"
-                ).SetName("String Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new ArraySchema(new StringSchema()),
                     @"{""type"":""array"",""items"":""string""}",
                     @"{ ""type"": ""array"", ""items"": ""string"" }",
                     @"{ ""type"": ""array"", ""items"": { ""type"": ""string"" } }"
-                ).SetName("Array Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new MapSchema(new DoubleSchema()),
                     @"{""type"":""map"",""values"":""double""}",
                     @"{ ""type"": ""map"", ""values"": ""double"" }",
                     @"{ ""type"": ""map"", ""values"": { ""type"": ""double"" } }"
-                ).SetName("Map Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new FixedSchema()
                     {
                         Name = "TestFixed",
@@ -155,9 +155,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""TestNamespace.TestFixed"",""type"":""fixed"",""size"":12}",
                     @"{ ""type"": ""fixed"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""size"": 12 }",
                     @"{ ""type"": ""fixed"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""size"": 12, ""aliases"": [] }"
-                ).SetName("Fixed Schema - Short");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new FixedSchema()
                     {
                         Name = "TestFixed",
@@ -168,9 +168,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""TestNamespace.TestFixed"",""type"":""fixed"",""size"":12}",
                     @"{ ""type"": ""fixed"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""size"": 12, ""aliases"": [""A"", ""B""] }",
                     @"{ ""type"": ""fixed"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""size"": 12, ""aliases"": [""A"", ""B""] }"
-                ).SetName("Fixed Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new EnumSchema()
                     {
                         Name = "TestFixed",
@@ -180,9 +180,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""TestNamespace.TestFixed"",""type"":""enum"",""symbols"":[""X1"",""X2"",""X3""]}",
                     @"{ ""type"": ""enum"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""symbols"": [""X1"", ""X2"", ""X3""] }",
                     @"{ ""type"": ""enum"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""symbols"": [""X1"", ""X2"", ""X3""], ""doc"": """", ""aliases"": [] }"
-                ).SetName("Enum Schema - Short");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new EnumSchema()
                     {
                         Name = "TestFixed",
@@ -194,9 +194,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""TestNamespace.TestFixed"",""type"":""enum"",""symbols"":[""X1"",""X2"",""X3""]}",
                     @"{ ""type"": ""enum"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""symbols"": [""X1"", ""X2"", ""X3""], ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""] }",
                     @"{ ""type"": ""enum"", ""name"": ""TestFixed"", ""namespace"": ""TestNamespace"", ""symbols"": [""X1"", ""X2"", ""X3""], ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""] }"
-                ).SetName("Enum Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new RecordSchema(
                         "TestRecord",
                         "Test.Namespace",
@@ -217,9 +217,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""Test.Namespace.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""string""},{""name"":""FieldB"",""type"":{""type"":""array"",""items"":""double""}}]}",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""fields"": [{ ""name"": ""FieldA"", ""type"": ""string"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": ""double"" } }] }",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [{ ""name"": ""FieldA"", ""type"": { ""type"": ""string"" }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": { ""type"": ""double"" } }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }] }"
-                ).SetName("Record Schema - Short");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new RecordSchema(
                         "TestRecord",
                         "Test.Namespace",
@@ -229,7 +229,7 @@ namespace Avro.Test.Schemas
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema(),
-                                Default = "DefaultValue",
+                                Default = @"""DefaultValue""",
                                 Doc = "TestFieldDoc",
                                 Aliases = new List<string>{ "X" },
                                 Order = "ascending"
@@ -248,16 +248,16 @@ namespace Avro.Test.Schemas
                     @"{""name"":""Test.Namespace.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""string"",""default"":""DefaultValue""},{""name"":""FieldB"",""type"":{""type"":""array"",""items"":""double""}}]}",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""], ""fields"": [{ ""name"": ""FieldA"", ""type"": ""string"", ""default"": ""DefaultValue"", ""doc"": ""TestFieldDoc"", ""aliases"": [""X""], ""order"": ""ascending"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": ""double"" } }] }",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""], ""fields"": [{ ""name"": ""FieldA"", ""type"": { ""type"": ""string"" }, ""default"": ""DefaultValue"", ""doc"": ""TestFieldDoc"", ""aliases"": [""X""], ""order"": ""ascending"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": { ""type"": ""double"" } }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }] }"
-                ).SetName("Record Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     _recordSchemaRecurse,
                     @"{""name"":""Test.Namespace.TestRecord"",""type"":""record"",""fields"":[{""name"":""Recurse"",""type"":""Test.Namespace.TestRecord""}]}",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""fields"": [{ ""name"": ""Recurse"", ""type"": ""Test.Namespace.TestRecord"" }] }",
                     @"{ ""type"": ""record"", ""name"": ""TestRecord"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [{ ""name"": ""Recurse"", ""type"": ""Test.Namespace.TestRecord"", ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }] }"
-                ).SetName("Record Schema - Recurse");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new ErrorSchema(
                         "TestError",
                         "Test.Namespace",
@@ -278,9 +278,9 @@ namespace Avro.Test.Schemas
                     @"{""name"":""Test.Namespace.TestError"",""type"":""error"",""fields"":[{""name"":""FieldA"",""type"":""string""},{""name"":""FieldB"",""type"":{""type"":""array"",""items"":""double""}}]}",
                     @"{ ""type"": ""error"", ""name"": ""TestError"", ""namespace"": ""Test.Namespace"", ""fields"": [{ ""name"": ""FieldA"", ""type"": ""string"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": ""double"" } }] }",
                     @"{ ""type"": ""error"", ""name"": ""TestError"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [{ ""name"": ""FieldA"", ""type"": { ""type"": ""string"" }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": { ""type"": ""double"" } }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }] }"
-                ).SetName("Error Schema - Short");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new ErrorSchema(
                         "TestError",
                         "Test.Namespace",
@@ -290,7 +290,7 @@ namespace Avro.Test.Schemas
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema(),
-                                Default = "DefaultValue",
+                                Default = @"""DefaultValue""",
                                 Doc = "TestFieldDoc",
                                 Aliases = new List<string>{ "X" },
                                 Order = "ascending"
@@ -309,77 +309,77 @@ namespace Avro.Test.Schemas
                     @"{""name"":""Test.Namespace.TestError"",""type"":""error"",""fields"":[{""name"":""FieldA"",""type"":""string"",""default"":""DefaultValue""},{""name"":""FieldB"",""type"":{""type"":""array"",""items"":""double""}}]}",
                     @"{ ""type"": ""error"", ""name"": ""TestError"", ""namespace"": ""Test.Namespace"", ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""], ""fields"": [{ ""name"": ""FieldA"", ""type"": ""string"", ""default"": ""DefaultValue"", ""doc"": ""TestFieldDoc"", ""aliases"": [""X""], ""order"": ""ascending"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": ""double"" } }] }",
                     @"{ ""type"": ""error"", ""name"": ""TestError"", ""namespace"": ""Test.Namespace"", ""doc"": ""TestDoc"", ""aliases"": [""A"", ""B""], ""fields"": [{ ""name"": ""FieldA"", ""type"": { ""type"": ""string"" }, ""default"": ""DefaultValue"", ""doc"": ""TestFieldDoc"", ""aliases"": [""X""], ""order"": ""ascending"" }, { ""name"": ""FieldB"", ""type"": { ""type"": ""array"", ""items"": { ""type"": ""double"" } }, ""doc"": """", ""aliases"": [], ""order"": ""ignore"" }] }"
-                ).SetName("Error Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new DateSchema(),
                     @"{""type"":""int"",""logicalType"":""date""}",
                     @"{ ""type"": ""int"", ""logicalType"": ""date"" }",
                     @"{ ""type"": { ""type"": ""int"" }, ""logicalType"": ""date"" }"
-                ).SetName("Date Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new TimeMillisSchema(),
                     @"{""type"":""int"",""logicalType"":""time-millis""}",
                     @"{ ""type"": ""int"", ""logicalType"": ""time-millis"" }",
                     @"{ ""type"": { ""type"": ""int"" }, ""logicalType"": ""time-millis"" }"
-                ).SetName("Time Millis Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new TimeMicrosSchema(),
                     @"{""type"":""long"",""logicalType"":""time-micros""}",
                     @"{ ""type"": ""long"", ""logicalType"": ""time-micros"" }",
                     @"{ ""type"": { ""type"": ""long"" }, ""logicalType"": ""time-micros"" }"
-                ).SetName("Time Micros Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new TimestampMillisSchema(),
                     @"{""type"":""long"",""logicalType"":""timestamp-millis""}",
                     @"{ ""type"": ""long"", ""logicalType"": ""timestamp-millis"" }",
                     @"{ ""type"": { ""type"": ""long"" }, ""logicalType"": ""timestamp-millis"" }"
-                ).SetName("Timestamp Millis Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new TimestampMicrosSchema(),
                     @"{""type"":""long"",""logicalType"":""timestamp-micros""}",
                     @"{ ""type"": ""long"", ""logicalType"": ""timestamp-micros"" }",
                     @"{ ""type"": { ""type"": ""long"" }, ""logicalType"": ""timestamp-micros"" }"
-                ).SetName("Timestamp Micros Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new DurationSchema(),
                     @"{""type"":{""name"":""duration"",""type"":""fixed"",""size"":12},""logicalType"":""duration""}",
                     @"{ ""type"": { ""type"": ""fixed"", ""name"": ""duration"", ""size"": 12 }, ""logicalType"": ""duration"" }",
                     @"{ ""type"": { ""type"": ""fixed"", ""name"": ""duration"", ""namespace"": """", ""size"": 12, ""aliases"": [] }, ""logicalType"": ""duration"" }"
-                ).SetName("Duration Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new UuidSchema(),
                     @"{""type"":""string"",""logicalType"":""uuid""}",
                     @"{ ""type"": ""string"", ""logicalType"": ""uuid"" }",
                     @"{ ""type"": { ""type"": ""string"" }, ""logicalType"": ""uuid"" }"
-                ).SetName("Uuid Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new DecimalSchema() { Precision = 9, Scale = 5 },
                     @"{""type"":""bytes"",""logicalType"":""decimal"",""precision"":9,""scale"":5}",
                     @"{ ""type"": ""bytes"", ""logicalType"": ""decimal"", ""precision"": 9, ""scale"": 5 }",
                     @"{ ""type"": { ""type"": ""bytes"" }, ""logicalType"": ""decimal"", ""precision"": 9, ""scale"": 5 }"
-                ).SetName("Decimal Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new LogicalSchema(new FloatSchema(), "temperature"),
                     @"{""type"":""float"",""logicalType"":""temperature""}",
                     @"{ ""type"": ""float"", ""logicalType"": ""temperature"" }",
                     @"{ ""type"": { ""type"": ""float"" }, ""logicalType"": ""temperature"" }"
-                ).SetName("Custom Logical Schema");
+                };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     new UnionSchema(new NullSchema(), new IntSchema()),
                     @"[""null"",""int""]",
                     @"[""null"", ""int""]",
                     @"[{ ""type"": ""null"" }, { ""type"": ""int"" }]"
-                ).SetName("Union Schema");
+                };
             }
         }
     }

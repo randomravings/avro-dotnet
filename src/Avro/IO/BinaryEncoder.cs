@@ -128,7 +128,7 @@ namespace Avro.IO
         public void WriteTimeUS(TimeSpan value)
         {
             var time = value.Subtract(TimeSpan.FromDays(value.Days));
-            var microseconds = (long)Math.Round(time.TotalMilliseconds * 1000);
+            var microseconds = time.Ticks / (TimeSpan.TicksPerMillisecond / 1000);
             WriteLong(microseconds);
         }
 
@@ -142,14 +142,14 @@ namespace Avro.IO
         public void WriteTimestampMS(DateTime value)
         {
             var time = (value - Constants.UNIX_EPOCH);
-            var milliseconds = (long)Math.Round(time.TotalMilliseconds);
+            var milliseconds = (long)Math.Floor(time.TotalMilliseconds);
             WriteLong(milliseconds);
         }
 
         public void WriteTimestampUS(DateTime value)
         {
             var time = (value - Constants.UNIX_EPOCH);
-            var microseconds = (long)Math.Round(time.TotalMilliseconds * 1000);
+            var microseconds = time.Ticks / (TimeSpan.TicksPerMillisecond / 1000);
             WriteLong(microseconds);
         }
 
@@ -160,11 +160,22 @@ namespace Avro.IO
             WriteLong(nanosecond);
         }
 
-        public void WriteDuration(ValueTuple<int, int, int> value)
+        public void WriteDuration(ValueTuple<uint, uint, uint> value)
         {
-            WriteInt(value.Item1);
-            WriteInt(value.Item2);
-            WriteInt(value.Item3);
+            _stream.WriteByte((byte)((value.Item1 >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.Item1 >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.Item1 >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.Item1) & 0xFF));
+
+            _stream.WriteByte((byte)((value.Item2 >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.Item2 >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.Item2 >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.Item2) & 0xFF));
+
+            _stream.WriteByte((byte)((value.Item3 >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.Item3 >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.Item3 >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.Item3) & 0xFF));
         }
 
         public void WriteUuid(Guid value)
@@ -241,11 +252,6 @@ namespace Avro.IO
 
         public void WriteNull() { }
 
-        public void Dispose()
-        {
-            _stream.Dispose();
-        }
-
         public void WriteNullableObject<T>(T value, Action<IEncoder, T> valueWriter, long nullIndex) where T : class
         {
             if (value == null)
@@ -271,5 +277,7 @@ namespace Avro.IO
                 WriteLong(nullIndex % 2);
             }
         }
+
+        public void Dispose() { }
     }
 }

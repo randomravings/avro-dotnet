@@ -28,5 +28,19 @@ namespace Avro.Schemas
 
         public int Precision { get; set; }
         public int Scale { get; set; }
+
+        public override string ToString()
+        {
+            return  $"{base.ToString()}({Precision},{Scale})";
+        }
+
+        public override bool Equals(Schema obj)
+        {
+            return base.Equals(obj) &&
+                (obj is DecimalSchema) &&
+                (obj as DecimalSchema).Precision == Precision &&
+                (obj as DecimalSchema).Scale == Scale
+            ;
+        }
     }
 }

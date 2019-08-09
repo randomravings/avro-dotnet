@@ -143,7 +143,7 @@ namespace Avro.Test.Code
                 yield return new object[] { new TimestampMicrosSchema(), "DateTime" };
                 yield return new object[] { new TimestampNanosSchema(), "DateTime" };
                 yield return new object[] { new DateSchema(), "DateTime" };
-                yield return new object[] { new DurationSchema(), "ValueTuple<int, int, int>" };
+                yield return new object[] { new DurationSchema(), "ValueTuple<uint, uint, uint>" };
                 yield return new object[] { new UuidSchema(), "Guid" };
 
                 yield return new object[] { new UnionSchema() { new NullSchema(), new DecimalSchema() }, "decimal?" };
@@ -154,7 +154,7 @@ namespace Avro.Test.Code
                 yield return new object[] { new UnionSchema() { new NullSchema(), new TimestampMicrosSchema() }, "DateTime?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new TimestampNanosSchema() }, "DateTime?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new DateSchema() }, "DateTime?" };
-                yield return new object[] { new UnionSchema() { new NullSchema(), new DurationSchema() }, "ValueTuple<int, int, int>?" };
+                yield return new object[] { new UnionSchema() { new NullSchema(), new DurationSchema() }, "ValueTuple<uint, uint, uint>?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new UuidSchema() }, "Guid?" };
 
                 yield return new object[] { new CodeGenTestLogicalSchema(), "byte[]" };

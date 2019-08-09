@@ -61,8 +61,8 @@ namespace Avro
             if (_messages.Contains(message))
                 throw new AvroException($"Protocol already contains the message: '{message.Name}'");
             foreach (var request in message.RequestParameters)
-                if (!_types.Contains(request.Type))
-                    throw new AvroException($"Protocol does not contain type: '{request.Type.FullName}'");
+                if (_types.FirstOrDefault(r => r.FullName == request.Type) == null)
+                    throw new AvroException($"Protocol does not contain type: '{request.Type}'");
             _messages.Add(message);
         }
 

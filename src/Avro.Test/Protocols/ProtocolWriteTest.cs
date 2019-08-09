@@ -70,12 +70,12 @@ namespace Avro.Test.Protocols
                     Name = "ProtocolName"
                 };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     protocol01,
                     @"{""protocol"":""ProtocolName""}",
                     @"{ ""protocol"": ""ProtocolName"" }",
                     @"{ ""namespace"": """", ""protocol"": ""ProtocolName"", ""doc"": """", ""types"": [], ""messages"": {} }"
-                ).SetName("#01: Added Name");
+                };
 
                 var protocol02 = new Protocol
                 {
@@ -83,12 +83,12 @@ namespace Avro.Test.Protocols
                     Namespace = "Test.Namespace"
                 };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     protocol02,
                     @"{""protocol"":""Test.Namespace.ProtocolName""}",
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"" }",
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": """", ""types"": [], ""messages"": {} }"
-                ).SetName("#02: Added Namespace");
+                };
 
                 var protocol03 = new Protocol
                 {
@@ -97,12 +97,12 @@ namespace Avro.Test.Protocols
                     Doc = "Test Documentation"
                 };
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     protocol03,
                     @"{""protocol"":""Test.Namespace.ProtocolName""}",
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"" }",
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"", ""types"": [], ""messages"": {} }"
-                ).SetName("#03: Added Doc");
+                };
 
                 var protocol04 = new Protocol
                 {
@@ -116,7 +116,7 @@ namespace Avro.Test.Protocols
                 protocol04.AddType(errord01);
                 protocol04.AddType(errord02);
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     protocol04,
                     @"{""protocol"":""Test.Namespace.ProtocolName"",""types"":" +
                     @"[{""name"":""TestRecord01"",""type"":""record"",""fields"":[]}," +
@@ -139,7 +139,7 @@ namespace Avro.Test.Protocols
                         @"{ ""type"": ""error"", ""name"": ""TestError02"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] " +
                     @"}]," +
                     @" ""messages"": {} }"
-                ).SetName("#04: Added Types");
+                };
 
                 var protocol05 = new Protocol
                 {
@@ -154,21 +154,21 @@ namespace Avro.Test.Protocols
                 protocol05.AddType(errord02);
 
                 var message01 = new Message("M01") { Doc = "Test Doc 01" };
-                message01.AddParameter(new RequestParameter("p01", record01));
-                message01.AddParameter(new RequestParameter("p02", record02));
+                message01.AddParameter(new ParameterSchema("p01", record01.FullName));
+                message01.AddParameter(new ParameterSchema("p02", record02.FullName));
                 message01.AddError(errord01);
                 message01.AddError(errord02);
                 message01.Response = new DoubleSchema();
 
                 var message02 = new Message("M02");
-                message02.AddParameter(new RequestParameter("p01", record01));
+                message02.AddParameter(new ParameterSchema("p01", record01.FullName));
                 message02.AddError(errord01);
                 message02.Oneway = true;
 
                 protocol05.AddMessage(message01);
                 protocol05.AddMessage(message02);
 
-                yield return new TestCaseData(
+                yield return new object[] {
                     protocol05,
                     @"{""protocol"":""Test.Namespace.ProtocolName"",""types"":" +
                     @"[{""name"":""TestRecord01"",""type"":""record"",""fields"":[]}," +
@@ -177,7 +177,7 @@ namespace Avro.Test.Protocols
                         @"{""name"":""TestError02"",""type"":""error"",""fields"":[]}" +
                     @"]," +
                     @"""messages"":{" +
-                    @"""M01"":{" + 
+                    @"""M01"":{" +
                         @"""request"":[{""name"":""p01"",""type"":""TestRecord01""},{""name"":""p02"",""type"":""TestRecord02""}]," +
                         @"""response"":""double""," +
                         @"""errors"":[""TestError01"",""TestError02""]" +
@@ -228,7 +228,7 @@ namespace Avro.Test.Protocols
                         @"""errors"": [""TestError01""], " +
                         @"""one-way"": true" +
                     @"}} }"
-                ).SetName("#05: Added Messages");
+                };
             }
         }
     }

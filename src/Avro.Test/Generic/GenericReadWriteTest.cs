@@ -1,3 +1,4 @@
+using Avro.Generic;
 using Avro.IO;
 using Avro.Schemas;
 using Avro.Specific;
@@ -6,7 +7,7 @@ using System;
 using System.Globalization;
 using System.IO;
 
-namespace Avro.Test.Specific
+namespace Avro.Test.Generic
 {
     [TestFixture(1, 1L, TypeArgs = new Type[] { typeof(int), typeof(long), typeof(IntSchema), typeof(LongSchema) })]
     [TestFixture(1, 1F, TypeArgs = new Type[] { typeof(int), typeof(float), typeof(IntSchema), typeof(FloatSchema) })]
@@ -16,26 +17,26 @@ namespace Avro.Test.Specific
     [TestFixture(1F, 1D, TypeArgs = new Type[] { typeof(float), typeof(double), typeof(FloatSchema), typeof(DoubleSchema) })]
     [TestFixture("abcd", new byte[] { 0x61, 0x62, 0x63, 0x64 }, TypeArgs = new Type[] { typeof(string), typeof(byte[]), typeof(StringSchema), typeof(BytesSchema) })]
     [TestFixture(new byte[] { 0x61, 0x62, 0x63, 0x64 }, "abcd", TypeArgs = new Type[] { typeof(byte[]), typeof(string), typeof(BytesSchema), typeof(StringSchema) })]
-    public class SpecificPromoted<TWriter, TReader, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
+    public class GenericPromoted<TWriter, TReader, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
     {
         private readonly TWriter _writeValue;
         private readonly TReader _readValue;
         private readonly SWriter _writeSchema;
         private readonly SReader _readSchema;
-        private readonly SpecificWriter<TWriter> _specificWriter;
-        private readonly SpecificReader<TReader> _specificReader;
+        private readonly IDatumWriter<TWriter> _specificWriter;
+        private readonly IDatumReader<TReader> _specificReader;
 
-        public SpecificPromoted(TWriter writeValue, TReader readValue)
+        public GenericPromoted(TWriter writeValue, TReader readValue)
             : this(writeValue, readValue, new SWriter(), new SReader()) { }
 
-        public SpecificPromoted(TWriter writeValue, TReader readValue, object writeInstance, object readInstance)
+        public GenericPromoted(TWriter writeValue, TReader readValue, object writeInstance, object readInstance)
         {
             _writeValue = writeValue;
             _readValue = readValue;
             _writeSchema = writeInstance as SWriter;
             _readSchema = readInstance as SReader;
-            _specificWriter = new SpecificWriter<TWriter>(_writeSchema);
-            _specificReader = new SpecificReader<TReader>(_readSchema, _writeSchema);
+            _specificWriter = new GenericWriter<TWriter>(_writeSchema);
+            _specificReader = new GenericReader<TReader>(_readSchema, _writeSchema);
         }
 
         [TestCase]
@@ -102,12 +103,12 @@ namespace Avro.Test.Specific
     [TestFixture(new byte[] { 0x00, 0x00, 0x00 }, TypeArgs = new Type[] { typeof(byte[]), typeof(BytesSchema) })]
     [TestFixture(new byte[] { 0x65, 0xAF, 0x77, 0x12, 0xB4 }, TypeArgs = new Type[] { typeof(byte[]), typeof(BytesSchema) })]
     [TestFixture(new byte[] { }, TypeArgs = new Type[] { typeof(byte[]), typeof(BytesSchema) })]
-    public class SpecificPrimitiveMirrored<T, S> : SpecificPromoted<T, T, S, S> where S : Schema, new()
+    public class GenericPrimitiveMirrored<T, S> : GenericPromoted<T, T, S, S> where S : Schema, new()
     {
-        public SpecificPrimitiveMirrored(T value)
+        public GenericPrimitiveMirrored(T value)
             : base(value, value) { }
 
-        public SpecificPrimitiveMirrored(T value, object instance)
+        public GenericPrimitiveMirrored(T value, object instance)
             : base(value, value, instance, instance) { }
     }
 
@@ -121,18 +122,18 @@ namespace Avro.Test.Specific
     [TestFixture("1977-10-14 04:03:59.123456", "yyyy-MM-dd HH:mm:ss.ffffff", TypeArgs = new Type[] { typeof(TimestampMicrosSchema) })]
     [TestFixture("1900-01-01 00:00:00.0000000", "yyyy-MM-dd HH:mm:ss.fffffff", TypeArgs = new Type[] { typeof(TimestampNanosSchema) })]
     [TestFixture("4902-04-01 14:43:32.1234567", "yyyy-MM-dd HH:mm:ss.fffffff", TypeArgs = new Type[] { typeof(TimestampNanosSchema) })]
-    public class SpecificDateTimeMirrored<S> : SpecificPrimitiveMirrored<DateTime, S> where S : Schema, new()
+    public class GenericDateTimeMirrored<S> : GenericPrimitiveMirrored<DateTime, S> where S : Schema, new()
     {
-        public SpecificDateTimeMirrored(string value, string parseString)
+        public GenericDateTimeMirrored(string value, string parseString)
             : base(DateTime.ParseExact(value, parseString, CultureInfo.InvariantCulture)) { }
     }
 
     [TestFixture("12:34:56.123", @"hh\:mm\:ss\.fff", TypeArgs = new Type[] { typeof(TimeMillisSchema) })]
     [TestFixture("12:34:56.123456", @"hh\:mm\:ss\.ffffff", TypeArgs = new Type[] { typeof(TimeMicrosSchema) })]
     [TestFixture("12:34:56.1234567", @"hh\:mm\:ss\.fffffff", TypeArgs = new Type[] { typeof(TimeNanosSchema) })]
-    public class SpecificTimeSpanMirrored<S> : SpecificPrimitiveMirrored<TimeSpan, S> where S : Schema, new()
+    public class GenericTimeSpanMirrored<S> : GenericPrimitiveMirrored<TimeSpan, S> where S : Schema, new()
     {
-        public SpecificTimeSpanMirrored(string value, string parseString)
+        public GenericTimeSpanMirrored(string value, string parseString)
             : base(TimeSpan.ParseExact(value, parseString, CultureInfo.InvariantCulture)) { }
     }
 
@@ -140,18 +141,18 @@ namespace Avro.Test.Specific
     [TestFixture("0adc0a2a-ea6b-49a8-b767-f54e64e16f2c", TypeArgs = new Type[] { typeof(UuidSchema) })]
     [TestFixture("caa0cc90-84f3-4d0b-8b2a-6ed2a50fdac5", TypeArgs = new Type[] { typeof(UuidSchema) })]
     [TestFixture("fbca64a3-38c4-4553-9fe0-98ebf30fd276", TypeArgs = new Type[] { typeof(UuidSchema) })]
-    public class SpecificUuidMirrored<S> : SpecificPrimitiveMirrored<Guid, S> where S : Schema, new()
+    public class GenericUuidMirrored<S> : GenericPrimitiveMirrored<Guid, S> where S : Schema, new()
     {
-        public SpecificUuidMirrored(string value)
+        public GenericUuidMirrored(string value)
             : base(Guid.Parse(value)) { }
     }
 
     [TestFixture(0U, 0U, 0U, TypeArgs = new Type[] { typeof(DurationSchema) })]
     [TestFixture(12U, 45U, 98234U, TypeArgs = new Type[] { typeof(DurationSchema) })]
     [TestFixture(uint.MaxValue, uint.MaxValue, uint.MaxValue, TypeArgs = new Type[] { typeof(DurationSchema) })]
-    public class SpecificDurationMirrored<S> : SpecificPrimitiveMirrored<ValueTuple<uint, uint, uint>, S> where S : Schema, new()
+    public class GenericDurationMirrored<S> : GenericPrimitiveMirrored<ValueTuple<uint, uint, uint>, S> where S : Schema, new()
     {
-        public SpecificDurationMirrored(uint mm, uint dd, uint ms)
+        public GenericDurationMirrored(uint mm, uint dd, uint ms)
             : base(new ValueTuple<uint, uint, uint>(mm, dd, ms)) { }
     }
 
@@ -160,9 +161,9 @@ namespace Avro.Test.Specific
     [TestFixture("345.543", 15, 6)]
     [TestFixture("-7922816251426433.7593543950335", 29, 13)]
     [TestFixture("7922816251426433.7593543950335", 29, 13)]
-    public class SpecificDecimalMirrored : SpecificPrimitiveMirrored<decimal, DecimalSchema>
+    public class GenericDecimalMirrored : GenericPrimitiveMirrored<decimal, DecimalSchema>
     {
-        public SpecificDecimalMirrored(string value, int precision, int scale)
+        public GenericDecimalMirrored(string value, int precision, int scale)
             : base(decimal.Parse(value), new DecimalSchema(new BytesSchema(), precision, scale)) { }
     }
 
@@ -171,27 +172,27 @@ namespace Avro.Test.Specific
     [TestFixture("345.543", 15, 6)]
     [TestFixture("-7922816251426433.7593543950335", 28, 13)]
     [TestFixture("7922816251426433.7593543950335", 28, 13)]
-    public class SpecificDecimalFixedMirrored : SpecificPrimitiveMirrored<decimal, DecimalSchema>
+    public class GenericDecimalFixedMirrored : GenericPrimitiveMirrored<decimal, DecimalSchema>
     {
-        public SpecificDecimalFixedMirrored(string value, int precision, int scale)
+        public GenericDecimalFixedMirrored(string value, int precision, int scale)
             : base(decimal.Parse(value), new DecimalSchema(new FixedSchema("decimal", null, 32), precision, scale)) { }
     }
 
     [TestFixture("2001-03-31 12:34:56.123", "yyyy-MM-dd HH:mm:ss.fff", "2001-03-31 12:34:56.123000", "yyyy-MM-dd HH:mm:ss.ffffff", TypeArgs = new Type[] { typeof(TimestampMillisSchema), typeof(TimestampMicrosSchema) })]
     [TestFixture("2001-03-31 12:34:56.123", "yyyy-MM-dd HH:mm:ss.fff", "2001-03-31 12:34:56.1230000", "yyyy-MM-dd HH:mm:ss.fffffff", TypeArgs = new Type[] { typeof(TimestampMillisSchema), typeof(TimestampNanosSchema) })]
     [TestFixture("2001-03-31 12:34:56.123456", "yyyy-MM-dd HH:mm:ss.ffffff", "2001-03-31 12:34:56.1234560", "yyyy-MM-dd HH:mm:ss.fffffff", TypeArgs = new Type[] { typeof(TimestampMicrosSchema), typeof(TimestampNanosSchema) })]
-    public class SpecificDateTimePromoted<SWriter, SReader> : SpecificPromoted<DateTime, DateTime, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
+    public class GenericDateTimePromoted<SWriter, SReader> : GenericPromoted<DateTime, DateTime, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
     {
-        public SpecificDateTimePromoted(string writeValue, string writeParseString, string readValue, string readParseString)
+        public GenericDateTimePromoted(string writeValue, string writeParseString, string readValue, string readParseString)
             : base(DateTime.ParseExact(writeValue, writeParseString, CultureInfo.InvariantCulture), DateTime.ParseExact(readValue, readParseString, CultureInfo.InvariantCulture)) { }
     }
 
     [TestFixture("12:34:56.123", @"hh\:mm\:ss\.fff", "12:34:56.123", @"hh\:mm\:ss\.fff", TypeArgs = new Type[] { typeof(TimeMillisSchema), typeof(TimeMicrosSchema) })]
     [TestFixture("12:34:56.123", @"hh\:mm\:ss\.fff", "12:34:56.123000", @"hh\:mm\:ss\.ffffff", TypeArgs = new Type[] { typeof(TimeMillisSchema), typeof(TimeNanosSchema) })]
     [TestFixture("12:34:56.123456", @"hh\:mm\:ss\.ffffff", "12:34:56.1234560", @"hh\:mm\:ss\.fffffff", TypeArgs = new Type[] { typeof(TimeMicrosSchema), typeof(TimeNanosSchema) })]
-    public class SpecificTimeSpanPromoted<SWriter, SReader> : SpecificPromoted<TimeSpan, TimeSpan, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
+    public class GenericTimeSpanPromoted<SWriter, SReader> : GenericPromoted<TimeSpan, TimeSpan, SWriter, SReader> where SWriter : Schema, new() where SReader : Schema, new()
     {
-        public SpecificTimeSpanPromoted(string writeValue, string writeParseString, string readValue, string readParseString)
+        public GenericTimeSpanPromoted(string writeValue, string writeParseString, string readValue, string readParseString)
             : base(TimeSpan.ParseExact(writeValue, writeParseString, CultureInfo.InvariantCulture), TimeSpan.ParseExact(readValue, readParseString, CultureInfo.InvariantCulture)) { }
     }
 }

@@ -14,7 +14,7 @@ namespace Avro.IO
         decimal ReadDecimal(int scale);
         decimal ReadDecimal(int scale, int len);
         double ReadDouble();
-        ValueTuple<int, int, int> ReadDuration();
+        ValueTuple<uint, uint, uint> ReadDuration();
         byte[] ReadFixed(byte[] bytes);
         byte[] ReadFixed(int len);
         float ReadFloat();

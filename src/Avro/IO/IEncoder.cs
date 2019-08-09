@@ -14,7 +14,7 @@ namespace Avro.IO
         void WriteDecimal(decimal value, int scale);
         void WriteDecimal(decimal value, int scale, int len);
         void WriteDouble(double value);
-        void WriteDuration(ValueTuple<int, int, int> value);
+        void WriteDuration(ValueTuple<uint, uint, uint> value);
         void WriteFixed(byte[] value);
         void WriteFloat(float value);
         void WriteInt(int value);

@@ -2,7 +2,7 @@
   "profiles": {
     "AvroGen": {
       "commandName": "Project",
-      "commandLineArgs": "-s E:\\avrogen\\avro.avsc E:\\avrogen\\TestProject"
+      "commandLineArgs": "-s D:\\avrogen\\avro.avsc D:\\avrogen\\TestProject"
     }
   }
 }

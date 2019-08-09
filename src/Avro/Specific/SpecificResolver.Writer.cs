@@ -164,7 +164,7 @@ namespace Avro.Specific
                     );
                     break;
 
-                case DurationSchema r when type.Equals(typeof(ValueTuple<int, int, int>)):
+                case DurationSchema r when type.Equals(typeof(ValueTuple<uint, uint, uint>)):
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDuration)),
@@ -213,7 +213,7 @@ namespace Avro.Specific
                     );
                     break;
 
-                case MapSchema r when type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>):
+                case MapSchema r when type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>) && type.GetGenericArguments().First() == typeof(string):
                     var mapValueType = type.GenericTypeArguments.Last();
                     var mapValueParameter = Expression.Parameter(mapValueType, "m");
                     var mapValueWriteAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), mapValueType);

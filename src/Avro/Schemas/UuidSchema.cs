@@ -11,7 +11,7 @@ namespace Avro.Schemas
             : base(type, "uuid")
         {
             if (!(type is StringSchema))
-                throw new AvroParseException("Expected 'string' as type for logical type 'time-micros'");
+                throw new AvroParseException("Expected 'string' as type for logical type 'uuid'");
         }
     }
 }

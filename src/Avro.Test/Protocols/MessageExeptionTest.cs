@@ -12,7 +12,7 @@ namespace Avro.Test.Protocols
         public void AddParameter()
         {
             var message = new Message("A");
-            var parameter = new RequestParameter("X", new RecordSchema("Y"));
+            var parameter = new ParameterSchema("X", "Y");
 
             Assert.DoesNotThrow(
                 () => message.AddParameter(parameter)

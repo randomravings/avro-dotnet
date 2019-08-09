@@ -59,10 +59,10 @@ namespace Avro.Test.Specific
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(int), typeof(int), typeof(int)), new DurationSchema() };
+                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(uint), typeof(uint), typeof(uint)), new DurationSchema() };
                 yield return new object[] { typeof(IList<>).MakeGenericType(typeof(int)), new ArraySchema(new IntSchema()) };
                 yield return new object[] { typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(Guid)), new MapSchema(new UuidSchema()) };
-                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(int), typeof(int), typeof(int)), new DurationSchema() };
+                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(uint), typeof(uint), typeof(uint)), new DurationSchema() };
                 yield return new object[] { typeof(TypeLookupEnum), new EnumSchema(nameof(TypeLookupEnum), typeof(TypeLookupEnum).Namespace, new string[] { "A", "B", "C" }) };
                 yield return new object[] { typeof(TypeLookupRecord), new TypeLookupRecord().Schema };
                 yield return new object[] { typeof(TypeLookupError), new TypeLookupError().Schema };
@@ -93,6 +93,8 @@ namespace Avro.Test.Specific
 
     public class TypeLookupRecord : ISpecificRecord
     {
+        public object this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
         public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupRecord"",""type"":""record"",""fields"":[]}");
 
         public int FieldCount => throw new NotImplementedException();
@@ -112,6 +114,8 @@ namespace Avro.Test.Specific
     {
         public TypeLookupError()
             : base(string.Empty) { }
+
+        public object this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupError"",""type"":""error"",""fields"":[]}");
 
@@ -135,5 +139,7 @@ namespace Avro.Test.Specific
         public int FixedSize => throw new NotImplementedException();
 
         public byte[] Value => throw new NotImplementedException();
+
+        public bool Equals(byte[] other) => throw new NotImplementedException();
     }
 }

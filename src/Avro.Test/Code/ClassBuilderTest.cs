@@ -1,6 +1,7 @@
 using Avro.Code;
 using Avro.Schemas;
 using Avro.Specific;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -18,7 +19,7 @@ namespace Avro.Test.Code
         public void TestUnsupportedType()
         {
             var schema = new ClassBuilderTestSchema() { Name = "X" };
-            
+
             Assert.Throws(
                 typeof(CodeGenException),
                 () => CodeGen.Compile(Guid.NewGuid().ToString(), schema, out _)
@@ -110,13 +111,35 @@ namespace Avro.Test.Code
             Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
 
             var property = type.GetProperty(expectedName);
-            Assert.NotNull(type);
+            Assert.NotNull(property);
 
             var doc = GetSummaryText(xmlDocument, type.FullName, property.Name);
             Assert.AreEqual(expectedDoc, doc);
 
             var aliases = GetAliasList(xmlDocument, type.FullName, property.Name);
             Assert.AreEqual(expectedAliases, aliases);
+        }
+
+        [Test, TestCaseSource(typeof(RecordFieldDefaultSource))]
+        public void RecordFieldDefault(RecordSchema record, string fieldWithDefault, object expectedValue, Func<object, object, bool> customCompare)
+        {
+            var assembly = CodeGen.Compile(Guid.NewGuid().ToString(), record, out _);
+
+            var type = assembly.ExportedTypes.FirstOrDefault();
+            Assert.NotNull(type);
+            Assert.IsTrue(type.IsClass);
+            Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
+
+            var property = type.GetProperty(fieldWithDefault);
+            Assert.NotNull(property);
+
+            var instance = Activator.CreateInstance(type);
+            var value = property.GetValue(instance);
+
+            if (customCompare != null)
+                Assert.True(customCompare.Invoke(value, expectedValue));
+            else
+                Assert.AreEqual(expectedValue, value);
         }
 
         private class FixedSource : IEnumerable
@@ -128,7 +151,7 @@ namespace Avro.Test.Code
                 yield return new object[] { new FixedSchema("Test_Documentation") { Size = 10 }, "Test_Documentation", null, 10, null };
             }
         }
-
+   
         private class EnumSource : IEnumerable
         {
             public IEnumerator GetEnumerator()
@@ -169,6 +192,77 @@ namespace Avro.Test.Code
             {
                 yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new IntSchema()) { Doc = "Field Doc" } }, "Field1", "Field Doc", null };
                 yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field2", new StringSchema()) { Aliases = new string[] { "OldField" } } }, "Field2", null, new string[] { "OldField" } };
+            }
+        }
+
+        private class RecordFieldDefaultSource : IEnumerable
+        {
+            public IEnumerator GetEnumerator()
+            {
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new NullSchema()) { Default = null } }, "Field1", null, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new BooleanSchema()) { Default = true } }, "Field1", true, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new IntSchema()) { Default = 123 } }, "Field1", 123, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new LongSchema()) { Default = 987654321L } }, "Field1", 987654321L, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new FloatSchema()) { Default = 98765.4321F } }, "Field1", 98765.4321F, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new DoubleSchema()) { Default = 98765.4321D } }, "Field1", 98765.4321D, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new BytesSchema()) { Default = @"\u0000\u0001\u0010\u00AB\u00FF" } }, "Field1", new byte[] { 0x00, 0x01, 0x10, 0xAB, 0xFF }, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new StringSchema()) { Default = @"""Hello World!""" } }, "Field1", "Hello World!", null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new ArraySchema(new IntSchema())) { Default = JToken.Parse("[1, 2, 4]") } }, "Field1", new List<int>() { 1, 2, 4 }, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new MapSchema(new IntSchema())) { Default = JToken.Parse(@"{""key1"":1, ""key2"":2, ""key3"":4}") } }, "Field1", new Dictionary<string, int>() { { "key1", 1 }, { "key2", 2 }, { "key3", 4 } }, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new UuidSchema()) { Default = @"""61FEDC68-47CA-4727-BDFF-685A4E3EC846""" } }, "Field1", new Guid("61FEDC68-47CA-4727-BDFF-685A4E3EC846"), null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new UnionSchema(new NullSchema(), new IntSchema())) { Default = JValue.CreateNull() } }, "Field1", null, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new FixedSchema("Y", null, 3)) { Default = @"\u0001\u0002\u0003" } }, "Field1", new byte[] { 0x01, 0x02, 0x03 }, null };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new EnumSchema("Y", null, new string[] { "A", "B", "C" })) { Default = @"""B""" } }, "Field1", 1, new Func<object, object, bool>((a, b) => ((int)a) == ((int)b)) };
+                yield return new object[] { new RecordSchema("X") { new RecordSchema.Field("Field1", new LogicalSchema(new IntSchema(), "ls")) { Default = 42 } }, "Field1", 42, null };
+                yield return new object[] { new RecordSchema("X") {
+                        new RecordSchema.Field(
+                            "Field1",
+                            new RecordSchema(
+                                "Y",
+                                null,
+                                new RecordSchema.Field[] {
+                                    new RecordSchema.Field(
+                                        "f1",
+                                        new IntSchema()
+                                    ),
+                                    new RecordSchema.Field(
+                                        "f2",
+                                        new RecordSchema(
+                                            "Z",
+                                            null,
+                                            new RecordSchema.Field[] {
+                                                new RecordSchema.Field(
+                                                    "f3",
+                                                    new StringSchema()
+                                                ),
+                                                new RecordSchema.Field(
+                                                    "f4",
+                                                    new FloatSchema()
+                                                )
+                                            }
+                                        )
+                                    )
+                                }
+                            )
+                        ) { Default = JToken.Parse(@"{""f1"":123,""f2"":{""f3"":""ABC"",""f4"":0.0012}}") }
+                    },
+                    "Field1",
+                    null,
+                    new Func<object, object, bool>(
+                        (a, b) =>
+                        {
+                            var rec01 = a as ISpecificRecord;
+                            Assert.IsNotNull(rec01);
+                            Assert.AreEqual(123, rec01.Get(0));
+                            var rec02 = rec01.Get(1) as ISpecificRecord;
+                            Assert.IsNotNull(rec02);
+                            Assert.AreEqual("ABC", rec02.Get(0));
+                            Assert.AreEqual(0.0012F, rec02.Get(1));
+                            return true;
+                        }
+                    )
+                };
+
             }
         }
 

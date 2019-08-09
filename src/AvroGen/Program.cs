@@ -2,15 +2,32 @@ using Avro.Code;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Avro
 {
     public class AvroGen
     {
+
         static void Main(string[] args)
         {
+            //var foo = new Avro.File.DataFileInfo(new FileInfo(@"E:\workspaces\github\avro\share\test\data\syncInMeta.avro"));
+            //var bar = foo.CloneNew(new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"syncInMeta.avro")));
+            //var reader = new Avro.Generic.GenericReader<object>(foo.Schema, foo.Schema);
+            //var writer = new Avro.Generic.GenericWriter<object>(foo.Schema);
+
+            //using (var fileReader = foo.OpenRead(reader))
+            //using (var fileWriter = bar.OpenWrite(writer, 600))
+            //    foreach (var item in fileReader)
+            //        fileWriter.Write(item);
+
+            //using (var fileReader = bar.OpenRead(reader))
+            //    foreach (var item in fileReader)
+            //        Console.WriteLine(item);
+            //return;
+
             // Print usage if no arguments provided or help requested
-            if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
+            if (args.Length == 0 || args[0] == " - h" || args[0] == "--help")
             {
                 Usage();
                 return;
@@ -138,7 +155,7 @@ namespace Avro
         {
             try
             {
-                var text = File.ReadAllText(infile);
+                var text = System.IO.File.ReadAllText(infile);
                 var schema = AvroReader.ReadSchema(text, out var schemas);
 
                 var codeGen = new CodeGen();

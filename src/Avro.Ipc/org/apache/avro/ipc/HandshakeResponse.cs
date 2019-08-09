@@ -40,42 +40,54 @@ namespace org.apache.avro.ipc
             set;
         }
 
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return match;
+                    case 1:
+                        return serverProtocol;
+                    case 2:
+                        return serverHash;
+                    case 3:
+                        return meta;
+                    default:
+                        throw new IndexOutOfRangeException("Expected range: [0:3].");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        match = (HandshakeMatch)value;
+                        break;
+                    case 1:
+                        serverProtocol = value;
+                        break;
+                    case 2:
+                        serverHash = value;
+                        break;
+                    case 3:
+                        meta = value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException("Expected range: [0:3].");
+                }
+            }
+        }
+
         public object Get(int fieldPos)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    return match;
-                case 1:
-                    return serverProtocol;
-                case 2:
-                    return serverHash;
-                case 3:
-                    return meta;
-                default:
-                    throw new IndexOutOfRangeException("Expected range: [0:3].");
-            }
+            return this[fieldPos];
         }
 
         public void Put(int fieldPos, object fieldValue)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    match = (org.apache.avro.ipc.HandshakeMatch)fieldValue;
-                    break;
-                case 1:
-                    serverProtocol = (object)fieldValue;
-                    break;
-                case 2:
-                    serverHash = (object)fieldValue;
-                    break;
-                case 3:
-                    meta = (object)fieldValue;
-                    break;
-                default:
-                    throw new IndexOutOfRangeException("Expected range: [0:3].");
-            }
+            this[fieldPos] = fieldValue;
         }
     }
 }

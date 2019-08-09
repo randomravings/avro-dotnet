@@ -4,6 +4,8 @@ using Avro.Specific;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -414,6 +416,96 @@ namespace Avro.Code
                                     )
                                 )
                             ),
+                            ConstructorDeclaration(
+                                Identifier(name)
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    Token(SyntaxKind.PublicKeyword)
+                                )
+                            )
+                            .WithParameterList(
+                                ParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                            Identifier("value")
+                                        )
+                                        .WithType(
+                                            ArrayType(
+                                                PredefinedType(
+                                                    Token(SyntaxKind.ByteKeyword)
+                                                )
+                                            )
+                                            .WithRankSpecifiers(
+                                                SingletonList(
+                                                    ArrayRankSpecifier(
+                                                        SingletonSeparatedList<ExpressionSyntax>(
+                                                            OmittedArraySizeExpression()
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            .WithBody(
+                                Block(
+                                    IfStatement(
+                                        BinaryExpression(
+                                            SyntaxKind.NotEqualsExpression,
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName("value"),
+                                                IdentifierName("Length")
+                                            ),
+                                            IdentifierName("_SIZE")
+                                        ),
+                                        ThrowStatement(
+                                            ObjectCreationExpression(
+                                                IdentifierName("ArgumentException")
+                                            )
+                                            .WithArgumentList(
+                                                ArgumentList(
+                                                    SingletonSeparatedList(
+                                                        Argument(
+                                                            InterpolatedStringExpression(
+                                                                Token(SyntaxKind.InterpolatedStringStartToken)
+                                                            )
+                                                            .WithContents(
+                                                                List(
+                                                                    new InterpolatedStringContentSyntax[]{
+                                                                        InterpolatedStringText()
+                                                                        .WithTextToken(
+                                                                            Token(
+                                                                                TriviaList(),
+                                                                                SyntaxKind.InterpolatedStringTextToken,
+                                                                                "Array must be of size: ",
+                                                                                "Array must be of size: ",
+                                                                                TriviaList()
+                                                                            )
+                                                                        ),
+                                                                        Interpolation(
+                                                                            IdentifierName("_SIZE")
+                                                                        )
+                                                                    }
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    ExpressionStatement(
+                                        AssignmentExpression(
+                                            SyntaxKind.SimpleAssignmentExpression,
+                                            IdentifierName(nameof(ISpecificFixed.Value)),
+                                            IdentifierName("value")
+                                        )
+                                    )
+                                )
+                            ),
                             PropertyDeclaration(
                                 QualifiedName(
                                     IdentifierName(typeof(Schema).Namespace),
@@ -438,7 +530,7 @@ namespace Avro.Code
                                 PredefinedType(
                                     Token(SyntaxKind.IntKeyword)
                                 ),
-                                Identifier("FixedSize")
+                                Identifier(nameof(ISpecificFixed.FixedSize))
                             )
                             .WithModifiers(
                                 TokenList(
@@ -468,7 +560,7 @@ namespace Avro.Code
                                         )
                                     )
                                 ),
-                                Identifier("Value")
+                                Identifier(nameof(ISpecificFixed.Value))
                             )
                             .WithModifiers(
                                 TokenList(
@@ -497,6 +589,144 @@ namespace Avro.Code
                                                 Token(SyntaxKind.SemicolonToken)
                                             )
                                         }
+                                    )
+                                )
+                            ),
+                            MethodDeclaration(
+                                PredefinedType(
+                                    Token(SyntaxKind.BoolKeyword)
+                                ),
+                                Identifier(nameof(IEquatable<byte[]>.Equals))
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    Token(SyntaxKind.PublicKeyword)
+                                )
+                            )
+                            .WithParameterList(
+                                ParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                            Identifier("other")
+                                        )
+                                        .WithType(
+                                            ArrayType(
+                                                PredefinedType(
+                                                    Token(SyntaxKind.ByteKeyword)
+                                                )
+                                            )
+                                            .WithRankSpecifiers(
+                                                SingletonList(
+                                                    ArrayRankSpecifier(
+                                                        SingletonSeparatedList<ExpressionSyntax>(
+                                                            OmittedArraySizeExpression()
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            .WithBody(
+                                Block(
+                                    IfStatement(
+                                        BinaryExpression(
+                                            SyntaxKind.NotEqualsExpression,
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName(nameof(ISpecificFixed.Value)),
+                                                IdentifierName(nameof(Array.Length))
+                                            ),
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName("other"),
+                                                IdentifierName(nameof(Array.Length))
+                                            )
+                                        ),
+                                        ReturnStatement(
+                                            LiteralExpression(
+                                                SyntaxKind.FalseLiteralExpression
+                                            )
+                                        )
+                                    ),
+                                    ForStatement(
+                                        IfStatement(
+                                            BinaryExpression(
+                                                SyntaxKind.NotEqualsExpression,
+                                                ElementAccessExpression(
+                                                    IdentifierName(nameof(ISpecificFixed.Value))
+                                                )
+                                                .WithArgumentList(
+                                                    BracketedArgumentList(
+                                                        SingletonSeparatedList(
+                                                            Argument(
+                                                                IdentifierName("i")
+                                                            )
+                                                        )
+                                                    )
+                                                ),
+                                                ElementAccessExpression(
+                                                    IdentifierName("other")
+                                                )
+                                                .WithArgumentList(
+                                                    BracketedArgumentList(
+                                                        SingletonSeparatedList(
+                                                            Argument(
+                                                                IdentifierName("i")
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            ),
+                                            ReturnStatement(
+                                                LiteralExpression(
+                                                    SyntaxKind.FalseLiteralExpression
+                                                )
+                                            )
+                                        )
+                                    )
+                                    .WithDeclaration(
+                                        VariableDeclaration(
+                                            PredefinedType(
+                                                Token(SyntaxKind.IntKeyword)
+                                            )
+                                        )
+                                        .WithVariables(
+                                            SingletonSeparatedList(
+                                                VariableDeclarator(
+                                                    Identifier("i")
+                                                )
+                                                .WithInitializer(
+                                                    EqualsValueClause(
+                                                        LiteralExpression(
+                                                            SyntaxKind.NumericLiteralExpression,
+                                                            Literal(0)
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                    .WithCondition(
+                                        BinaryExpression(
+                                            SyntaxKind.LessThanExpression,
+                                            IdentifierName("i"),
+                                            IdentifierName(nameof(ISpecificFixed.FixedSize))
+                                        )
+                                    )
+                                    .WithIncrementors(
+                                        SingletonSeparatedList<ExpressionSyntax>(
+                                            PostfixUnaryExpression(
+                                                SyntaxKind.PostIncrementExpression,
+                                                IdentifierName("i")
+                                            )
+                                        )
+                                    ),
+                                    ReturnStatement(
+                                        LiteralExpression(
+                                            SyntaxKind.TrueLiteralExpression
+                                        )
                                     )
                                 )
                             )
@@ -584,12 +814,13 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static PropertyDeclarationSyntax CreateClassProperty(string name, string type, string doc, IEnumerable<string> aliases)
+        internal static PropertyDeclarationSyntax CreateClassProperty(RecordSchema.Field field)
         {
+            var systemType = GetSystemType(field.Type);
             var propertyDeclaration =
                 PropertyDeclaration(
-                    ParseTypeName(type),
-                    name
+                    ParseTypeName(systemType),
+                    field.Name
                 )
                 .AddModifiers(
                     Token(SyntaxKind.PublicKeyword)
@@ -613,14 +844,31 @@ namespace Avro.Code
                 )
             ;
 
+            if (field.Default != null)
+                propertyDeclaration =
+                    propertyDeclaration
+                        .WithInitializer(
+                            EqualsValueClause(
+                                ParseExpression(
+                                    GetSystemTypeInitialization(field.Type, field.Default)
+                                )
+                            )
+                        )
+                        .WithSemicolonToken(
+                            Token(SyntaxKind.SemicolonToken)
+                        )
+                    ;
+
+
             propertyDeclaration =
                 propertyDeclaration.WithLeadingTrivia(
-                    CreateSummaryToken(doc, aliases.ToArray())
+                    CreateSummaryToken(field.Doc, field.Aliases.ToArray())
                 )
             ;
 
             return propertyDeclaration;
         }
+
 
         internal static ClassDeclarationSyntax AddMembersToClass(ClassDeclarationSyntax classDeclarationSyntax, params MemberDeclarationSyntax[] memberDeclarationSyntax)
         {
@@ -631,7 +879,87 @@ namespace Avro.Code
             ;
         }
 
-        internal static MemberDeclarationSyntax CreateClassGetMethod(IEnumerable<SwitchSectionSyntax> getSwitchSectionSyntaxes, int maxRange)
+        internal static MemberDeclarationSyntax CreateRecordClassIndexer(IEnumerable<SwitchSectionSyntax> getSwitchSectionSyntaxes, IEnumerable<SwitchSectionSyntax> switchSectionSyntaxes, int maxRange)
+        {
+            return
+                IndexerDeclaration(
+                        PredefinedType(
+                            Token(SyntaxKind.ObjectKeyword)
+                        )
+                    )
+                    .WithModifiers(
+                        TokenList(
+                            Token(SyntaxKind.PublicKeyword)
+                        )
+                    )
+                    .WithParameterList(
+                        BracketedParameterList(
+                            SingletonSeparatedList(
+                                Parameter(
+                                    Identifier("i")
+                                )
+                                .WithType(
+                                    PredefinedType(
+                                        Token(SyntaxKind.IntKeyword)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                    .WithAccessorList(
+                        AccessorList(
+                            List(
+                                new AccessorDeclarationSyntax[]{
+                                    AccessorDeclaration(
+                                        SyntaxKind.GetAccessorDeclaration
+                                    )
+                                    .WithBody(
+                                        Block(
+                                            SwitchStatement(
+                                                IdentifierName("i")
+                                            )
+                                            .WithOpenParenToken(
+                                                Token(SyntaxKind.OpenParenToken)
+                                            )
+                                            .WithCloseParenToken(
+                                                Token(SyntaxKind.CloseParenToken)
+                                            )
+                                            .WithSections(
+                                                List(
+                                                    getSwitchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    AccessorDeclaration(
+                                        SyntaxKind.SetAccessorDeclaration
+                                    )
+                                    .WithBody(
+                                        Block(
+                                            SwitchStatement(
+                                                IdentifierName("i")
+                                            )
+                                            .WithOpenParenToken(
+                                                Token(SyntaxKind.OpenParenToken)
+                                            )
+                                            .WithCloseParenToken(
+                                                Token(SyntaxKind.CloseParenToken)
+                                            )
+                                            .WithSections(
+                                                List(
+                                                    switchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
+                                                )
+                                            )
+                                        )
+                                    )
+                                }
+                            )
+                        )
+                    )
+                ;
+        }
+
+        internal static MemberDeclarationSyntax CreateRecorClassGetMethod()
         {
             return
                 MethodDeclaration(
@@ -661,18 +989,20 @@ namespace Avro.Code
                 )
                 .WithBody(
                     Block(
-                        SwitchStatement(
-                            IdentifierName("fieldPos")
-                        )
-                        .WithOpenParenToken(
-                            Token(SyntaxKind.OpenParenToken)
-                        )
-                        .WithCloseParenToken(
-                            Token(SyntaxKind.CloseParenToken)
-                        )
-                        .WithSections(
-                            List(
-                                getSwitchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
+                        SingletonList<StatementSyntax>(
+                            ReturnStatement(
+                                ElementAccessExpression(
+                                    ThisExpression()
+                                )
+                                .WithArgumentList(
+                                    BracketedArgumentList(
+                                        SingletonSeparatedList(
+                                            Argument(
+                                                IdentifierName("fieldPos")
+                                            )
+                                        )
+                                    )
+                                )
                             )
                         )
                     )
@@ -680,7 +1010,7 @@ namespace Avro.Code
             ;
         }
 
-        internal static MemberDeclarationSyntax CreateClassSetMethod(IEnumerable<SwitchSectionSyntax> switchSectionSyntaxes, int maxRange)
+        internal static MemberDeclarationSyntax CreateRecordClassSetMethod()
         {
             return
                 MethodDeclaration(
@@ -721,18 +1051,24 @@ namespace Avro.Code
                 )
                 .WithBody(
                     Block(
-                        SwitchStatement(
-                            IdentifierName("fieldPos")
-                        )
-                        .WithOpenParenToken(
-                            Token(SyntaxKind.OpenParenToken)
-                        )
-                        .WithCloseParenToken(
-                            Token(SyntaxKind.CloseParenToken)
-                        )
-                        .WithSections(
-                            List(
-                                switchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
+                        SingletonList<StatementSyntax>(
+                            ExpressionStatement(
+                                AssignmentExpression(
+                                    SyntaxKind.SimpleAssignmentExpression,
+                                    ElementAccessExpression(
+                                        ThisExpression()
+                                    )
+                                    .WithArgumentList(
+                                        BracketedArgumentList(
+                                            SingletonSeparatedList(
+                                                Argument(
+                                                    IdentifierName("fieldPos")
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    IdentifierName("fieldValue")
+                                )
                             )
                         )
                     )
@@ -787,7 +1123,7 @@ namespace Avro.Code
                                     IdentifierName(propertyName),
                                     CastExpression(
                                         ParseTypeName(propertyType),
-                                        IdentifierName("fieldValue")
+                                        IdentifierName("value")
                                     )
                                 )
                             ),
@@ -1372,9 +1708,9 @@ namespace Avro.Code
 
                 case DurationSchema _:
                     if (nullable)
-                        return "ValueTuple<int, int, int>?";
+                        return "ValueTuple<uint, uint, uint>?";
                     else
-                        return "ValueTuple<int, int, int>";
+                        return "ValueTuple<uint, uint, uint>";
 
                 case UuidSchema _:
                     if (nullable)
@@ -1388,6 +1724,84 @@ namespace Avro.Code
                 default:
                     return "object";
             }
+        }
+
+        public static string GetSystemTypeInitialization(Schema schema, JToken value)
+        {
+            var defaultInit = string.Empty;
+            switch (schema)
+            {
+                case NullSchema _:
+                    defaultInit = "null";
+                    break;
+                case BooleanSchema _:
+                    defaultInit = value.ToString().ToLower();
+                    break;
+                case IntSchema _:
+                    defaultInit = value.ToString();
+                    break;
+                case StringSchema _:
+                    defaultInit = value.ToString();
+                    break;
+                case LongSchema _:
+                    defaultInit = $"{value.ToString()}L";
+                    break;
+                case FloatSchema _:
+                    defaultInit = $"{value.ToString()}F";
+                    break;
+                case DoubleSchema _:
+                    defaultInit = $"{value.ToString()}D";
+                    break;
+                case BytesSchema _:
+                    defaultInit = $"new byte[] {{{string.Join(", ", value.ToString().Split("\\u", StringSplitOptions.RemoveEmptyEntries).Select(r => $"0x{byte.Parse(r, System.Globalization.NumberStyles.HexNumber).ToString("X2")}"))}}}";
+                    break;
+                case ArraySchema a:
+                    defaultInit = $"new List<{GetSystemType(a.Items)}>() {{{string.Join(", ", (value as JArray).Select(r => GetSystemTypeInitialization(a.Items, r)))}}}";
+                    break;
+                case MapSchema m:
+                    defaultInit = $"new Dictionary<string, {GetSystemType(m.Values)}>() {{{string.Join(", ", (value as JObject).Properties().Select(r => $"{{\"{r.Name}\", {GetSystemTypeInitialization(m.Values, r.Value)}}}"))}}}";
+                    break;
+                case FixedSchema f:
+                    defaultInit = $"new {GetSystemType(f)}({GetSystemTypeInitialization(new BytesSchema(), value)})";
+                    break;
+                case EnumSchema e:
+                    defaultInit = $"{GetSystemType(e)}.{value.ToString().Trim('"')}";
+                    break;
+                case RecordSchema r:
+                    var defaultFields =
+                        from f in r
+                        join p in (value as JObject).Properties() on f.Name equals p.Name
+                        select new
+                        {
+                            Field = f,
+                            Default = p.Value
+                        }
+                    ;
+
+                    var defaultAssignment =
+                        from d in defaultFields
+                        select new
+                        {
+                            d.Field.Name,
+                            Value =
+                                GetSystemType(d.Field.Type) == "string" ?
+                                $"\"{GetSystemTypeInitialization(d.Field.Type, d.Default)}\"" :
+                                GetSystemTypeInitialization(d.Field.Type, d.Default)
+                        }
+                    ;
+                    defaultInit = $"new {GetSystemType(r)}(){{{string.Join(", ", defaultAssignment.Select(f => $"{f.Name} = {f.Value}"))}}}";
+                    break;
+                case UnionSchema u:
+                    defaultInit = GetSystemTypeInitialization(u[0], value);
+                    break;
+                case UuidSchema _:
+                    defaultInit = $"new Guid({value.ToString()})";
+                    break;
+                case LogicalSchema l:
+                    defaultInit = GetSystemTypeInitialization(l.Type, value);
+                    break;
+            }
+            return defaultInit;
         }
 
         private static string GetSystemType(ArraySchema schema)

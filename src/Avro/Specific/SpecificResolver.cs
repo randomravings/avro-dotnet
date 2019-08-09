@@ -73,7 +73,7 @@ namespace Avro.Specific
                 case TimeNanosSchema r:
                     return typeof(TimeSpan);
                 case DurationSchema r:
-                    return typeof(ValueTuple<int, int, int>);
+                    return typeof(ValueTuple<uint, uint, uint>);
                 case UuidSchema r:
                     return typeof(Guid);
                 case EnumSchema r:

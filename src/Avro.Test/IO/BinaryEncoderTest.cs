@@ -203,7 +203,7 @@ namespace Avro.Test.IO
             }
         }
 
-        [TestCase(new byte[] { 0x00 }, 1, new byte[] {  })]
+        [TestCase(new byte[] { 0x00 }, 1, new byte[] { })]
         [TestCase(new byte[] { 0x0A, 0x01, 0x01, 0x01, 0x01, 0x01 }, 6, new byte[] { 0x01, 0x01, 0x01, 0x01, 0x01 })]
         public void EncodeBytes(byte[] expectedValue, int expectedLength, byte[] value)
         {
@@ -418,12 +418,12 @@ namespace Avro.Test.IO
             }
         }
 
-        [TestCase(new int[] { 0, 0, 0 }, 3, new byte[] { 0x00, 0x00, 0x00 })]
-        [TestCase(new int[] { 1, 2, 3 }, 3, new byte[] { 0x02, 0x04, 0x06 })]
-        [TestCase(new int[] { 4, 7, 34563456 }, 6, new byte[] { 0x08, 0x0E, 0x80, 0x96, 0xFB, 0x20 })]
-        public void EncodeDuration(int[] value, int expectedLength, byte[] expectedValue)
+        [TestCase(new uint[] { 0U, 0U, 0U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(new uint[] { 1U, 2U, 3U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03 })]
+        [TestCase(new uint[] { 4U, 7U, 34563456U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x02, 0x0F, 0x65, 0x80 })]
+        public void EncodeDuration(uint[] value, int expectedLength, byte[] expectedValue)
         {
-            var duration = new ValueTuple<int, int, int>(value[0], value[1], value[2]);
+            var duration = new ValueTuple<uint, uint, uint>(value[0], value[1], value[2]);
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
             {

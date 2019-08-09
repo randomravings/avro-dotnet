@@ -1,6 +1,8 @@
+using System;
+
 namespace Avro.Specific
 {
-    public interface ISpecificFixed
+    public interface ISpecificFixed : IEquatable<byte[]>
     {
         Schema Schema { get; }
         int FixedSize { get; }

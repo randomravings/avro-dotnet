@@ -32,7 +32,7 @@ namespace Avro.Test.Protocols
             var record = new RecordSchema("Name");
             var message = new Message("M");
 
-            message.AddParameter(new RequestParameter("par", record));
+            message.AddParameter(new ParameterSchema("par", record.FullName));
 
             Assert.Throws(
                 typeof(AvroException),
@@ -48,7 +48,7 @@ namespace Avro.Test.Protocols
             var message = new Message("M");
 
             protocol.AddType(record);
-            message.AddParameter(new RequestParameter("par", record));
+            message.AddParameter(new ParameterSchema("par", record.FullName));
 
             Assert.DoesNotThrow(
                 () => protocol.AddMessage(message)

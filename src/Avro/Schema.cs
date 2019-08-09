@@ -9,7 +9,7 @@ namespace Avro
 
         public virtual bool Equals(Schema other)
         {
-            return GetType() == other.GetType();
+            return GetType().Equals(other.GetType());
         }
 
         public static Schema Parse(string text) => AvroReader.ReadSchema(text);

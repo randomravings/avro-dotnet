@@ -211,10 +211,7 @@ namespace Avro.Code
 
                 memberDeclarationSyntaxes.Add(
                     CreateClassProperty(
-                        propertyName,
-                        propertyType,
-                        fieldSchema.Doc,
-                        fieldSchema.Aliases
+                        fieldSchema
                     )
                 );
 
@@ -237,17 +234,19 @@ namespace Avro.Code
             }
 
             memberDeclarationSyntaxes.Add(
-                CreateClassGetMethod(
+                CreateRecordClassIndexer(
                     getSwitchSectionSyntaxes,
+                    setSwitchSectionSyntaxes,
                     getSwitchSectionSyntaxes.Count() - 1
                 )
             );
 
             memberDeclarationSyntaxes.Add(
-                CreateClassSetMethod(
-                    setSwitchSectionSyntaxes,
-                    setSwitchSectionSyntaxes.Count() - 1
-                )
+                CreateRecorClassGetMethod()
+            );
+
+            memberDeclarationSyntaxes.Add(
+                CreateRecordClassSetMethod()
             );
 
             classDeclaration =

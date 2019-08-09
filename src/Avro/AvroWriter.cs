@@ -614,9 +614,9 @@ namespace Avro
                         Write(writer, field.Type, mode, namedSchemas);
                         if (field.Default != null)
                         {
-                            writer.Write(@",""default"":""");
+                            writer.Write(@",""default"":");
                             writer.Write(field.Default);
-                            writer.Write(@"""");
+                            writer.Write(@"");
                         }
                         writer.Write("}");
                         break;
@@ -631,9 +631,9 @@ namespace Avro
                         Write(writer, field.Type, mode, namedSchemas);
                         if (field.Default != null)
                         {
-                            writer.Write(@", ""default"": """);
+                            writer.Write(@", ""default"": ");
                             writer.Write(field.Default);
-                            writer.Write(@"""");
+                            writer.Write(@"");
                         }
                         writer.Write(@", ""doc"": """);
                         writer.Write(field.Doc);
@@ -657,9 +657,9 @@ namespace Avro
                         Write(writer, field.Type, mode, namedSchemas);
                         if (field.Default != null)
                         {
-                            writer.Write(@", ""default"": """);
+                            writer.Write(@", ""default"": ");
                             writer.Write(field.Default);
-                            writer.Write(@"""");
+                            writer.Write(@"");
                         }
                         if (!string.IsNullOrEmpty(field.Doc))
                         {
@@ -880,7 +880,7 @@ namespace Avro
             }
         }
 
-        private static void WriteParameters(TextWriter writer, IEnumerable<RequestParameter> requestParameters, WriterMode mode, ISet<string> namedSchemas)
+        private static void WriteParameters(TextWriter writer, IEnumerable<ParameterSchema> requestParameters, WriterMode mode, ISet<string> namedSchemas)
         {
             var i = 0;
             foreach (var requestParameter in requestParameters)
@@ -895,7 +895,7 @@ namespace Avro
                         writer.Write(requestParameter.Name);
                         writer.Write(@"""");
                         writer.Write(@",""type"":""");
-                        writer.Write(requestParameter.Type.Name);
+                        writer.Write(requestParameter.Type);
                         writer.Write(@"""}");
                         break;
                     case WriterMode.Full:
@@ -906,7 +906,7 @@ namespace Avro
                         writer.Write(requestParameter.Name);
                         writer.Write(@"""");
                         writer.Write(@", ""type"": """);
-                        writer.Write(requestParameter.Type.Name);
+                        writer.Write(requestParameter.Type);
                         writer.Write(@""" }");
                         break;
                     default:
@@ -917,7 +917,7 @@ namespace Avro
                         writer.Write(requestParameter.Name);
                         writer.Write(@"""");
                         writer.Write(@", ""type"": """);
-                        writer.Write(requestParameter.Type.Name);
+                        writer.Write(requestParameter.Type);
                         writer.Write(@""" }");
                         break;
                 }

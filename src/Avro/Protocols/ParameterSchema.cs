@@ -3,17 +3,17 @@ using System;
 
 namespace Avro.Protocols
 {
-    public class RequestParameter : IEquatable<RequestParameter>
+    public class ParameterSchema : IEquatable<ParameterSchema>
     {
-        public RequestParameter(string name, RecordSchema type)
+        public ParameterSchema(string name, string type)
         {
             Name = name;
             Type = type;
         }
         public string Name { get; private set; }
-        public RecordSchema Type { get; private set; }
+        public string Type { get; private set; }
 
-        public bool Equals(RequestParameter other)
+        public bool Equals(ParameterSchema other)
         {
             return other.Name == Name;
         }

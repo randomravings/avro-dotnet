@@ -40,42 +40,54 @@ namespace org.apache.avro.ipc
             set;
         }
 
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return clientHash;
+                    case 1:
+                        return clientProtocol;
+                    case 2:
+                        return serverHash;
+                    case 3:
+                        return meta;
+                    default:
+                        throw new IndexOutOfRangeException("Expected range: [0:3].");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        clientHash = (MD5)value;
+                        break;
+                    case 1:
+                        clientProtocol = value;
+                        break;
+                    case 2:
+                        serverHash = (MD5)value;
+                        break;
+                    case 3:
+                        meta = value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException("Expected range: [0:3].");
+                }
+            }
+        }
+
         public object Get(int fieldPos)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    return clientHash;
-                case 1:
-                    return clientProtocol;
-                case 2:
-                    return serverHash;
-                case 3:
-                    return meta;
-                default:
-                    throw new IndexOutOfRangeException("Expected range: [0:3].");
-            }
+            return this[fieldPos];
         }
 
         public void Put(int fieldPos, object fieldValue)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    clientHash = (org.apache.avro.ipc.MD5)fieldValue;
-                    break;
-                case 1:
-                    clientProtocol = (object)fieldValue;
-                    break;
-                case 2:
-                    serverHash = (org.apache.avro.ipc.MD5)fieldValue;
-                    break;
-                case 3:
-                    meta = (object)fieldValue;
-                    break;
-                default:
-                    throw new IndexOutOfRangeException("Expected range: [0:3].");
-            }
+            this[fieldPos] = fieldValue;
         }
     }
 }

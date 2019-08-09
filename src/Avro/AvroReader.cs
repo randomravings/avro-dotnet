@@ -2,7 +2,6 @@ using Avro.Protocols;
 using Avro.Schemas;
 using Avro.Utils;
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -519,10 +518,10 @@ namespace Avro
             return messages;
         }
 
-        private static IList<RequestParameter> ParseRequests(JArray jArray, IDictionary<string, NamedSchema> types, Stack<string> enclosingNamespace)
+        private static IList<ParameterSchema> ParseRequests(JArray jArray, IDictionary<string, NamedSchema> types, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "name", "type" };
-            var requests = new List<RequestParameter>();
+            var requests = new List<ParameterSchema>();
             foreach (var item in jArray)
             {
                 JsonUtil.AssertKeys(item, keys, null, out _);
@@ -532,7 +531,7 @@ namespace Avro
                 type = QualifyName(type, enclosingNamespace);
                 if (!types.TryGetValue(type, out var request))
                     throw new AvroParseException($"Unknown request parameter type: '{type}'.");
-                requests.Add(new RequestParameter(name, request as RecordSchema));
+                requests.Add(new ParameterSchema(name, request.FullName));
             }
             return requests;
         }

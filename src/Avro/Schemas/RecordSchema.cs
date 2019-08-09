@@ -1,4 +1,5 @@
 using Avro.Utils;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -76,6 +77,7 @@ namespace Avro.Schemas
         {
             private string _name;
             private IList<string> _aliases;
+            private JToken _default;
 
             public Field()
                 : base()
@@ -96,6 +98,7 @@ namespace Avro.Schemas
                 Name = name;
                 Type = type;
                 Aliases = new List<string>();
+                Default = null;
             }
 
             public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
@@ -103,7 +106,7 @@ namespace Avro.Schemas
             public Schema Type { get; set; }
 
             public string Order { get; set; }
-            public object Default { get; set; }
+            public JToken  Default { get { return _default; } set { DefaultValidator.ValidateJson(Type, value); _default = value; } }
             public string Doc { get; set; }
             public IList<string> Aliases { get { return _aliases; } set { NameValidator.ValidateNames(value); _aliases = value; } }
 

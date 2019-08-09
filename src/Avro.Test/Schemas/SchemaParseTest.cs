@@ -269,13 +269,13 @@ namespace Avro.Test.Schemas
         [TestCase(
             typeof(DecimalSchema),
             @"{""logicalType"": ""decimal"", ""type"": ""bytes"", ""precision"": 9, ""scale"": 5}",
-            @"decimal",
+            @"decimal(9,5)",
             TestName = "Decimal - As Bytes"
         )]
         [TestCase(
             typeof(DecimalSchema),
             @"{""logicalType"": ""decimal"", ""type"": {""type"": ""fixed"", ""name"": ""decimal"", ""size"": 16}, ""precision"": 9, ""scale"": 5}",
-            @"decimal",
+            @"decimal(9,5)",
             TestName = "Decimal - As Fixed"
         )]
         [TestCase(

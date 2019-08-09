@@ -528,12 +528,12 @@ namespace Avro.Test.IO
             }
         }
 
-        [TestCase(new int[] { 0, 0, 0 }, 3, new byte[] { 0x00, 0x00, 0x00 })]
-        [TestCase(new int[] { 1, 2, 3 }, 3, new byte[] { 0x02, 0x04, 0x06 })]
-        [TestCase(new int[] { 4, 7, 34563456 }, 6, new byte[] { 0x08, 0x0E, 0x80, 0x96, 0xFB, 0x20 })]
-        public void DecodeDuration(int[] expectedValue, int expectedLength, byte[] value)
+        [TestCase(new uint[] { 0U, 0U, 0U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(new uint[] { 1U, 2U, 3U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03 })]
+        [TestCase(new uint[] { 4U, 7U, 34563456U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x02, 0x0F, 0x65, 0x80 })]
+        public void DecodeDuration(uint[] expectedValue, int expectedLength, byte[] value)
         {
-            var duration = new ValueTuple<int, int, int>(expectedValue[0], expectedValue[1], expectedValue[2]);
+            var duration = new ValueTuple<uint, uint, uint>(expectedValue[0], expectedValue[1], expectedValue[2]);
             using (var stream = new MemoryStream(value))
             using (var decoder = new BinaryDecoder(stream))
             {

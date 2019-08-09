@@ -43,132 +43,129 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, Schema readerSchema, Schema writerSchema, ParameterExpression streamParameter, ParameterExpression valueParameter, Stack<PropertyInfo> propertyChain)
+        private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, Schema readerSchema, Schema writerSchema, ParameterExpression streamParameter, ParameterExpression valueParameter, Stack<PropertyInfo> propertyChain, bool skipOnly = false)
         {
             var assign = valueParameter != null;
-            var exressions = default(Tuple<Expression, Expression>);
+            var expressions = default(Tuple<Expression, Expression>);
 
             switch (readerSchema)
             {
                 case NullSchema r when writerSchema is NullSchema && (type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null)):
-                    exressions = ResolveNull(streamParameter, type);
+                    expressions = ResolveNull(streamParameter, type);
                     break;
                 case BooleanSchema r when writerSchema is BooleanSchema && type.Equals(typeof(bool)):
-                    exressions = ResolveBoolean(streamParameter);
+                    expressions = ResolveBoolean(streamParameter);
                     break;
                 case IntSchema r when writerSchema is IntSchema && type.Equals(typeof(int)):
-                    exressions = ResolveInt(streamParameter);
+                    expressions = ResolveInt(streamParameter);
                     break;
                 case LongSchema r when writerSchema is LongSchema && type.Equals(typeof(long)):
-                    exressions = ResolveLong(streamParameter);
+                    expressions = ResolveLong(streamParameter);
                     break;
                 case LongSchema r when writerSchema is IntSchema && type.Equals(typeof(long)):
-                    exressions = ResolveLongFromInt(streamParameter);
+                    expressions = ResolveLongFromInt(streamParameter);
                     break;
                 case FloatSchema r when writerSchema is FloatSchema && type.Equals(typeof(float)):
-                    exressions = ResolveFloat(streamParameter);
+                    expressions = ResolveFloat(streamParameter);
                     break;
                 case FloatSchema r when writerSchema is LongSchema && type.Equals(typeof(float)):
-                    exressions = ResolveFloatFromLong(streamParameter);
+                    expressions = ResolveFloatFromLong(streamParameter);
                     break;
                 case FloatSchema r when writerSchema is IntSchema && type.Equals(typeof(float)):
-                    exressions = ResolveFloatFromInt(streamParameter);
+                    expressions = ResolveFloatFromInt(streamParameter);
                     break;
                 case DoubleSchema r when writerSchema is DoubleSchema && type.Equals(typeof(double)):
-                    exressions = ResolveDouble(streamParameter);
+                    expressions = ResolveDouble(streamParameter);
                     break;
                 case DoubleSchema r when writerSchema is FloatSchema && type.Equals(typeof(double)):
-                    exressions = ResolveDoubleFromFloat(streamParameter);
+                    expressions = ResolveDoubleFromFloat(streamParameter);
                     break;
                 case DoubleSchema r when writerSchema is LongSchema && type.Equals(typeof(double)):
-                    exressions = ResolveDoubleFromLong(streamParameter);
+                    expressions = ResolveDoubleFromLong(streamParameter);
                     break;
                 case DoubleSchema r when writerSchema is IntSchema && type.Equals(typeof(double)):
-                    exressions = ResolveDoubleFromInt(streamParameter);
+                    expressions = ResolveDoubleFromInt(streamParameter);
                     break;
                 case BytesSchema r when writerSchema is BytesSchema && type.Equals(typeof(byte[])):
-                    exressions = ResolveBytes(streamParameter);
+                    expressions = ResolveBytes(streamParameter);
                     break;
                 case BytesSchema r when writerSchema is StringSchema && type.Equals(typeof(byte[])):
-                    exressions = ResolveBytes(streamParameter);
+                    expressions = ResolveBytes(streamParameter);
                     break;
                 case StringSchema r when writerSchema is StringSchema && type.Equals(typeof(string)):
-                    exressions = ResolveString(streamParameter);
+                    expressions = ResolveString(streamParameter);
                     break;
                 case StringSchema r when writerSchema is BytesSchema && type.Equals(typeof(string)):
-                    exressions = ResolveString(streamParameter);
+                    expressions = ResolveString(streamParameter);
                     break;
                 case UuidSchema r when writerSchema is UuidSchema && type.Equals(typeof(Guid)):
-                    exressions = ResolveUuid(streamParameter);
+                    expressions = ResolveUuid(streamParameter);
                     break;
                 case DateSchema r when writerSchema is DateSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveDate(streamParameter);
+                    expressions = ResolveDate(streamParameter);
                     break;
                 case TimeMillisSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeMs(streamParameter);
+                    expressions = ResolveTimeMs(streamParameter);
                     break;
                 case TimeMicrosSchema r when writerSchema is TimeMicrosSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeUs(streamParameter);
+                    expressions = ResolveTimeUs(streamParameter);
                     break;
                 case TimeMicrosSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeUsFromMs(streamParameter);
+                    expressions = ResolveTimeUsFromMs(streamParameter);
                     break;
                 case TimeNanosSchema r when writerSchema is TimeNanosSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeNs(streamParameter);
+                    expressions = ResolveTimeNs(streamParameter);
                     break;
                 case TimeNanosSchema r when writerSchema is TimeMicrosSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeNsFromUs(streamParameter);
+                    expressions = ResolveTimeNsFromUs(streamParameter);
                     break;
                 case TimeNanosSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    exressions = ResolveTimeNsFromMs(streamParameter);
+                    expressions = ResolveTimeNsFromMs(streamParameter);
                     break;
                 case TimestampMillisSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampMs(streamParameter);
+                    expressions = ResolveTimestampMs(streamParameter);
                     break;
                 case TimestampMicrosSchema r when writerSchema is TimestampMicrosSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampUs(streamParameter);
+                    expressions = ResolveTimestampUs(streamParameter);
                     break;
                 case TimestampMicrosSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampUsFromMs(streamParameter);
+                    expressions = ResolveTimestampUsFromMs(streamParameter);
                     break;
                 case TimestampNanosSchema r when writerSchema is TimestampNanosSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampNs(streamParameter);
+                    expressions = ResolveTimestampNs(streamParameter);
                     break;
                 case TimestampNanosSchema r when writerSchema is TimestampMicrosSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampNsFromUs(streamParameter);
+                    expressions = ResolveTimestampNsFromUs(streamParameter);
                     break;
                 case TimestampNanosSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    exressions = ResolveTimestampNsFromMs(streamParameter);
+                    expressions = ResolveTimestampNsFromMs(streamParameter);
                     break;
-                case DurationSchema r when writerSchema is DurationSchema && type.Equals(typeof(ValueTuple<int, int, int>)):
-                    exressions = ResolveDuration(streamParameter);
+                case DurationSchema r when writerSchema is DurationSchema && type.Equals(typeof(ValueTuple<uint, uint, uint>)):
+                    expressions = ResolveDuration(streamParameter);
                     break;
-                case DecimalSchema r when writerSchema is DecimalSchema && (writerSchema as DecimalSchema).Equals(r):
-                    switch (r.Type)
-                    {
-                        case BytesSchema t:
-                            exressions = ResolveDecimal(streamParameter, r.Scale);
-                            break;
-                        case FixedSchema t:
-                            exressions = ResolveDecimalFixed(streamParameter, r.Scale, t.Size);
-                            break;
-                    }
+                case DecimalSchema r when r.Equals(writerSchema) && (writerSchema as DecimalSchema).Type is BytesSchema:
+                    expressions = ResolveDecimal(streamParameter, r.Scale);
+                    break;
+                case DecimalSchema r when r.Equals(writerSchema) && (writerSchema as DecimalSchema).Type is FixedSchema:
+                    var decimalWriter = writerSchema as DecimalSchema;
+                    var decimalLength = (decimalWriter.Type as FixedSchema).Size;
+                    expressions = ResolveDecimalFixed(streamParameter, r.Scale, decimalLength);
                     break;
                 case ArraySchema r when writerSchema is ArraySchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>):
-                    exressions = ResolveArray(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Items, (writerSchema as ArraySchema).Items);
+                    expressions = ResolveArray(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Items, (writerSchema as ArraySchema).Items);
                     break;
                 case MapSchema r when writerSchema is MapSchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>):
-                    exressions = ResolveMap(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
+                    expressions = ResolveMap(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
                     break;
 
                 case EnumSchema r when writerSchema is EnumSchema && r.Equals(writerSchema) && type.IsEnum && Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count:
-                    exressions = ResolveEnum(streamParameter, type, r.Symbols, (writerSchema as EnumSchema).Symbols);
+                    expressions = ResolveEnum(streamParameter, type, r.Symbols, (writerSchema as EnumSchema).Symbols);
                     break;
                 case FixedSchema r when writerSchema is FixedSchema && r.Equals(writerSchema) && typeof(ISpecificFixed).IsAssignableFrom(type):
-                    exressions = ResolveFixed(streamParameter, type, r.Size);
+                    expressions = ResolveFixed(streamParameter, type, r.Size);
                     break;
                 case RecordSchema r when writerSchema is RecordSchema && r.Equals(writerSchema) && typeof(ISpecificRecord).IsAssignableFrom(type):
-                    exressions = ResolveRecord(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as RecordSchema));
+                    expressions = ResolveRecord(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as RecordSchema));
                     assign = false;
                     break;
 
@@ -180,7 +177,7 @@ namespace Avro.Specific
                     {
                         // Writer is Null Type
                         case NullSchema s:
-                            exressions = ResolveNull(streamParameter, type);
+                            expressions = ResolveNull(streamParameter, type);
                             break;
                         // Writer is a Union with two types one being Null Type
                         case UnionSchema s when s.Count == 2 && s.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
@@ -188,23 +185,23 @@ namespace Avro.Specific
                             var nullIndex = 0L;
                             if (!s[(int)nullIndex].GetType().Equals(typeof(NullSchema)))
                                 nullIndex = 1L;
-                            exressions = ResolveNullable(streamParameter, valueParameter, type, origin, propertyChain, nullableReadSchema, nullableWriterSchema, nullIndex);
+                            expressions = ResolveNullable(streamParameter, valueParameter, type, origin, propertyChain, nullableReadSchema, nullableWriterSchema, nullIndex);
                             break;
                         // Writer is an arbitrary Union
                         case UnionSchema s:
-                            exressions = ResolveNullableFromUnion(streamParameter, valueParameter, nullableType, origin, propertyChain, nullableReadSchema, s);
+                            expressions = ResolveNullableFromUnion(streamParameter, valueParameter, nullableType, origin, propertyChain, nullableReadSchema, s);
                             break;
                         // Writer is not a Union nor a Null Type
                         default:
-                            exressions = ResolveReader(origin, nullableType, nullableReadSchema, writerSchema, streamParameter, valueParameter, propertyChain);
+                            expressions = ResolveReader(origin, nullableType, nullableReadSchema, writerSchema, streamParameter, valueParameter, propertyChain);
                             if (nullableType.IsValueType)
                             {
-                                exressions = new Tuple<Expression, Expression>(
+                                expressions = new Tuple<Expression, Expression>(
                                     Expression.Convert(
-                                        exressions.Item1,
+                                        expressions.Item1,
                                         type
                                     ),
-                                    exressions.Item2
+                                    expressions.Item2
                                 );
                             }
                             break;
@@ -217,42 +214,42 @@ namespace Avro.Specific
                     var writeType = GetTypeFromSchema(nonUnionToUnionMatch, origin);
                     if (nonUnionToUnionIndex >= 0)
                     {
-                        exressions = ResolveReader(origin, writeType, nonUnionToUnionMatch, writerSchema, streamParameter, valueParameter, propertyChain);
-                        if (exressions != null)
-                            exressions = new Tuple<Expression, Expression>(
+                        expressions = ResolveReader(origin, writeType, nonUnionToUnionMatch, writerSchema, streamParameter, valueParameter, propertyChain);
+                        if (expressions != null)
+                            expressions = new Tuple<Expression, Expression>(
                                 Expression.Convert(
-                                    exressions.Item1,
+                                    expressions.Item1,
                                     type
                                 ),
-                                exressions.Item2
+                                expressions.Item2
                             );
                     }
                     break;
 
                 // Union: Reader is a Union and Writer is a Union
                 case UnionSchema r when type.Equals(typeof(object)) && writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    exressions = ResolveUnion(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
+                    expressions = ResolveUnion(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
                     break;
 
                 // Union Type to Single Type
                 case Schema r when writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    exressions = ResolveUnionToAny(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
+                    expressions = ResolveUnionToAny(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
                     break;
             }
 
-            if (exressions != null && assign)
+            if (expressions != null && assign && !skipOnly)
             {
                 var valueExpression = GetValueExpression(valueParameter, propertyChain);
-                exressions = new Tuple<Expression, Expression>(
+                expressions = new Tuple<Expression, Expression>(
                     Expression.Assign(
                         valueExpression,
-                        exressions.Item1
+                        expressions.Item1
                     ),
-                    exressions.Item2
+                    expressions.Item2
                 );
             }
 
-            return exressions;
+            return expressions;
         }
 
 
@@ -891,8 +888,8 @@ namespace Avro.Specific
 
         private static Tuple<Expression, Expression> ResolveRecord(ParameterExpression streamParameter, ParameterExpression valueParameter, Type recordType, Assembly origin, Stack<PropertyInfo> propertyChain, IEnumerable<RecordSchema.Field> readerFields, IEnumerable<RecordSchema.Field> writerFields)
         {
-            var missingFieldMap = readerFields.Where(f => !writerFields.Any(w => w.Name == f.Name)).ToDictionary(k => k.Name);
-            var missingDefaults = missingFieldMap.Values.Where(f => f.Default == null);
+            var missingFieldMap = readerFields.Where(f => !writerFields.Any(w => w.Name == f.Name));
+            var missingDefaults = missingFieldMap.Where(f => f.Default == null);
             if (missingDefaults.Count() > 0)
                 throw new AvroException($"Unmapped field without default: '{string.Join(", ", missingDefaults.Select(f => f.Name))}'");
 
@@ -921,11 +918,6 @@ namespace Avro.Specific
                 )
             );
 
-            // TODO: Create expression for record.<Field> = default;
-            // This assumes that auto property with defaults are coded as <FieldName>{ get; set;} = <default_value>;
-            foreach (var defaultField in missingFieldMap.Values)
-                throw new NotImplementedException("Default value missing implementation");
-
             foreach (var writerField in writerFields)
             {
                 var readerField = readerFields.FirstOrDefault(f => f.Name == writerField.Name);
@@ -933,7 +925,7 @@ namespace Avro.Specific
 
                 if (readerField == null)
                 {
-                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(writerField.Type, origin), writerField.Type, writerField.Type, streamParameter, recordParameter, propertyChain);
+                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(writerField.Type, origin), writerField.Type, writerField.Type, streamParameter, recordParameter, propertyChain, true);
                     fieldReaders.Add(
                         fieldExpressions.Item2
                     );

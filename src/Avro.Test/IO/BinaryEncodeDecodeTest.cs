@@ -358,16 +358,16 @@ namespace Avro.Test.IO
             }
         }
 
-        [TestCase(new int[] { 0, 0, 0 })]
-        [TestCase(new int[] { 1, 2, 3 })]
-        [TestCase(new int[] { 4, 7, 34563456 })]
-        public void TestDuration(int[] expected)
+        [TestCase(new uint[] { 0U, 0U, 0U })]
+        [TestCase(new uint[] { 1U, 2U, 3U })]
+        [TestCase(new uint[] { 4U, 7U, 34563456U })]
+        public void TestDuration(uint[] expected)
         {
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
             using (var decoder = new BinaryDecoder(stream))
             {
-                var expectedDuration = new ValueTuple<int, int, int>(expected[0], expected[1], expected[2]);
+                var expectedDuration = new ValueTuple<uint, uint, uint>(expected[0], expected[1], expected[2]);
                 encoder.WriteDuration(expectedDuration);
                 stream.Seek(0, SeekOrigin.Begin);
                 var actual = decoder.ReadDuration();

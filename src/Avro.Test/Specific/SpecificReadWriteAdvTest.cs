@@ -53,6 +53,36 @@ namespace Avro.Test.Specific
         }
 
         [TestCase]
+        public void RecordTestWithOverlap()
+        {
+            var expectedValue = new TestRecordWithDefault() { Name = "Test" };
+            var writeValue = new TestRecordWithExtraField() { Name = "Test", Desc = "Description" };
+            var writer = new SpecificWriter<TestRecordWithExtraField>(writeValue.Schema);
+            var reader = new SpecificReader<TestRecordWithDefault>(expectedValue.Schema, writeValue.Schema);
+
+            using (var stream = new MemoryStream())
+            using (var encoder = new BinaryEncoder(stream))
+            using (var decoder = new BinaryDecoder(stream))
+            {
+
+                writer.Write(encoder, writeValue);
+                stream.Seek(0, SeekOrigin.Begin);
+                var actualValue = reader.Read(decoder);
+                for (int i = 0; i < expectedValue.FieldCount; i++)
+                    Assert.AreEqual(expectedValue.Get(i), actualValue.Get(i));
+            }
+        }
+
+        [TestCase]
+        public void RecordTestWithoutOverlap()
+        {
+            var expectedValue = new TestRecordWithoutDefault() { ID = 123, Name = "Test" };
+            var writeValue = new TestRecordWithExtraField() { Name = "Test", Desc = "Description" };
+            var writer = new SpecificWriter<TestRecordWithExtraField>(writeValue.Schema);
+            Assert.Throws<AvroException>(() => new SpecificReader<TestRecordWithDefault>(expectedValue.Schema, writeValue.Schema));
+        }
+
+        [TestCase]
         public void FixedTest()
         {
             var expectedValue = new TestFixed();
@@ -353,47 +383,59 @@ namespace Avro.Test.Specific
 
         public TestFixed TestFixed { get; set; }
 
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return FieldA;
+                    case 1:
+                        return FieldB;
+                    case 2:
+                        return FieldC;
+                    case 3:
+                        return FieldX;
+                    case 4:
+                        return TestFixed;
+                    default:
+                        throw new AvroException("Bad index " + i + " in Get()");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        FieldA = (int)value;
+                        break;
+                    case 1:
+                        FieldB = (string)value;
+                        break;
+                    case 2:
+                        FieldC = (TestSubRecord)value;
+                        break;
+                    case 3:
+                        FieldX = (TestEnum)value;
+                        break;
+                    case 4:
+                        TestFixed = (TestFixed)value;
+                        break;
+                    default:
+                        throw new AvroException("Bad index " + value + " in Put()");
+                }
+            }
+                }
+
         public object Get(int fieldPos)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    return FieldA;
-                case 1:
-                    return FieldB;
-                case 2:
-                    return FieldC;
-                case 3:
-                    return FieldX;
-                case 4:
-                    return TestFixed;
-                default:
-                    throw new AvroException("Bad index " + fieldPos + " in Get()");
-            }
+            return this[fieldPos];
         }
 
         public void Put(int fieldPos, object fieldValue)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    FieldA = (int)fieldValue;
-                    break;
-                case 1:
-                    FieldB = (string)fieldValue;
-                    break;
-                case 2:
-                    FieldC = (TestSubRecord)fieldValue;
-                    break;
-                case 3:
-                    FieldX = (TestEnum)fieldValue;
-                    break;
-                case 4:
-                    TestFixed = (TestFixed)fieldValue;
-                    break;
-                default:
-                    throw new AvroException("Bad index " + fieldPos + " in Put()");
-            }
+            this[fieldPos] = fieldValue;
         }
     }
 
@@ -403,31 +445,43 @@ namespace Avro.Test.Specific
 
         public Schema Schema { get => _SCHEMA; }
 
-        public int FieldCount { get => 2; }
+        public int FieldCount { get => 1; }
 
         public bool FieldD { get; set; }
 
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return FieldD;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        FieldD = (bool)value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+        }
+
         public object Get(int fieldPos)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    return FieldD;
-                default:
-                    throw new AvroException("Bad index " + fieldPos + " in Get()");
-            }
+            return this[fieldPos];
         }
 
         public void Put(int fieldPos, object fieldValue)
         {
-            switch (fieldPos)
-            {
-                case 0:
-                    FieldD = (bool)fieldValue;
-                    break;
-                default:
-                    throw new AvroException("Bad index " + fieldPos + " in Put()");
-            }
+            this[fieldPos] = fieldValue;
         }
     }
 
@@ -438,5 +492,174 @@ namespace Avro.Test.Specific
         public Schema Schema => _SCHEMA;
         public int FixedSize => 40;
         public byte[] Value => _value;
+
+        public bool Equals(byte[] other)
+        {
+            if (Value.Length != other.Length)
+                return false;
+            for (int i = 0; i < FixedSize; i++)
+                if (Value[i] != other[i])
+                    return false;
+            return true;
+        }
+    }
+    
+    public class TestRecordWithDefault : ISpecificRecord
+    {
+        private static readonly Schema _SCHEMA = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int"",""default"":-1},{""name"":""Name"",""type"":""string""}]}");
+
+        public Schema Schema { get => _SCHEMA; }
+
+        public int FieldCount { get => 2; }
+
+        public int ID { get; set; } = -1;
+
+        public string Name { get; set; }
+
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return ID;
+                    case 1:
+                        return Name;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        ID = (int)value;
+                        break;
+                    case 1:
+                        Name = (string)value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+        }
+
+        public object Get(int fieldPos)
+        {
+            return this[fieldPos];
+        }
+
+        public void Put(int fieldPos, object fieldValue)
+        {
+            this[fieldPos] = fieldValue;
+        }
+    }
+
+    public class TestRecordWithoutDefault : ISpecificRecord
+    {
+        private static readonly Schema _SCHEMA = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int""},{""name"":""Name"",""type"":""string""}]}");
+
+        public Schema Schema { get => _SCHEMA; }
+
+        public int FieldCount { get => 2; }
+
+        public int ID { get; set; }
+
+        public string Name { get; set; }
+
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return ID;
+                    case 1:
+                        return Name;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        ID = (int)value;
+                        break;
+                    case 1:
+                        Name = (string)value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+        }
+
+        public object Get(int fieldPos)
+        {
+            return this[fieldPos];
+        }
+
+        public void Put(int fieldPos, object fieldValue)
+        {
+            this[fieldPos] = fieldValue;
+        }
+    }
+
+    public class TestRecordWithExtraField : ISpecificRecord
+    {
+        private static readonly Schema _SCHEMA = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""Name"",""type"":""string""},{""name"":""Desc"",""type"":""string""}]}");
+
+        public Schema Schema { get => _SCHEMA; }
+
+        public int FieldCount { get => 2; }
+
+        public string Name { get; set; }
+
+        public string Desc { get; set; }
+
+        public object this[int i]
+        {
+            get
+            {
+                switch (i)
+                {
+                    case 0:
+                        return Name;
+                    case 1:
+                        return Desc;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+            set
+            {
+                switch (i)
+                {
+                    case 0:
+                        Name = (string)value;
+                        break;
+                    case 1:
+                        Desc = (string)value;
+                        break;
+                    default:
+                        throw new IndexOutOfRangeException($"Valid range [0:{FieldCount}]");
+                }
+            }
+        }
+
+        public object Get(int fieldPos)
+        {
+            return this[fieldPos];
+        }
+
+        public void Put(int fieldPos, object fieldValue)
+        {
+            this[fieldPos] = fieldValue;
+        }
     }
 }

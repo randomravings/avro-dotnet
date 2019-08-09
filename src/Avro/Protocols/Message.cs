@@ -8,21 +8,21 @@ namespace Avro.Protocols
 {
     public class Message : IEquatable<Message>
     {
-        private readonly List<RequestParameter> _requestParameters;
+        private readonly List<ParameterSchema> _requestParameters;
         private string _name;
 
         public Message(string name)
         {
             Name = name;
             Error = new UnionSchema(new StringSchema());
-            _requestParameters = new List<RequestParameter>();
+            _requestParameters = new List<ParameterSchema>();
         }
 
         public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
 
         public string Doc { get; set; }
 
-        public IReadOnlyList<RequestParameter> RequestParameters => _requestParameters.AsReadOnly();
+        public IReadOnlyList<ParameterSchema> RequestParameters => _requestParameters.AsReadOnly();
 
         public Schema Response { get; set; }
 
@@ -30,7 +30,7 @@ namespace Avro.Protocols
 
         public bool Oneway { get; set; } = false;
 
-        public void AddParameter(RequestParameter requestParameter)
+        public void AddParameter(ParameterSchema requestParameter)
         {
             if (_requestParameters.Contains(requestParameter))
                 throw new AvroException($"Request already contains the parameter: '{requestParameter.Name}'");
