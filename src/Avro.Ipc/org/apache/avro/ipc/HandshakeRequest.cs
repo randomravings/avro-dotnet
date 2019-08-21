@@ -3,7 +3,6 @@ using Avro.Specific;
 using System;
 using System.Collections.Generic;
 
-#pragma warning disable IDE1006 // Naming Styles
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
@@ -20,7 +19,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        public object clientProtocol
+        public string clientProtocol
         {
             get;
             set;
@@ -34,7 +33,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        public object meta
+        public IDictionary<string, byte[]> meta
         {
             get;
             set;
@@ -58,21 +57,22 @@ namespace org.apache.avro.ipc
                         throw new IndexOutOfRangeException("Expected range: [0:3].");
                 }
             }
+
             set
             {
                 switch (i)
                 {
                     case 0:
-                        clientHash = (MD5)value;
+                        clientHash = (org.apache.avro.ipc.MD5)value;
                         break;
                     case 1:
-                        clientProtocol = value;
+                        clientProtocol = (string)value;
                         break;
                     case 2:
-                        serverHash = (MD5)value;
+                        serverHash = (org.apache.avro.ipc.MD5)value;
                         break;
                     case 3:
-                        meta = value;
+                        meta = (IDictionary<string, byte[]>)value;
                         break;
                     default:
                         throw new IndexOutOfRangeException("Expected range: [0:3].");
@@ -91,4 +91,3 @@ namespace org.apache.avro.ipc
         }
     }
 }
-#pragma warning restore IDE1006 // Naming Styles

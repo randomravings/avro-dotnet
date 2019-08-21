@@ -22,6 +22,15 @@ namespace Avro.Generic
             Value = value;
         }
 
+        public GenericEnum(GenericEnum e, bool copy = false)
+        {
+            Schema = e.Schema;
+            if (copy)
+                Value = e.Value;
+            else
+                Value = 0;
+        }
+
         public EnumSchema Schema { get; private set; }
         public int Value { get; private set; }
         public string Symbol => Schema.Symbols[Value];

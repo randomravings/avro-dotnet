@@ -31,14 +31,20 @@ namespace Avro.Generic
             InitializeDefauts();
         }
 
-        public GenericRecord(GenericRecord record)
+        public GenericRecord(GenericRecord r, bool copy = false)
         {
-            _values = new object[record.Schema.Count];
-            Schema = record.Schema;
-            Index = record.Index;
-            DefaultInitializers = record.DefaultInitializers;
-            _values = new object[Schema.Count];
-            InitializeDefauts();
+            Schema = r.Schema;
+            Index = r.Index;
+            DefaultInitializers = r.DefaultInitializers;
+            if (copy)
+            {
+                _values = r._values;
+            }
+            else
+            {
+                _values = new object[r.Schema.Count];
+                InitializeDefauts();
+            }
         }
 
         private void InitializeDefauts()

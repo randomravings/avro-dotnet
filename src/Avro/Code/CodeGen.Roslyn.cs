@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -160,7 +161,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(AvroRemoteException).FullName)
+                        ParseTypeName(typeof(SpecificError).FullName)
                     ),
                     SimpleBaseType(
                         ParseTypeName(typeof(ISpecificRecord).FullName)
@@ -382,6 +383,39 @@ namespace Avro.Code
                                     }
                                 )
                             ),
+                            FieldDeclaration(
+                                VariableDeclaration(
+                                    ArrayType(
+                                        PredefinedType(
+                                            Token(SyntaxKind.ByteKeyword)
+                                        )
+                                    )
+                                    .WithRankSpecifiers(
+                                        SingletonList(
+                                            ArrayRankSpecifier(
+                                                SingletonSeparatedList<ExpressionSyntax>(
+                                                    OmittedArraySizeExpression()
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                                .WithVariables(
+                                    SingletonSeparatedList(
+                                        VariableDeclarator(
+                                            Identifier("_value")
+                                        )
+                                    )
+                                )
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    new []{
+                                        Token(SyntaxKind.PrivateKeyword),
+                                        Token(SyntaxKind.ReadOnlyKeyword)
+                                    }
+                                )
+                            ),
                             ConstructorDeclaration(
                                 Identifier(name)
                             )
@@ -392,21 +426,23 @@ namespace Avro.Code
                             )
                             .WithBody(
                                 Block(
-                                    ExpressionStatement(
-                                        AssignmentExpression(
-                                            SyntaxKind.SimpleAssignmentExpression,
-                                            IdentifierName("Value"),
-                                            ArrayCreationExpression(
-                                                ArrayType(
-                                                    PredefinedType(
-                                                        Token(SyntaxKind.ByteKeyword)
+                                    SingletonList<StatementSyntax>(
+                                        ExpressionStatement(
+                                            AssignmentExpression(
+                                                SyntaxKind.SimpleAssignmentExpression,
+                                                IdentifierName("_value"),
+                                                ArrayCreationExpression(
+                                                    ArrayType(
+                                                        PredefinedType(
+                                                            Token(SyntaxKind.ByteKeyword)
+                                                        )
                                                     )
-                                                )
-                                                .WithRankSpecifiers(
-                                                    SingletonList(
-                                                        ArrayRankSpecifier(
-                                                            SingletonSeparatedList<ExpressionSyntax>(
-                                                                IdentifierName("_SIZE")
+                                                    .WithRankSpecifiers(
+                                                        SingletonList(
+                                                            ArrayRankSpecifier(
+                                                                SingletonSeparatedList<ExpressionSyntax>(
+                                                                    IdentifierName("_SIZE")
+                                                                )
                                                             )
                                                         )
                                                     )
@@ -457,13 +493,13 @@ namespace Avro.Code
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
                                                 IdentifierName("value"),
-                                                IdentifierName("Length")
+                                                IdentifierName(nameof(Array.Length))
                                             ),
                                             IdentifierName("_SIZE")
                                         ),
                                         ThrowStatement(
                                             ObjectCreationExpression(
-                                                IdentifierName("ArgumentException")
+                                                IdentifierName(nameof(ArgumentException))
                                             )
                                             .WithArgumentList(
                                                 ArgumentList(
@@ -500,7 +536,7 @@ namespace Avro.Code
                                     ExpressionStatement(
                                         AssignmentExpression(
                                             SyntaxKind.SimpleAssignmentExpression,
-                                            IdentifierName(nameof(ISpecificFixed.Value)),
+                                            IdentifierName("_value"),
                                             IdentifierName("value")
                                         )
                                     )
@@ -530,7 +566,7 @@ namespace Avro.Code
                                 PredefinedType(
                                     Token(SyntaxKind.IntKeyword)
                                 ),
-                                Identifier(nameof(ISpecificFixed.FixedSize))
+                                Identifier(nameof(ISpecificFixed.Size))
                             )
                             .WithModifiers(
                                 TokenList(
@@ -545,26 +581,28 @@ namespace Avro.Code
                             .WithSemicolonToken(
                                 Token(SyntaxKind.SemicolonToken)
                             ),
-                            PropertyDeclaration(
-                                ArrayType(
-                                    PredefinedType(
-                                        Token(SyntaxKind.ByteKeyword)
-                                    )
+                            IndexerDeclaration(
+                                PredefinedType(
+                                    Token(SyntaxKind.ByteKeyword)
                                 )
-                                .WithRankSpecifiers(
-                                    SingletonList(
-                                        ArrayRankSpecifier(
-                                            SingletonSeparatedList<ExpressionSyntax>(
-                                                OmittedArraySizeExpression()
-                                            )
-                                        )
-                                    )
-                                ),
-                                Identifier(nameof(ISpecificFixed.Value))
                             )
                             .WithModifiers(
                                 TokenList(
                                     Token(SyntaxKind.PublicKeyword)
+                                )
+                            )
+                            .WithParameterList(
+                                BracketedParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                            Identifier("i")
+                                        )
+                                        .WithType(
+                                            PredefinedType(
+                                                Token(SyntaxKind.IntKeyword)
+                                            )
+                                        )
+                                    )
                                 )
                             )
                             .WithAccessorList(
@@ -574,15 +612,46 @@ namespace Avro.Code
                                             AccessorDeclaration(
                                                 SyntaxKind.GetAccessorDeclaration
                                             )
+                                            .WithExpressionBody(
+                                                ArrowExpressionClause(
+                                                    ElementAccessExpression(
+                                                        IdentifierName("_value")
+                                                    )
+                                                    .WithArgumentList(
+                                                        BracketedArgumentList(
+                                                            SingletonSeparatedList(
+                                                                Argument(
+                                                                    IdentifierName("i")
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
                                             .WithSemicolonToken(
                                                 Token(SyntaxKind.SemicolonToken)
                                             ),
                                             AccessorDeclaration(
                                                 SyntaxKind.SetAccessorDeclaration
                                             )
-                                            .WithModifiers(
-                                                TokenList(
-                                                    Token(SyntaxKind.PrivateKeyword)
+                                            .WithExpressionBody(
+                                                ArrowExpressionClause(
+                                                    AssignmentExpression(
+                                                        SyntaxKind.SimpleAssignmentExpression,
+                                                        ElementAccessExpression(
+                                                            IdentifierName("_value")
+                                                        )
+                                                        .WithArgumentList(
+                                                            BracketedArgumentList(
+                                                                SingletonSeparatedList(
+                                                                    Argument(
+                                                                        IdentifierName("i")
+                                                                    )
+                                                                )
+                                                            )
+                                                        ),
+                                                        IdentifierName("value")
+                                                    )
                                                 )
                                             )
                                             .WithSemicolonToken(
@@ -596,7 +665,12 @@ namespace Avro.Code
                                 PredefinedType(
                                     Token(SyntaxKind.BoolKeyword)
                                 ),
-                                Identifier(nameof(IEquatable<byte[]>.Equals))
+                                Identifier(nameof(object.Equals))
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    Token(SyntaxKind.PublicKeyword)
+                                )
                             )
                             .WithModifiers(
                                 TokenList(
@@ -610,20 +684,7 @@ namespace Avro.Code
                                             Identifier("other")
                                         )
                                         .WithType(
-                                            ArrayType(
-                                                PredefinedType(
-                                                    Token(SyntaxKind.ByteKeyword)
-                                                )
-                                            )
-                                            .WithRankSpecifiers(
-                                                SingletonList(
-                                                    ArrayRankSpecifier(
-                                                        SingletonSeparatedList<ExpressionSyntax>(
-                                                            OmittedArraySizeExpression()
-                                                        )
-                                                    )
-                                                )
-                                            )
+                                            IdentifierName(nameof(ISpecificFixed))
                                         )
                                     )
                                 )
@@ -633,15 +694,11 @@ namespace Avro.Code
                                     IfStatement(
                                         BinaryExpression(
                                             SyntaxKind.NotEqualsExpression,
-                                            MemberAccessExpression(
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                IdentifierName(nameof(ISpecificFixed.Value)),
-                                                IdentifierName(nameof(Array.Length))
-                                            ),
+                                            IdentifierName(nameof(ISpecificFixed.Size)),
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
                                                 IdentifierName("other"),
-                                                IdentifierName(nameof(Array.Length))
+                                                IdentifierName(nameof(ISpecificFixed.Size))
                                             )
                                         ),
                                         ReturnStatement(
@@ -655,7 +712,7 @@ namespace Avro.Code
                                             BinaryExpression(
                                                 SyntaxKind.NotEqualsExpression,
                                                 ElementAccessExpression(
-                                                    IdentifierName(nameof(ISpecificFixed.Value))
+                                                    ThisExpression()
                                                 )
                                                 .WithArgumentList(
                                                     BracketedArgumentList(
@@ -712,7 +769,7 @@ namespace Avro.Code
                                         BinaryExpression(
                                             SyntaxKind.LessThanExpression,
                                             IdentifierName("i"),
-                                            IdentifierName(nameof(ISpecificFixed.FixedSize))
+                                            IdentifierName(nameof(ISpecificFixed.Size))
                                         )
                                     )
                                     .WithIncrementors(
@@ -729,6 +786,165 @@ namespace Avro.Code
                                         )
                                     )
                                 )
+                            ),
+                            MethodDeclaration(
+                                GenericName(
+                                    Identifier(nameof(IEnumerator))
+                                )
+                                .WithTypeArgumentList(
+                                    TypeArgumentList(
+                                        SingletonSeparatedList<TypeSyntax>(
+                                            PredefinedType(
+                                                Token(SyntaxKind.ByteKeyword)
+                                            )
+                                        )
+                                    )
+                                ),
+                                Identifier(nameof(IEnumerable.GetEnumerator))
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    Token(SyntaxKind.PublicKeyword)
+                                )
+                            )
+                            .WithBody(
+                                Block(
+                                    SingletonList<StatementSyntax>(
+                                        ForEachStatement(
+                                            IdentifierName("var"),
+                                            Identifier("b"),
+                                            IdentifierName("_value"),
+                                            YieldStatement(
+                                                SyntaxKind.YieldReturnStatement,
+                                                IdentifierName("b")
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            MethodDeclaration(
+                                IdentifierName(nameof(IEnumerator)),
+                                Identifier(nameof(IEnumerable.GetEnumerator))
+                            )
+                            .WithExplicitInterfaceSpecifier(
+                                ExplicitInterfaceSpecifier(
+                                    IdentifierName(nameof(IEnumerable))
+                                )
+                            )
+                            .WithExpressionBody(
+                                ArrowExpressionClause(
+                                    InvocationExpression(
+                                        IdentifierName(nameof(IEnumerable.GetEnumerator))
+                                    )
+                                )
+                            )
+                            .WithSemicolonToken(
+                                Token(SyntaxKind.SemicolonToken)
+                            ),
+                            ConversionOperatorDeclaration(
+                                Token(SyntaxKind.ImplicitKeyword),
+                                IdentifierName(name)
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    new []{
+                                        Token(SyntaxKind.PublicKeyword),
+                                        Token(SyntaxKind.StaticKeyword)
+                                    }
+                                )
+                            )
+                            .WithParameterList(
+                                ParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                            Identifier("value")
+                                        )
+                                        .WithType(
+                                            ArrayType(
+                                                PredefinedType(
+                                                    Token(SyntaxKind.ByteKeyword)
+                                                )
+                                            )
+                                            .WithRankSpecifiers(
+                                                SingletonList(
+                                                    ArrayRankSpecifier(
+                                                        SingletonSeparatedList<ExpressionSyntax>(
+                                                            OmittedArraySizeExpression()
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            .WithExpressionBody(
+                                ArrowExpressionClause(
+                                    ObjectCreationExpression(
+                                        IdentifierName(name)
+                                    )
+                                    .WithArgumentList(
+                                        ArgumentList(
+                                            SingletonSeparatedList(
+                                                Argument(
+                                                    IdentifierName("value")
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            .WithSemicolonToken(
+                                Token(SyntaxKind.SemicolonToken)
+                            ),
+                            ConversionOperatorDeclaration(
+                                Token(SyntaxKind.ExplicitKeyword),
+                                ArrayType(
+                                    PredefinedType(
+                                        Token(SyntaxKind.ByteKeyword)
+                                    )
+                                )
+                                .WithRankSpecifiers(
+                                    SingletonList(
+                                        ArrayRankSpecifier(
+                                            SingletonSeparatedList<ExpressionSyntax>(
+                                                OmittedArraySizeExpression()
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    new []{
+                                        Token(SyntaxKind.PublicKeyword),
+                                        Token(SyntaxKind.StaticKeyword)
+                                    }
+                                )
+                            )
+                            .WithParameterList(
+                                ParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                            Identifier("value")
+                                        )
+                                        .WithType(
+                                            IdentifierName(name)
+                                        )
+                                    )
+                                )
+                            )
+                            .WithExpressionBody(
+                                ArrowExpressionClause(
+                                    MemberAccessExpression(
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName("value"),
+                                        IdentifierName("_value")
+                                    )
+                                )
+                            )
+                            .WithSemicolonToken(
+                                Token(SyntaxKind.SemicolonToken)
                             )
                         }
                     )
@@ -1559,6 +1775,9 @@ namespace Avro.Code
                             ),
                             UsingDirective(
                                 IdentifierName("System")
+                            ),
+                            UsingDirective(
+                                IdentifierName("System.Collections")
                             ),
                             UsingDirective(
                                 IdentifierName("System.Collections.Generic")

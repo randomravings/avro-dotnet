@@ -7,6 +7,8 @@ namespace Avro.Generic
     {
         private readonly Func<IDecoder, object> _reader;
         private readonly Action<IDecoder> _skipper;
+        public GenericReader(Schema readerSchema)
+            : this(readerSchema, readerSchema) { }
         public GenericReader(Schema readerSchema, Schema writerSchema)
         {
             var methods = GenericResolver.ResolveReader<T>(readerSchema, writerSchema);

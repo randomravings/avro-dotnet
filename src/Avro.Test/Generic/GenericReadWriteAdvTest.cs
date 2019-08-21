@@ -1,13 +1,10 @@
 using Avro.Generic;
 using Avro.IO;
 using Avro.Schemas;
-using Avro.Specific;
 using NUnit.Framework;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace Avro.Test.Generic
 {
@@ -21,18 +18,21 @@ namespace Avro.Test.Generic
         private RecordSchema _testRecordWithDefault;
         private RecordSchema _testRecordWithoutDefault;
         private RecordSchema _testRecordWithExtraField;
+        private ErrorSchema _errorSchema;
 
         [SetUp]
         public void SetUp()
         {
-            _enumSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}") as EnumSchema;
-            _fixedSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestFixed"",""type"":""fixed"",""size"":40}") as FixedSchema;
-            _subRecordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}") as RecordSchema;
-            _recordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""int""},{""name"":""FieldB"",""type"":""string""},{""name"":""FieldC"",""type"":{""name"":""Avro.Test.Specific.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}},{""name"":""FieldX"",""type"":{""name"":""Avro.Test.Specific.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}},{""name"":""TestFixed"",""type"":{""name"":""Avro.Test.Specific.TestFixed"",""type"":""fixed"",""size"":40}}]}") as RecordSchema;
+            _enumSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}") as EnumSchema;
+            _fixedSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}") as FixedSchema;
+            _subRecordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}") as RecordSchema;
+            _recordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""int""},{""name"":""FieldB"",""type"":""string""},{""name"":""FieldC"",""type"":{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}},{""name"":""FieldX"",""type"":{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}},{""name"":""TestFixed"",""type"":{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}}]}") as RecordSchema;
 
-            _testRecordWithDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int"",""default"":-1},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
-            _testRecordWithoutDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int""},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
-            _testRecordWithExtraField = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""Name"",""type"":""string""},{""name"":""Desc"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int"",""default"":-1},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithoutDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int""},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithExtraField = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""Name"",""type"":""string""},{""name"":""Desc"",""type"":""string""}]}") as RecordSchema;
+
+            _errorSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestError"",""type"":""error"",""fields"":[{""name"":""ErrorDetails"",""type"":""string""}]}") as ErrorSchema;
         }
 
         [TestCase]
@@ -163,6 +163,34 @@ namespace Avro.Test.Generic
                 stream.Seek(0, SeekOrigin.Begin);
                 var actualValue = reader.Read(decoder);
                 Assert.AreEqual(expectedValue.Value, actualValue.Value);
+
+                var expectedPosition = stream.Position;
+                stream.Seek(0, SeekOrigin.Begin);
+                reader.Skip(decoder);
+                Assert.AreEqual(expectedPosition, stream.Position);
+            }
+        }
+
+        [TestCase]
+        public void ErrorTest()
+        {
+            var expectedRecordValue = new GenericRecord(_errorSchema);
+            expectedRecordValue[0] = "Some Detail Text";
+
+            var expectedValue = new GenericError(expectedRecordValue);
+
+            var writer = new GenericWriter<GenericError>(expectedValue.Schema);
+            var reader = new GenericReader<GenericError>(expectedValue.Schema, expectedValue.Schema);
+
+            using (var stream = new MemoryStream())
+            using (var encoder = new BinaryEncoder(stream))
+            using (var decoder = new BinaryDecoder(stream))
+            {
+
+                writer.Write(encoder, expectedValue);
+                stream.Seek(0, SeekOrigin.Begin);
+                var actualValue = reader.Read(decoder);
+                Assert.AreEqual(expectedValue, actualValue);
 
                 var expectedPosition = stream.Position;
                 stream.Seek(0, SeekOrigin.Begin);

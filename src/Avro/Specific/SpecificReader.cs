@@ -7,6 +7,8 @@ namespace Avro.Specific
     {
         private readonly Func<IDecoder, T> _reader;
         private readonly Action<IDecoder> _skipper;
+        public SpecificReader(Schema readerSchema)
+            : this(readerSchema, readerSchema) { }
         public SpecificReader(Schema readerSchema, Schema writerSchema)
         {
             var methods = SpecificResolver.ResolveReader<T>(readerSchema, writerSchema);

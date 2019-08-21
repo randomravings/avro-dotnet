@@ -110,7 +110,7 @@ namespace Avro.Test.Specific
         }
     }
 
-    public class TypeLookupError : AvroRemoteException, ISpecificRecord
+    public class TypeLookupError : SpecificError, ISpecificRecord
     {
         public TypeLookupError()
             : base(string.Empty) { }
@@ -136,10 +136,21 @@ namespace Avro.Test.Specific
     {
         public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupFixed"",""type"":""fixed"",""size"":12}");
 
-        public int FixedSize => throw new NotImplementedException();
+        public int Size => throw new NotImplementedException();
 
         public byte[] Value => throw new NotImplementedException();
 
-        public bool Equals(byte[] other) => throw new NotImplementedException();
+        public bool Equals(ISpecificFixed other) => throw new NotImplementedException();
+        public byte this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public IEnumerator<byte> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

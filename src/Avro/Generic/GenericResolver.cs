@@ -87,19 +87,28 @@ namespace Avro.Generic
                 case DecimalSchema r when r.Type is FixedSchema && (type.Equals(typeof(object)) || type.Equals(typeof(decimal))):
                     writer = (s, v) => s.WriteDecimal((decimal)v, r.Scale, (r.Type as FixedSchema).Size);
                     break;
-                case ArraySchema r when type.Equals(typeof(object)) || typeof(IList<object>).IsAssignableFrom(type):
-                    writer = (s, v) => s.WriteArray(v as IList<object>, ResolveWriter(r.Items, typeof(object)));
+                case ArraySchema r when type.Equals(typeof(object)) || (type.Equals(typeof(IList<object>))):
+                    var itemsWriter = ResolveWriter(r.Items, typeof(object));
+                    writer = (s, v) => s.WriteArray(v as IList<object>, itemsWriter);
                     break;
-                case MapSchema r when type.Equals(typeof(object)) || typeof(IDictionary<string, object>).IsAssignableFrom(type):
-                    writer = (s, v) => s.WriteMap(v as IDictionary<string, object>, ResolveWriter(r.Values, typeof(object)));
+                case MapSchema r when type.Equals(typeof(object)) || (type.IsGenericType && type.Equals(typeof(IDictionary<string, object>))):
+                    var valuesWriter = ResolveWriter(r.Values, typeof(object));
+                    writer = (s, v) => s.WriteMap(v as IDictionary<string, object>, valuesWriter);
                     break;
-                case EnumSchema _ when type.Equals(typeof(object)) || type.Equals(typeof(GenericEnum)):
+                case EnumSchema _ when type.Equals(typeof(object)) || typeof(GenericEnum).IsAssignableFrom(type):
                     writer = (s, v) => s.WriteInt((v as GenericEnum).Value);
                     break;
-                case FixedSchema _ when type.Equals(typeof(object)) || type.Equals(typeof(GenericFixed)):
+                case FixedSchema _ when type.Equals(typeof(object)) || typeof(GenericFixed).IsAssignableFrom(type):
                     writer = (s, v) => s.WriteFixed((v as GenericFixed).Value);
                     break;
-                case RecordSchema r when type.Equals(typeof(object)) || type.Equals(typeof(GenericRecord)):
+                case ErrorSchema r when type.Equals(typeof(object)) || type.Equals(typeof(GenericError)):
+                    var errorRecordWriter = ResolveWriter(writerSchema as RecordSchema, typeof(GenericRecord));
+                    writer = (s, v) =>
+                    {
+                        errorRecordWriter.Invoke(s, (v as GenericError).AvroData);
+                    };
+                    break;
+                case RecordSchema r when type.Equals(typeof(object)) || typeof(GenericRecord).IsAssignableFrom(type):
                     var fieldWriters = new Action<IEncoder, object>[r.Count];
                     for (int i = 0; i < fieldWriters.Length; i++)
                         fieldWriters[i] = ResolveWriter(r.ElementAt(i).Type, typeof(object));
@@ -269,15 +278,16 @@ namespace Avro.Generic
                     var decimalLength = (decimalWriter.Type as FixedSchema).Size;
                     reader = new Tuple<Func<IDecoder, object>, Action<IDecoder>>(s => s.ReadDecimal(r.Scale, decimalLength), s => s.SkipDecimal(decimalLength));
                     break;
-                case ArraySchema r when writerSchema is ArraySchema && (type.Equals(typeof(object)) || typeof(IList<object>).IsAssignableFrom(type)):
+                case ArraySchema r when writerSchema is ArraySchema && (type.Equals(typeof(object)) || type.Equals(typeof(IList<object>))):
                     var itemsReader = ResolveReader(r.Items, (writerSchema as ArraySchema).Items, typeof(object));
                     reader = new Tuple<Func<IDecoder, object>, Action<IDecoder>>(s => s.ReadArray(itemsReader.Item1), s => s.SkipArray(itemsReader.Item2));
                     break;
-                case MapSchema r when writerSchema is MapSchema && (type.Equals(typeof(object)) || typeof(IDictionary<string, object>).IsAssignableFrom(type)):
-                    var valuesReader = ResolveReader(r.Values, (writerSchema as MapSchema).Values, typeof(object));
+                case MapSchema r when writerSchema is MapSchema && (type.Equals(typeof(object)) || (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>)) && type.GetGenericArguments().First().Equals(typeof(string)))):
+                    var mapType = type.GetGenericArguments().LastOrDefault() ?? typeof(object);
+                    var valuesReader = ResolveReader(r.Values, (writerSchema as MapSchema).Values, mapType);
                     reader = new Tuple<Func<IDecoder, object>, Action<IDecoder>>(s => s.ReadMap(valuesReader.Item1), s => s.SkipMap(valuesReader.Item2));
                     break;
-                case EnumSchema r when writerSchema is EnumSchema && (type.Equals(typeof(object)) || type.Equals(typeof(GenericEnum))):
+                case EnumSchema r when writerSchema is EnumSchema && (type.Equals(typeof(object)) || typeof(GenericEnum).IsAssignableFrom(type)):
                     var writerSymbols = (writerSchema as EnumSchema).Symbols.ToArray();
                     var enumMap = new int[writerSymbols.Length];
                     for (int i = 0; i < writerSymbols.Length; i++)
@@ -286,22 +296,35 @@ namespace Avro.Generic
                         s =>
                         {
                             var value = s.ReadInt();
-                            return new GenericEnum(r, enumMap[value]);
+                            var enumValue = new GenericEnum(r, enumMap[value]);
+                            return enumValue;
                         },
                         s => s.SkipInt()
                     );
                     break;
-                case FixedSchema r when r.Equals(writerSchema) && (type.Equals(typeof(object)) || type.Equals(typeof(GenericFixed))):
+                case FixedSchema r when r.Equals(writerSchema) && (type.Equals(typeof(object)) || typeof(GenericFixed).IsAssignableFrom(type)):
                     reader = new Tuple<Func<IDecoder, object>, Action<IDecoder>>(
                         s =>
                         {
                             var value = s.ReadFixed(r.Size);
-                            return new GenericFixed(r, value);
+                            var fixedValue = new GenericFixed(r, value);
+                            return fixedValue;
                         },
                         s => s.SkipFixed(r.Size)
                     );
                     break;
-                case RecordSchema r when r.Equals(writerSchema) && (type.Equals(typeof(object)) || type.Equals(typeof(GenericRecord))):
+                case ErrorSchema r when r.Equals(writerSchema) && (type.Equals(typeof(object)) || type.Equals(typeof(GenericError))):
+                    var errorRecordReader = ResolveReader(readerSchema as RecordSchema, writerSchema as RecordSchema, typeof(GenericRecord));
+                    reader = new Tuple<Func<IDecoder, object>, Action<IDecoder>>(
+                        s =>
+                        {
+                            var record = errorRecordReader.Item1.Invoke(s) as GenericRecord;
+                            return new GenericError(record);
+                        },
+                        s => errorRecordReader.Item2.Invoke(s)
+                    );
+                    break;
+                case RecordSchema r when r.Equals(writerSchema) && (type.Equals(typeof(object)) || typeof(GenericRecord).IsAssignableFrom(type)):
                     var writerFields = (writerSchema as RecordSchema).ToList();
                     var readerFields = r.ToList();
                     var recordMap = new int[writerFields.Count];

@@ -17,7 +17,7 @@ namespace Avro.Specific
             var skipAction = typeof(Action<>).MakeGenericType(typeof(IDecoder));
             var streamParameter = Expression.Parameter(typeof(IDecoder), "s");
 
-            var expressions = ResolveReader(type.Assembly, type, readerSchema, writerSchema, streamParameter, null, new Stack<PropertyInfo>());
+            var expressions = ResolveReader(type.Assembly, type, readerSchema, writerSchema, streamParameter);
             if (expressions == null)
                 throw new AvroException($"Unable to resolve reader: '{readerSchema}' using writer: '{writerSchema}' for type: '{type}'");
 
@@ -43,14 +43,13 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, Schema readerSchema, Schema writerSchema, ParameterExpression streamParameter, ParameterExpression valueParameter, Stack<PropertyInfo> propertyChain, bool skipOnly = false)
+        private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, Schema readerSchema, Schema writerSchema, ParameterExpression streamParameter)
         {
-            var assign = valueParameter != null;
             var expressions = default(Tuple<Expression, Expression>);
 
             switch (readerSchema)
             {
-                case NullSchema r when writerSchema is NullSchema && (type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null)):
+                case NullSchema r when writerSchema is NullSchema && (type.IsInterface || type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null)):
                     expressions = ResolveNull(streamParameter, type);
                     break;
                 case BooleanSchema r when writerSchema is BooleanSchema && type.Equals(typeof(bool)):
@@ -152,10 +151,10 @@ namespace Avro.Specific
                     expressions = ResolveDecimalFixed(streamParameter, r.Scale, decimalLength);
                     break;
                 case ArraySchema r when writerSchema is ArraySchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>):
-                    expressions = ResolveArray(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Items, (writerSchema as ArraySchema).Items);
+                    expressions = ResolveArray(streamParameter, type.GenericTypeArguments.Last(), origin, r.Items, (writerSchema as ArraySchema).Items);
                     break;
                 case MapSchema r when writerSchema is MapSchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>):
-                    expressions = ResolveMap(streamParameter, valueParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
+                    expressions = ResolveMap(streamParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
                     break;
 
                 case EnumSchema r when writerSchema is EnumSchema && r.Equals(writerSchema) && type.IsEnum && Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count:
@@ -165,12 +164,11 @@ namespace Avro.Specific
                     expressions = ResolveFixed(streamParameter, type, r.Size);
                     break;
                 case RecordSchema r when writerSchema is RecordSchema && r.Equals(writerSchema) && typeof(ISpecificRecord).IsAssignableFrom(type):
-                    expressions = ResolveRecord(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as RecordSchema));
-                    assign = false;
+                    expressions = ResolveRecord(streamParameter, type, origin, r, (writerSchema as RecordSchema));
                     break;
 
                 // Union: Reader and Writer are single Nullable Types
-                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
+                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsInterface || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
                     var nullableReadSchema = r.FirstOrDefault(n => !n.GetType().Equals(typeof(NullSchema)));
                     var nullableType = Nullable.GetUnderlyingType(type) ?? type;
                     switch (writerSchema)
@@ -185,15 +183,15 @@ namespace Avro.Specific
                             var nullIndex = 0L;
                             if (!s[(int)nullIndex].GetType().Equals(typeof(NullSchema)))
                                 nullIndex = 1L;
-                            expressions = ResolveNullable(streamParameter, valueParameter, type, origin, propertyChain, nullableReadSchema, nullableWriterSchema, nullIndex);
+                            expressions = ResolveNullable(streamParameter, type, origin, nullableReadSchema, nullableWriterSchema, nullIndex);
                             break;
                         // Writer is an arbitrary Union
                         case UnionSchema s:
-                            expressions = ResolveNullableFromUnion(streamParameter, valueParameter, nullableType, origin, propertyChain, nullableReadSchema, s);
+                            expressions = ResolveNullableFromUnion(streamParameter, nullableType, origin, nullableReadSchema, s);
                             break;
                         // Writer is not a Union nor a Null Type
                         default:
-                            expressions = ResolveReader(origin, nullableType, nullableReadSchema, writerSchema, streamParameter, valueParameter, propertyChain);
+                            expressions = ResolveReader(origin, nullableType, nullableReadSchema, writerSchema, streamParameter);
                             if (nullableType.IsValueType)
                             {
                                 expressions = new Tuple<Expression, Expression>(
@@ -214,7 +212,7 @@ namespace Avro.Specific
                     var writeType = GetTypeFromSchema(nonUnionToUnionMatch, origin);
                     if (nonUnionToUnionIndex >= 0)
                     {
-                        expressions = ResolveReader(origin, writeType, nonUnionToUnionMatch, writerSchema, streamParameter, valueParameter, propertyChain);
+                        expressions = ResolveReader(origin, writeType, nonUnionToUnionMatch, writerSchema, streamParameter);
                         if (expressions != null)
                             expressions = new Tuple<Expression, Expression>(
                                 Expression.Convert(
@@ -228,25 +226,13 @@ namespace Avro.Specific
 
                 // Union: Reader is a Union and Writer is a Union
                 case UnionSchema r when type.Equals(typeof(object)) && writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    expressions = ResolveUnion(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
+                    expressions = ResolveUnion(streamParameter, type, origin, r, (writerSchema as UnionSchema));
                     break;
 
                 // Union Type to Single Type
                 case Schema r when writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    expressions = ResolveUnionToAny(streamParameter, valueParameter, type, origin, propertyChain, r, (writerSchema as UnionSchema));
+                    expressions = ResolveUnionToAny(streamParameter, type, origin, r, (writerSchema as UnionSchema));
                     break;
-            }
-
-            if (expressions != null && assign && !skipOnly)
-            {
-                var valueExpression = GetValueExpression(valueParameter, propertyChain);
-                expressions = new Tuple<Expression, Expression>(
-                    Expression.Assign(
-                        valueExpression,
-                        expressions.Item1
-                    ),
-                    expressions.Item2
-                );
             }
 
             return expressions;
@@ -712,12 +698,12 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveArray(ParameterExpression streamParameter, ParameterExpression valueParameter, Type arrayItemType, Assembly origin, Schema readerItems, Schema writerItems)
+        private static Tuple<Expression, Expression> ResolveArray(ParameterExpression streamParameter, Type arrayItemType, Assembly origin, Schema readerItems, Schema writerItems)
         {
             var arrayItemReadFunction = typeof(Func<,>).MakeGenericType(typeof(IDecoder), arrayItemType);
             var arrayItemSkipAction = typeof(Action<>).MakeGenericType(typeof(IDecoder));
 
-            var arrayItemExpressions = ResolveReader(origin, arrayItemType, readerItems, writerItems, streamParameter, valueParameter, new Stack<PropertyInfo>());
+            var arrayItemExpressions = ResolveReader(origin, arrayItemType, readerItems, writerItems, streamParameter);
 
             return new Tuple<Expression, Expression>(
                 Expression.Call(
@@ -741,12 +727,12 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveMap(ParameterExpression streamParameter, ParameterExpression valueParameter, Type mapValueType, Assembly origin, Schema readerValues, Schema writerValues)
+        private static Tuple<Expression, Expression> ResolveMap(ParameterExpression streamParameter, Type mapValueType, Assembly origin, Schema readerValues, Schema writerValues)
         {
             var mapValueReadFunction = typeof(Func<,>).MakeGenericType(typeof(IDecoder), mapValueType);
             var mapValueSkipAction = typeof(Action<>).MakeGenericType(typeof(IDecoder));
 
-            var mapValuesExpressions = ResolveReader(origin, mapValueType, readerValues, writerValues, streamParameter, valueParameter, new Stack<PropertyInfo>());
+            var mapValuesExpressions = ResolveReader(origin, mapValueType, readerValues, writerValues, streamParameter);
 
             return new Tuple<Expression, Expression>(
                 Expression.Call(
@@ -841,42 +827,19 @@ namespace Avro.Specific
 
         private static Tuple<Expression, Expression> ResolveFixed(ParameterExpression streamParameter, Type fixedType, int size)
         {
-            var fixedParameter =
-                Expression.Variable(
-                    fixedType,
-                    "fixedPar"
-                );
-
-            var fixedValueExpression =
-                Expression.MakeMemberAccess(
-                    fixedParameter,
-                    fixedType.GetProperty(nameof(ISpecificFixed.Value))
-                );
-
-            var fixedParameters = new List<ParameterExpression>()
-                    {
-                        fixedParameter
-                    };
-
-            var fixedExpressions = new List<Expression>
-                    {
-                        Expression.Assign(
-                            fixedParameter,
-                            Expression.New(fixedType)
-                        ),
-                        Expression.Call(
-                            streamParameter,
-                            typeof(IDecoder).GetMethod(nameof(IDecoder.ReadFixed), new[] { typeof(byte[]) }),
-                            fixedValueExpression
-                        ),
-                        fixedParameter
-                    };
-
             return new Tuple<Expression, Expression>(
                 Expression.Block(
-                    fixedType,
-                    fixedParameters,
-                    fixedExpressions
+                    Expression.Convert(
+                        Expression.Call(
+                            streamParameter,
+                            typeof(IDecoder).GetMethod(nameof(IDecoder.ReadFixed), new[] { typeof(int) }),
+                            Expression.Constant(
+                                size,
+                                typeof(int)
+                            )
+                        ),
+                        fixedType
+                    )
                 ),
                 Expression.Call(
                     streamParameter,
@@ -886,7 +849,7 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveRecord(ParameterExpression streamParameter, ParameterExpression valueParameter, Type recordType, Assembly origin, Stack<PropertyInfo> propertyChain, IEnumerable<RecordSchema.Field> readerFields, IEnumerable<RecordSchema.Field> writerFields)
+        private static Tuple<Expression, Expression> ResolveRecord(ParameterExpression streamParameter, Type recordType, Assembly origin, IEnumerable<RecordSchema.Field> readerFields, IEnumerable<RecordSchema.Field> writerFields)
         {
             var missingFieldMap = readerFields.Where(f => !writerFields.Any(w => w.Name == f.Name));
             var missingDefaults = missingFieldMap.Where(f => f.Default == null);
@@ -895,25 +858,16 @@ namespace Avro.Specific
 
             var fieldReaders = new List<Expression>();
             var fieldSkippers = new List<Expression>();
-            var recordParameters = new List<ParameterExpression>();
 
             var recordParameter =
-                valueParameter ??
-                    Expression.Variable(
-                        recordType,
-                        "record"
-                    );
-
-            if (valueParameter == null)
-                recordParameters.Add(
-                    recordParameter
+                Expression.Variable(
+                    recordType,
+                    "record"
                 );
-
-            var valueExpression = GetValueExpression(recordParameter, propertyChain);
 
             fieldReaders.Add(
                 Expression.Assign(
-                    valueExpression,
+                    recordParameter,
                     Expression.New(recordType)
                 )
             );
@@ -925,7 +879,7 @@ namespace Avro.Specific
 
                 if (readerField == null)
                 {
-                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(writerField.Type, origin), writerField.Type, writerField.Type, streamParameter, recordParameter, propertyChain, true);
+                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(writerField.Type, origin), writerField.Type, writerField.Type, streamParameter);
                     fieldReaders.Add(
                         fieldExpressions.Item2
                     );
@@ -935,27 +889,30 @@ namespace Avro.Specific
                 }
                 else
                 {
-                    propertyChain.Push(recordType.GetProperty(readerField.Name));
-                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(readerField.Type, origin), readerField.Type, writerField.Type, streamParameter, recordParameter, propertyChain);
+                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(readerField.Type, origin), readerField.Type, writerField.Type, streamParameter);
                     fieldReaders.Add(
-                        fieldExpressions.Item1
+                        Expression.Assign(
+                            Expression.MakeMemberAccess
+                            (
+                                recordParameter,
+                                recordType.GetProperty(readerField.Name)
+                            ),
+                            fieldExpressions.Item1
+                        )
                     );
                     fieldSkippers.Add(
                         fieldExpressions.Item2
                     );
-                    propertyChain.Pop();
                 }
             }
 
-            if (valueParameter == null)
-                fieldReaders.Add(
-                    recordParameter
-                );
+            // Append Record parameter in order to return it.
+            fieldReaders.Add(recordParameter);
 
             return new Tuple<Expression, Expression>(
                 Expression.Block(
-                    (valueParameter == null ? recordType : typeof(void)),
-                    recordParameters,
+                    recordType,
+                    new ParameterExpression[] { recordParameter },
                     fieldReaders
                 ),
                 Expression.Block(
@@ -965,13 +922,13 @@ namespace Avro.Specific
         }
 
 
-        private static Tuple<Expression, Expression> ResolveNullable(ParameterExpression streamParameter, ParameterExpression valueParameter, Type nullableType, Assembly origin, Stack<PropertyInfo> propertyChain, Schema readSchema, Schema writeSchema, long nullIndex)
+        private static Tuple<Expression, Expression> ResolveNullable(ParameterExpression streamParameter, Type nullableType, Assembly origin, Schema readSchema, Schema writeSchema, long nullIndex)
         {
             var valueType = Nullable.GetUnderlyingType(nullableType) ?? nullableType;
-            var valueExpressions = ResolveReader(origin, valueType, readSchema, writeSchema, streamParameter, valueParameter, propertyChain);
+            var valueExpressions = ResolveReader(origin, valueType, readSchema, writeSchema, streamParameter);
 
             var nullableValueMethod =
-                valueType.IsClass ?
+                valueType.IsClass || valueType.IsInterface ?
                 typeof(IDecoder).GetMethod(nameof(IDecoder.ReadNullableObject)).MakeGenericMethod(valueType) :
                 typeof(IDecoder).GetMethod(nameof(IDecoder.ReadNullableValue)).MakeGenericMethod(valueType)
             ;
@@ -1006,7 +963,7 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveNullableFromUnion(ParameterExpression streamParameter, ParameterExpression valueParameter, Type nullableType, Assembly origin, Stack<PropertyInfo> propertyChain, Schema readSchema, IEnumerable<Schema> writeSchemas)
+        private static Tuple<Expression, Expression> ResolveNullableFromUnion(ParameterExpression streamParameter, Type nullableType, Assembly origin, Schema readSchema, IEnumerable<Schema> writeSchemas)
         {
             var valueType = Nullable.GetUnderlyingType(nullableType) ?? nullableType;
             var unionReadSwitchCases = new List<SwitchCase>();
@@ -1029,7 +986,7 @@ namespace Avro.Specific
                 if (writeSchemas.ElementAt(i) is NullSchema)
                     unionExpressions = ResolveNull(streamParameter, typeof(object));
                 else
-                    unionExpressions = ResolveReader(origin, valueType, readSchema, writeSchemas.ElementAt(i), streamParameter, valueParameter, propertyChain);
+                    unionExpressions = ResolveReader(origin, valueType, readSchema, writeSchemas.ElementAt(i), streamParameter);
 
                 if (unionExpressions != null)
                 {
@@ -1046,7 +1003,7 @@ namespace Avro.Specific
                 }
                 else
                 {
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter, valueParameter, propertyChain);
+                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
 
                     unionExpressions = new Tuple<Expression, Expression>(
                         Expression.Throw(
@@ -1135,7 +1092,7 @@ namespace Avro.Specific
             );
         }
 
-        private static Tuple<Expression, Expression> ResolveUnion(ParameterExpression streamParameter, ParameterExpression valueParameter, Type type, Assembly origin, Stack<PropertyInfo> propertyChain, IEnumerable<Schema> readSchemas, IEnumerable<Schema> writeSchemas)
+        private static Tuple<Expression, Expression> ResolveUnion(ParameterExpression streamParameter, Type type, Assembly origin, IEnumerable<Schema> readSchemas, IEnumerable<Schema> writeSchemas)
         {
             var unionReadSwitchCases = new SwitchCase[writeSchemas.Count()];
             var unionSkipSwitchCases = new SwitchCase[writeSchemas.Count()];
@@ -1154,7 +1111,7 @@ namespace Avro.Specific
                 var unionExpressions = default(Tuple<Expression, Expression>);
                 var unionToUnionIndex = FindMatch(writeSchemas.ElementAt(i), readSchemas.ToArray(), out var unionToUnionMatch);
                 if (unionToUnionIndex >= 0)
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(unionToUnionMatch, origin), unionToUnionMatch, writeSchemas.ElementAt(i), streamParameter, null, propertyChain);
+                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(unionToUnionMatch, origin), unionToUnionMatch, writeSchemas.ElementAt(i), streamParameter);
 
                 if (unionExpressions != null)
                 {
@@ -1171,7 +1128,7 @@ namespace Avro.Specific
                 }
                 else
                 {
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter, valueParameter, propertyChain);
+                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
 
                     unionExpressions = new Tuple<Expression, Expression>(
                         Expression.Throw(
@@ -1257,7 +1214,7 @@ namespace Avro.Specific
         );
         }
 
-        private static Tuple<Expression, Expression> ResolveUnionToAny(ParameterExpression streamParameter, ParameterExpression valueParameter, Type type, Assembly origin, Stack<PropertyInfo> propertyChain, Schema readSchema, IEnumerable<Schema> writeSchemas)
+        private static Tuple<Expression, Expression> ResolveUnionToAny(ParameterExpression streamParameter, Type type, Assembly origin, Schema readSchema, IEnumerable<Schema> writeSchemas)
         {
             var unionToNonUnionReadCases = new SwitchCase[writeSchemas.Count()];
             var unionToNonUnionSkipCases = new SwitchCase[writeSchemas.Count()];
@@ -1274,7 +1231,7 @@ namespace Avro.Specific
 
             for (int i = 0; i < writeSchemas.Count(); i++)
             {
-                var unionExpressions = ResolveReader(origin, type, readSchema, writeSchemas.ElementAt(i), streamParameter, valueParameter, propertyChain);
+                var unionExpressions = ResolveReader(origin, type, readSchema, writeSchemas.ElementAt(i), streamParameter);
                 if (unionExpressions != null)
                 {
                     unionToNonUnionReadCases[i] =
@@ -1306,7 +1263,7 @@ namespace Avro.Specific
                                 typeof(long)
                             )
                         );
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter, valueParameter, propertyChain);
+                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
                 }
 
                 unionToNonUnionSkipCases[i] =

@@ -1,0 +1,26 @@
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+namespace Avro.Ipc.Tcp
+{
+    public sealed class SocketServer
+    {
+        private readonly TcpListener _server;
+        private readonly IPAddress _addr;
+        private readonly int _port;
+        public SocketServer(string ip, int port)
+        {
+            _addr = IPAddress.Parse(ip);
+            _port = port;
+            _server = new TcpListener(_addr, _port);
+        }
+        public void Start() => _server.Start();
+        public void Stop() => _server.Stop();
+        public async Task<ITranceiver> ListenAsync()
+        {
+            var tcpClient = await _server.AcceptTcpClientAsync();
+            return new SocketTranceiver(tcpClient);
+        }
+    }
+}

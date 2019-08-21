@@ -3,6 +3,7 @@ using Avro.Schemas;
 using Avro.Specific;
 using NUnit.Framework;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -86,10 +87,10 @@ namespace Avro.Test.Specific
         public void FixedTest()
         {
             var expectedValue = new TestFixed();
-            expectedValue.Value[1] = 1;
+            expectedValue[1] = 1;
 
-            for (int i = 2; i < expectedValue.FixedSize; i++)
-                expectedValue.Value[i] = (byte)((expectedValue.Value[i - 2] + expectedValue.Value[i - 1]) % byte.MaxValue);
+            for (int i = 2; i < expectedValue.Size; i++)
+                expectedValue[i] = (byte)((expectedValue[i - 2] + expectedValue[i - 1]) % byte.MaxValue);
 
             var writer = new SpecificWriter<TestFixed>(expectedValue.Schema);
             var reader = new SpecificReader<TestFixed>(expectedValue.Schema, expectedValue.Schema);
@@ -98,11 +99,10 @@ namespace Avro.Test.Specific
             using (var encoder = new BinaryEncoder(stream))
             using (var decoder = new BinaryDecoder(stream))
             {
-
                 writer.Write(encoder, expectedValue);
                 stream.Seek(0, SeekOrigin.Begin);
                 var actualValue = reader.Read(decoder);
-                Assert.AreEqual(expectedValue.Value, actualValue.Value);
+                Assert.AreEqual(expectedValue, actualValue);
             }
         }
 
@@ -488,19 +488,43 @@ namespace Avro.Test.Specific
     public class TestFixed : ISpecificFixed
     {
         private static readonly Schema _SCHEMA = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Specific.TestFixed"",""type"":""fixed"",""size"":40}");
-        private readonly byte[] _value = new byte[40];
+        public const int _SIZE = 40;
+        private readonly byte[] _value;
         public Schema Schema => _SCHEMA;
-        public int FixedSize => 40;
-        public byte[] Value => _value;
-
-        public bool Equals(byte[] other)
+        public int Size => _SIZE;
+        public TestFixed()
         {
-            if (Value.Length != other.Length)
+            _value = new byte[_SIZE];
+        }
+
+        public TestFixed(byte[] value)
+        {
+            if (value.Length != _SIZE)
+                throw new ArgumentException($"Array must be of size: {_SIZE}");
+            _value = value;
+        }
+        public byte this[int i] { get => _value[i]; set => _value[i] = value; }
+        public static implicit operator TestFixed(byte[] value) => new TestFixed(value);
+        public static explicit operator byte[](TestFixed value) => value._value;
+
+        public bool Equals(ISpecificFixed other)
+        {
+            if (Size != other.Size)
                 return false;
-            for (int i = 0; i < FixedSize; i++)
-                if (Value[i] != other[i])
+            for (int i = 0; i < Size; i++)
+                if (this[i] != other[i])
                     return false;
             return true;
+        }
+
+        public IEnumerator<byte> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
         }
     }
     

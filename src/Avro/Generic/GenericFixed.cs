@@ -21,6 +21,16 @@ namespace Avro.Generic
             Value = value;
         }
 
+        public GenericFixed(GenericFixed f, bool copy = false)
+        {
+            Schema = f.Schema;
+            Size = f.Size;
+            if (copy)
+                Value = f.Value;
+            else
+                Value = new byte[f.Size];
+        }
+
         public FixedSchema Schema { get; private set; }
         public int Size { get; private set; }
         public byte[] Value { get; private set; }

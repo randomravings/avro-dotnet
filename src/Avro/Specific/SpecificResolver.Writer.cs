@@ -16,7 +16,7 @@ namespace Avro.Specific
             var streamParameter = Expression.Parameter(typeof(IEncoder), "s");
             var valueParameter = Expression.Parameter(type, "v");
             var writeAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), type);
-            if (!ResolveWriter(type.Assembly, type, writerSchema, streamParameter, valueParameter, new Stack<PropertyInfo>(), null, out var writeExpression))
+            if (!ResolveWriter(type.Assembly, type, writerSchema, streamParameter, valueParameter, null, out var writeExpression))
                 throw new AvroException($"Unable to resolve writer: '{writerSchema}' for type: '{type}'");
 
 
@@ -30,14 +30,13 @@ namespace Avro.Specific
                 .Compile() as Action<IEncoder, T>;
         }
 
-        private static bool ResolveWriter(Assembly origin, Type type, Schema writerSchema, ParameterExpression streamParameter, ParameterExpression valueParameter, Stack<PropertyInfo> propertyChain, Type valueParameterCast, out Expression writeExpression)
+        private static bool ResolveWriter(Assembly origin, Type type, Schema writerSchema, ParameterExpression streamParameter, Expression valueExpression, Type valueParameterCast, out Expression writeExpression)
         {
-            var valueParameterOrProperty = GetValueExpression(valueParameter, propertyChain);
             writeExpression = null;
 
             switch (writerSchema)
             {
-                case NullSchema r when type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null):
+                case NullSchema r when type.IsInterface || type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null):
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteNull))
@@ -48,7 +47,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteBoolean)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -56,7 +55,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteInt)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -64,7 +63,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteLong)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -72,7 +71,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteFloat)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -80,7 +79,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDouble)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -88,7 +87,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteBytes)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -96,7 +95,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteString)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -104,7 +103,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteUuid)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -112,7 +111,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDate)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -120,7 +119,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimeMS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -128,7 +127,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimeUS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -136,7 +135,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimeNS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -144,7 +143,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimestampMS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -152,7 +151,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimestampUS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -160,7 +159,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteTimestampNS)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -168,7 +167,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDuration)),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast)
+                        CastOrExpression(valueExpression, valueParameterCast)
                     );
                     break;
 
@@ -179,7 +178,7 @@ namespace Avro.Specific
                             writeExpression = Expression.Call(
                                 streamParameter,
                                 typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDecimal), new Type[] { typeof(decimal), typeof(int) }),
-                                CastOrExpression(valueParameterOrProperty, valueParameterCast),
+                                CastOrExpression(valueExpression, valueParameterCast),
                                 Expression.Constant(r.Scale, typeof(int))
                             );
                             break;
@@ -187,7 +186,7 @@ namespace Avro.Specific
                             writeExpression = Expression.Call(
                                 streamParameter,
                                 typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDecimal), new Type[] { typeof(decimal), typeof(int), typeof(int) }),
-                                CastOrExpression(valueParameterOrProperty, valueParameterCast),
+                                CastOrExpression(valueExpression, valueParameterCast),
                                 Expression.Constant(r.Scale, typeof(int)),
                                 Expression.Constant(t.Size, typeof(int))
                             );
@@ -199,11 +198,11 @@ namespace Avro.Specific
                     var arrayItemType = type.GenericTypeArguments.Last();
                     var arrayItemParameter = Expression.Parameter(arrayItemType, "i");
                     var arrayItemWriteAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), arrayItemType);
-                    ResolveWriter(origin, arrayItemType, r.Items, streamParameter, arrayItemParameter, new Stack<PropertyInfo>(), null, out var arrayItemExpression);
+                    ResolveWriter(origin, arrayItemType, r.Items, streamParameter, arrayItemParameter, null, out var arrayItemExpression);
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteArray)).MakeGenericMethod(arrayItemType),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast),
+                        CastOrExpression(valueExpression, valueParameterCast),
                         Expression.Lambda(
                             arrayItemWriteAction,
                             arrayItemExpression,
@@ -217,11 +216,11 @@ namespace Avro.Specific
                     var mapValueType = type.GenericTypeArguments.Last();
                     var mapValueParameter = Expression.Parameter(mapValueType, "m");
                     var mapValueWriteAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), mapValueType);
-                    ResolveWriter(origin, mapValueType, r.Values, streamParameter, mapValueParameter, new Stack<PropertyInfo>(), null, out var mapItemExpression);
+                    ResolveWriter(origin, mapValueType, r.Values, streamParameter, mapValueParameter, null, out var mapItemExpression);
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteMap)).MakeGenericMethod(mapValueType),
-                        CastOrExpression(valueParameterOrProperty, valueParameterCast),
+                        CastOrExpression(valueExpression, valueParameterCast),
                         Expression.Lambda(
                             mapValueWriteAction,
                             mapItemExpression,
@@ -249,7 +248,7 @@ namespace Avro.Specific
                     }
                     writeExpression =
                         Expression.Switch(
-                            CastOrExpression(valueParameterOrProperty, valueParameterCast),
+                            CastOrExpression(valueExpression, valueParameterCast),
                             switchCases
                         );
                     break;
@@ -258,7 +257,7 @@ namespace Avro.Specific
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteFixed)),
-                        CastOrExpression(Expression.MakeMemberAccess(valueParameterOrProperty, typeof(ISpecificFixed).GetProperty(nameof(ISpecificFixed.Value))), valueParameterCast)
+                        CastOrExpression(Expression.Convert(valueExpression, typeof(byte[])), valueParameterCast)
                     );
                     break;
 
@@ -269,33 +268,36 @@ namespace Avro.Specific
                         var recordProperty = type.GetProperty(field.Name);
                         var fieldValueExpression =
                             Expression.MakeMemberAccess(
-                                valueParameterOrProperty,
+                                valueExpression,
                                 recordProperty
                             );
-                        propertyChain.Push(recordProperty);
-                        ResolveWriter(origin, recordProperty.PropertyType, field.Type, streamParameter, valueParameter, propertyChain, null, out var fieldExpression);
+                        ResolveWriter(origin, recordProperty.PropertyType, field.Type, streamParameter, fieldValueExpression, null, out var fieldExpression);
                         fieldExpressions.Add(fieldExpression);
-                        propertyChain.Pop();
                     }
                     writeExpression = Expression.Block(fieldExpressions);
                     break;
 
-                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
+                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsInterface || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
                     var localType = type;
                     var nullIndex = 0;
                     if (!r[nullIndex].GetType().Equals(typeof(NullSchema)))
                         nullIndex = 1;
+                    var localValueExpression = valueExpression;
                     if (Nullable.GetUnderlyingType(type) != null)
                     {
                         localType = Nullable.GetUnderlyingType(type);
-                        propertyChain.Push(type.GetProperty("Value"));
+                        localValueExpression =
+                            Expression.MakeMemberAccess(
+                                localValueExpression,
+                                type.GetProperty("Value")
+                            );
                     }
-                    ResolveWriter(origin, localType, r[(nullIndex + 1) % 2], streamParameter, valueParameter, propertyChain, null, out var writeNotNullExpression);
+                    ResolveWriter(origin, localType, r[(nullIndex + 1) % 2], streamParameter, localValueExpression, null, out var writeNotNullExpression);
                     writeExpression =
                         Expression.IfThenElse
                         (
                             Expression.Equal(
-                                valueParameter,
+                                valueExpression,
                                 Expression.Constant(null, type)
                             ),
                             Expression.Call(
@@ -319,8 +321,6 @@ namespace Avro.Specific
                                 writeNotNullExpression
                             )
                         );
-                    if (Nullable.GetUnderlyingType(type) != null)
-                        propertyChain.Pop();
                     break;
 
                 case UnionSchema r when type.Equals(typeof(object)) && r.Count > 0:
@@ -331,19 +331,19 @@ namespace Avro.Specific
                     for (int i = 0; i < r.Count; i++)
                     {
                         var unionSubType = GetTypeFromSchema(r[i], origin);
-                        ResolveWriter(origin, unionSubType, r[i], streamParameter, valueParameter, propertyChain, unionSubType, out var unionSubExpression);
+                        ResolveWriter(origin, unionSubType, r[i], streamParameter, valueExpression, unionSubType, out var unionSubExpression);
                         writeExpression =
                             Expression.IfThenElse((
                                 r[i] is NullSchema ?
                                 Expression.Equal(
-                                    valueParameterOrProperty,
+                                    valueExpression,
                                     Expression.Constant(
                                         null,
                                         typeof(object)
                                     )
                                 ) as Expression :
                                 Expression.TypeIs(
-                                    valueParameterOrProperty,
+                                    valueExpression,
                                     unionSubType
                                 ) as Expression),
                                 Expression.Block(
