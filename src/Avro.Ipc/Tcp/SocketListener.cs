@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace Avro.Ipc.Tcp
 {
-    public sealed class SocketServer
+    public sealed class SocketListener
     {
         private readonly TcpListener _server;
         private readonly IPAddress _addr;
         private readonly int _port;
-        public SocketServer(string ip, int port)
+        public SocketListener(string ip, int port)
         {
             _addr = IPAddress.Parse(ip);
             _port = port;

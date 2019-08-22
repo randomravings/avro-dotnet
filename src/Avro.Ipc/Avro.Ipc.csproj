@@ -8,7 +8,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Avro\Avro.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Local\" />
-  </ItemGroup>
 </Project>

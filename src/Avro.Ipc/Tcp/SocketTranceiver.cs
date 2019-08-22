@@ -55,11 +55,10 @@ namespace Avro.Ipc.Tcp
             await ReadBytesAsync(_stream, frame.GetBuffer(), 0, frameSize, token);
             frame.SetLength(frameSize);
             result.AppendFrame(frame);
-            result.Seek(0, SeekOrigin.Begin);
             return result;
         }
 
-        public async Task<FrameStream> RequestAsync(FrameStream frames, CancellationToken token)
+        public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             await SendAsync(frames, token);
             return await ReceiveAsync(token);

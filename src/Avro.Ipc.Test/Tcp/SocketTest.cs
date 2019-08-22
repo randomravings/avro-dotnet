@@ -1,5 +1,7 @@
 ﻿using Avro.Generic;
 using Avro.Ipc.Generic;
+using Avro.Ipc.Http;
+using Avro.Ipc.Local;
 using Avro.Ipc.Tcp;
 using Avro.Schemas;
 using Avro.Specific;
@@ -15,13 +17,8 @@ namespace Avro.Ipc.Test.Tcp
     [TestFixture]
     public class SocketTest
     {
-        [TestCase]
-        public void TestHandshake()
-        {
-            var HANDSHAKE_RESPONSE_READER = new SpecificReader<HandshakeResponse>(HandshakeResponse._SCHEMA);
-        }
 
-        private const string HELLO_PROTOCOL_STRING = @"
+        private static readonly Protocol HELLO_PROTOCOL = AvroReader.ReadProtocol(@"
         {
           ""namespace"": ""com.acme"",
           ""protocol"": ""HelloWorld"",
@@ -42,28 +39,107 @@ namespace Avro.Ipc.Test.Tcp
               ""errors"": [""Curse""]
             }
           }
-        }";
-
-        private const string HELLO_MESSAGE_PARAMETERS = @"
-        {
-            ""name"":""com.acme"".""messages"".""hello"".""request""
-            ""type"":""record"",
-            ""fields"":[{""name"": ""greeting"", ""type"": ""Greeting"" }]
-        }";
+        }");
 
         [TestCase]
-        public void TestHelloWorld()
+        public void TestHelloWorldLocal()
         {
-            var cancellationTokenSource = new CancellationTokenSource();
-            var protocol = AvroReader.ReadProtocol(HELLO_PROTOCOL_STRING);
+            using (var cancellationTokenSource = new CancellationTokenSource())
+            {
+                var tranceiver = new LocalTranceiver();
+                var serverTask = Task.Factory.StartNew(() => RunLocalServer(HELLO_PROTOCOL, tranceiver, cancellationTokenSource.Token));
+                var client = ConnectLocalClient(HELLO_PROTOCOL, tranceiver, cancellationTokenSource.Token).Result;
+                var responseRecord = RunGenericClient(client, cancellationTokenSource.Token).Result;
+                cancellationTokenSource.Cancel();
+                Task.WaitAll(serverTask);
+                serverTask.Result.Result.Close();
+                Assert.AreEqual("World!", responseRecord[0]);
+            }
+        }
 
-            var server = new SocketServer("127.0.0.1", 3456);
-            var hostTask = Task.Factory.StartNew(() => RunHost(server, protocol, cancellationTokenSource.Token));
+        [TestCase]
+        public void TestHelloWorldTcp()
+        {
+            using (var cancellationTokenSource = new CancellationTokenSource())
+            {
+                var serverTask = Task.Factory.StartNew(() => RunTcpServer(HELLO_PROTOCOL, cancellationTokenSource.Token));
+                var client = ConnectTcpClient(HELLO_PROTOCOL, cancellationTokenSource.Token).Result;
+                var responseRecord = RunGenericClient(client, cancellationTokenSource.Token).Result;
+                Task.WaitAll(serverTask);
+                serverTask.Result.Result.Close();
+                Assert.AreEqual("World!", responseRecord[0]);
+            }
+        }
 
-            var tranceiver = SocketClient.ConnectAsync("127.0.0.1", 3456).Result;
-            var client = new GenericClient(protocol, tranceiver);
+        [TestCase]
+        public void TestHelloWorldHttp()
+        {
+            using (var cancellationTokenSource = new CancellationTokenSource())
+            {
+                var serverTask = Task.Factory.StartNew(() => RunHttpServer(HELLO_PROTOCOL, cancellationTokenSource.Token));
+                var client = ConnectHttpClient(HELLO_PROTOCOL, cancellationTokenSource.Token).Result;
+                var responseRecord = RunGenericClient(client, cancellationTokenSource.Token).Result;
+                Task.WaitAll(serverTask);
+                serverTask.Result.Result.Close();
+                Assert.AreEqual("World!", responseRecord[0]);
+            }
+        }
 
+        private async Task<GenericClient> ConnectLocalClient(Protocol protocol, LocalTranceiver tranceiver, CancellationToken token)
+        {
+            return new GenericClient(protocol, tranceiver);
+        }
 
+        private async Task<GenericClient> ConnectTcpClient(Protocol protocol, CancellationToken token)
+        {
+            var tranceiver = await SocketClient.ConnectAsync("127.0.0.1", 3456);
+            return new GenericClient(protocol, tranceiver);
+        }
+
+        private async Task<GenericClient> ConnectHttpClient(Protocol protocol, CancellationToken token)
+        {
+            var tranceiver = await HttpClient.ConnectAsync($"http://localhost:8080/{protocol.Name}");
+            return new GenericClient(protocol, tranceiver);
+        }
+
+        private async Task<GenericServer> RunLocalServer(Protocol protocol, LocalTranceiver tranceiver, CancellationToken token)
+        {
+            var server = new GenericServer(protocol, tranceiver);
+            await RunGenericServer(server, token);
+            return server;
+        }
+
+        private async Task<GenericServer> RunTcpServer(Protocol protocol, CancellationToken token)
+        {
+            var listener = new SocketListener("127.0.0.1", 3456);
+            listener.Start();
+            var tranceiver = await listener.ListenAsync();
+            var server = new GenericServer(protocol, tranceiver);
+            await RunGenericServer(server, token);
+            listener.Stop();
+            return server;
+        }
+
+        private async Task<GenericServer> RunHttpServer(Protocol protocol, CancellationToken token)
+        {
+            var urls = protocol.Messages.Select(r => $"http://localhost:8080/{protocol.Name}/{r.Name}/");
+            var tranceiver = HttpServer.Create(urls.ToArray());
+            var server = new GenericServer(protocol, tranceiver);
+            await RunGenericServer(server, token);
+            return server;
+        }
+
+        public async Task RunGenericServer(GenericServer server, CancellationToken token)
+        {
+            var rpcContext = await server.ReceiveAsync(token);
+            var response = new GenericRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
+            response[0] = "World!";
+            rpcContext.Response = response;
+            await server.RespondAsync(rpcContext, token);
+        }
+
+        private async Task<GenericRecord> RunGenericClient(GenericClient client, CancellationToken token)
+        {
             var parameterType = client.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema;
             var parameterRecordSchema = new RecordSchema(
                 "hello",
@@ -73,30 +149,12 @@ namespace Avro.Ipc.Test.Tcp
                     new RecordSchema.Field("greeting", parameterType)
                 }
             );
-
             var parameter = new GenericRecord(parameterType);
             parameter[0] = "Hello!";
             var parameterRecord = new GenericRecord(parameterRecordSchema);
             parameterRecord[0] = parameter;
-
-            var rpcContext = client.RequestAsync("hello", parameterRecord, cancellationTokenSource.Token).Result;
-
-            var responseRecord = rpcContext.Response as GenericRecord;
-            Assert.AreEqual("World!", responseRecord[0]);
-        }
-
-        private async void RunHost(SocketServer host, Protocol protocol, CancellationToken token)
-        {
-            host.Start();
-            var tranceiver = await host.ListenAsync();
-            var server = new GenericServer(protocol, tranceiver);
-            var rpcContext = await server.ReceiveAsync(token);
-            var response = new GenericRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
-            response[0] = "World!";
-            rpcContext.Response = response;
-            await server.RespondAsync(rpcContext, token);
-            server.Close();
-            host.Stop();
+            var rpcContext = await client.RequestAsync("hello", parameterRecord, token);
+            return rpcContext.Response as GenericRecord;
         }
     }
 }

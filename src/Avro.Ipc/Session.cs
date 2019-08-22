@@ -25,6 +25,8 @@ namespace Avro.Ipc
         protected static readonly IDatumWriter<HandshakeResponse> HANDSHAKE_RESPONSE_WRITER = new SpecificWriter<HandshakeResponse>(HandshakeResponse._SCHEMA);
 
         protected readonly ITranceiver _tranceiver;
+        protected readonly bool _stateLess;
+        protected bool _handshakePending;
 
         protected Session(Protocol protocol, ITranceiver tranceiver)
         {
@@ -39,6 +41,12 @@ namespace Avro.Ipc
         public void Close()
         {
             _tranceiver.Close();
+        }
+
+        protected virtual bool DoHandshake()
+        {
+            return _stateLess || _handshakePending;
+
         }
     }
 }

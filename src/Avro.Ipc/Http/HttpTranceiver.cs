@@ -1,6 +1,5 @@
 ﻿using Avro.Ipc.IO;
 using System;
-using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,49 +8,61 @@ namespace Avro.Ipc.Http
 {
     public class HttpTranceiver : ITranceiver
     {
-        private readonly HttpListenerContext _context;
-        public HttpTranceiver(string url)
+        private readonly System.Net.HttpListener _httpListener;
+        private HttpListenerContext _context;
+        private readonly Uri _remoteUri;
+        public HttpTranceiver(Uri remoteUrl)
         {
-            RemoteEndPoint = url;
+            _remoteUri = remoteUrl;
         }
-        public HttpTranceiver(HttpListenerContext context)
+        public HttpTranceiver(System.Net.HttpListener httpListener)
         {
-            RemoteEndPoint = _context.Request.Url.ToString();
-            _context = context;
+            _httpListener = httpListener;
+            _httpListener.Start();
         }
 
         public string LocalEndPoint => IPAddress.Loopback.ToString();
 
-        public string RemoteEndPoint { get; private set; }
+        public string RemoteEndPoint => _remoteUri.AbsoluteUri;
 
-        public void Close() { }
+        public void Close()
+        {
+            _context = null;
+            _httpListener?.Close();
+        }
 
         public async Task<int> SendAsync(FrameStream frames, CancellationToken token)
         {
+            var len = (int)(frames.Length - frames.Position);
             await frames.CopyToAsync(_context.Response.OutputStream);
             _context.Response.OutputStream.Flush();
-            return (int)_context.Response.OutputStream.Length;
+            _context.Response.Close();
+            return len;
         }
 
         public async Task<FrameStream> ReceiveAsync(CancellationToken token)
         {
             var frames = new FrameStream();
+            _context = await _httpListener.GetContextAsync();
             await _context.Request.InputStream.CopyToAsync(frames);
             return frames;
         }
 
-        public async Task<FrameStream> RequestAsync(FrameStream frames, CancellationToken token)
+        public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
-            var request = WebRequest.CreateHttp(RemoteEndPoint);
+            var request = WebRequest.CreateHttp(new Uri(_remoteUri, messageName));
             request.Method = "POST";
             request.ContentType = "avro/binary";
 
             var requestStream = await request.GetRequestStreamAsync();
-            frames.Seek(0, SeekOrigin.Begin);
             await frames.CopyToAsync(requestStream);
 
             var response = await request.GetResponseAsync();
-            return null;
+
+            var result = new FrameStream();
+            using (var resonseStream = response.GetResponseStream())
+                await resonseStream.CopyToAsync(result, token);
+            return result;
         }
 
         public bool TestConnection()

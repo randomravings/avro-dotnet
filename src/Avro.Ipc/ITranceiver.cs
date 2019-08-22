@@ -11,7 +11,7 @@ namespace Avro.Ipc
         bool TestConnection();
         Task<int> SendAsync(FrameStream frames, CancellationToken token);
         Task<FrameStream> ReceiveAsync(CancellationToken token);
-        Task<FrameStream> RequestAsync(FrameStream frames, CancellationToken token);
+        Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token);
         void Close();
     }
 }

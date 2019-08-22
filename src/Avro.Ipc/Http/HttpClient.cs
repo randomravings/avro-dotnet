@@ -7,9 +7,10 @@ namespace Avro.Ipc.Http
 {
     public static class HttpClient
     {
-        public static async Task<ITranceiver> ConnectAsync(string host, int port)
+        public static async Task<ITranceiver> ConnectAsync(string url)
         {
-            return null;
+            var localUrl = url.EndsWith('/') ? url : $"{url}/";
+            return new HttpTranceiver(new Uri(localUrl));
         }
     }
 }
