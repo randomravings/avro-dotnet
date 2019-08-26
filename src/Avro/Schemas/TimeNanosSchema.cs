@@ -7,7 +7,7 @@ namespace Avro.Schemas
         public TimeNanosSchema()
             : this(new LongSchema()) { }
 
-        public TimeNanosSchema(Schema type)
+        public TimeNanosSchema(AvroSchema type)
             : base(type, "time-nanos")
         {
             if (!(type is LongSchema))

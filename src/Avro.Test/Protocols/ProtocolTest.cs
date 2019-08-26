@@ -9,7 +9,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void DocTest()
         {
-            var protocol = new Protocol()
+            var protocol = new AvroProtocol()
             {
                 Doc = "Test Doc"
             };
@@ -19,8 +19,8 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void EqualTest()
         {
-            var protocol01 = new Protocol("SomeProtocol", "Some.Namespace");
-            var protocol02 = new Protocol("Some.Namespace.SomeProtocol");
+            var protocol01 = new AvroProtocol("SomeProtocol", "Some.Namespace");
+            var protocol02 = new AvroProtocol("Some.Namespace.SomeProtocol");
 
             Assert.AreEqual(protocol01, protocol02);
         }

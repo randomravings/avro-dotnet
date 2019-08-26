@@ -1,3 +1,4 @@
+using Avro.Types;
 using Avro.Utils;
 using System;
 using System.Collections.Generic;
@@ -118,7 +119,7 @@ namespace Avro.IO
             return BitConverter.Int64BitsToDouble(bits);
         }
 
-        public ValueTuple<uint, uint, uint> ReadDuration()
+        public AvroDuration ReadDuration()
         {
             var mm =
                 (uint)(_stream.ReadByte() & 0xFF) << 24 |
@@ -141,7 +142,7 @@ namespace Avro.IO
                 (uint)(_stream.ReadByte() & 0xFF)
             ;
 
-            return new ValueTuple<uint, uint, uint>(mm, dd, ms);
+            return new AvroDuration(mm, dd, ms);
         }
 
         public byte[] ReadFixed(int len)
@@ -241,9 +242,9 @@ namespace Avro.IO
             return true;
         }
 
-        public object ReadNull()
+        public AvroNull ReadNull()
         {
-            return null;
+            return new AvroNull();
         }
 
         public T ReadNullableObject<T>(Func<IDecoder, T> reader, long nullIndex) where T : class

@@ -1,6 +1,7 @@
 using Avro.Generic;
 using Avro.IO;
 using Avro.Schemas;
+using Avro.Types;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -23,25 +24,25 @@ namespace Avro.Test.Generic
         [SetUp]
         public void SetUp()
         {
-            _enumSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}") as EnumSchema;
-            _fixedSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}") as FixedSchema;
-            _subRecordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}") as RecordSchema;
-            _recordSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""int""},{""name"":""FieldB"",""type"":""string""},{""name"":""FieldC"",""type"":{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}},{""name"":""FieldX"",""type"":{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}},{""name"":""TestFixed"",""type"":{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}}]}") as RecordSchema;
+            _enumSchema = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}") as EnumSchema;
+            _fixedSchema = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}") as FixedSchema;
+            _subRecordSchema = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}") as RecordSchema;
+            _recordSchema = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecord"",""type"":""record"",""fields"":[{""name"":""FieldA"",""type"":""int""},{""name"":""FieldB"",""type"":""string""},{""name"":""FieldC"",""type"":{""name"":""Avro.Test.Generic.TestSubRecord"",""type"":""record"",""fields"":[{""name"":""FieldD"",""type"":""boolean""}]}},{""name"":""FieldX"",""type"":{""name"":""Avro.Test.Generic.TestEnum"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}},{""name"":""TestFixed"",""type"":{""name"":""Avro.Test.Generic.TestFixed"",""type"":""fixed"",""size"":40}}]}") as RecordSchema;
 
-            _testRecordWithDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int"",""default"":-1},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
-            _testRecordWithoutDefault = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int""},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
-            _testRecordWithExtraField = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""Name"",""type"":""string""},{""name"":""Desc"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithDefault = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int"",""default"":-1},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithoutDefault = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""ID"",""type"":""int""},{""name"":""Name"",""type"":""string""}]}") as RecordSchema;
+            _testRecordWithExtraField = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestRecordWithDefault"",""type"":""record"",""fields"":[{""name"":""Name"",""type"":""string""},{""name"":""Desc"",""type"":""string""}]}") as RecordSchema;
 
-            _errorSchema = AvroReader.ReadSchema(@"{""name"":""Avro.Test.Generic.TestError"",""type"":""error"",""fields"":[{""name"":""ErrorDetails"",""type"":""string""}]}") as ErrorSchema;
+            _errorSchema = AvroParser.ReadSchema(@"{""name"":""Avro.Test.Generic.TestError"",""type"":""error"",""fields"":[{""name"":""ErrorDetails"",""type"":""string""}]}") as ErrorSchema;
         }
 
         [TestCase]
         public void EnumTest()
         {
-            var writer = new GenericWriter<GenericEnum>(_enumSchema);
-            var reader = new GenericReader<GenericEnum>(_enumSchema, _enumSchema);
+            var writer = new GenericWriter<GenericAvroEnum>(_enumSchema);
+            var reader = new GenericReader<GenericAvroEnum>(_enumSchema, _enumSchema);
 
-            var expectedValue = new GenericEnum(_enumSchema, "B");
+            var expectedValue = new GenericAvroEnum(_enumSchema, "B");
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
             using (var decoder = new BinaryDecoder(stream))
@@ -62,10 +63,10 @@ namespace Avro.Test.Generic
         [TestCase]
         public void RecordTest()
         {
-            var recordInstance = new GenericRecord(_recordSchema);
-            var subRecordInstance = new GenericRecord(_subRecordSchema);
-            var fixedInstance = new GenericFixed(_fixedSchema);
-            var enumInstance = new GenericEnum(_enumSchema, "B");
+            var recordInstance = new GenericAvroRecord(_recordSchema);
+            var subRecordInstance = new GenericAvroRecord(_subRecordSchema);
+            var fixedInstance = new GenericAvroFixed(_fixedSchema);
+            var enumInstance = new GenericAvroEnum(_enumSchema, "B");
 
             subRecordInstance["FieldD"] = false;
 
@@ -75,8 +76,8 @@ namespace Avro.Test.Generic
             recordInstance["FieldX"] = enumInstance;
             recordInstance["TestFixed"] = fixedInstance;
 
-            var writer = new GenericWriter<GenericRecord>(_recordSchema);
-            var reader = new GenericReader<GenericRecord>(_recordSchema, _recordSchema);
+            var writer = new GenericWriter<GenericAvroRecord>(_recordSchema);
+            var reader = new GenericReader<GenericAvroRecord>(_recordSchema, _recordSchema);
 
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
@@ -99,15 +100,15 @@ namespace Avro.Test.Generic
         [TestCase]
         public void RecordTestWithOverlap()
         {
-            var expectedValue = new GenericRecord(_testRecordWithDefault);
+            var expectedValue = new GenericAvroRecord(_testRecordWithDefault);
             expectedValue["Name"] = "Test";
 
-            var writeValue = new GenericRecord(_testRecordWithExtraField);
+            var writeValue = new GenericAvroRecord(_testRecordWithExtraField);
             writeValue["Name"] = "Test";
             writeValue["Desc"] = "Description";
 
-            var writer = new GenericWriter<GenericRecord>(writeValue.Schema);
-            var reader = new GenericReader<GenericRecord>(expectedValue.Schema, writeValue.Schema);
+            var writer = new GenericWriter<GenericAvroRecord>(writeValue.Schema);
+            var reader = new GenericReader<GenericAvroRecord>(expectedValue.Schema, writeValue.Schema);
 
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
@@ -130,29 +131,29 @@ namespace Avro.Test.Generic
         [TestCase]
         public void RecordTestWithoutOverlap()
         {
-            var expectedValue = new GenericRecord(_testRecordWithoutDefault);
+            var expectedValue = new GenericAvroRecord(_testRecordWithoutDefault);
             expectedValue["ID"] = 123;
             expectedValue["Name"] = "Test";
 
-            var writeValue = new GenericRecord(_testRecordWithExtraField);
+            var writeValue = new GenericAvroRecord(_testRecordWithExtraField);
             writeValue["Name"] = "Test";
             writeValue["Desc"] = "Description";
 
-            var writer = new GenericWriter<GenericRecord>(writeValue.Schema);
-            Assert.Throws<AvroException>(() => new GenericReader<GenericRecord>(expectedValue.Schema, writeValue.Schema));
+            var writer = new GenericWriter<GenericAvroRecord>(writeValue.Schema);
+            Assert.Throws<AvroException>(() => new GenericReader<GenericAvroRecord>(expectedValue.Schema, writeValue.Schema));
         }
 
         [TestCase]
         public void FixedTest()
         {
-            var expectedValue = new GenericFixed(_fixedSchema);
-            expectedValue.Value[1] = 1;
+            var expectedValue = new GenericAvroFixed(_fixedSchema);
+            expectedValue[1] = 1;
 
             for (int i = 2; i < expectedValue.Size; i++)
-                expectedValue.Value[i] = (byte)((expectedValue.Value[i - 2] + expectedValue.Value[i - 1]) % byte.MaxValue);
+                expectedValue[i] = (byte)((expectedValue[i - 2] + expectedValue[i - 1]) % byte.MaxValue);
 
-            var writer = new GenericWriter<GenericFixed>(expectedValue.Schema);
-            var reader = new GenericReader<GenericFixed>(expectedValue.Schema, expectedValue.Schema);
+            var writer = new GenericWriter<GenericAvroFixed>(expectedValue.Schema);
+            var reader = new GenericReader<GenericAvroFixed>(expectedValue.Schema, expectedValue.Schema);
 
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
@@ -162,7 +163,7 @@ namespace Avro.Test.Generic
                 writer.Write(encoder, expectedValue);
                 stream.Seek(0, SeekOrigin.Begin);
                 var actualValue = reader.Read(decoder);
-                Assert.AreEqual(expectedValue.Value, actualValue.Value);
+                Assert.AreEqual(expectedValue, actualValue);
 
                 var expectedPosition = stream.Position;
                 stream.Seek(0, SeekOrigin.Begin);
@@ -174,13 +175,11 @@ namespace Avro.Test.Generic
         [TestCase]
         public void ErrorTest()
         {
-            var expectedRecordValue = new GenericRecord(_errorSchema);
-            expectedRecordValue[0] = "Some Detail Text";
+            var expectedValue = new GenericAvroError(new AvroException(_errorSchema.FullName), _errorSchema);
+            expectedValue[0] = "Some Detail Text";
 
-            var expectedValue = new GenericError(expectedRecordValue);
-
-            var writer = new GenericWriter<GenericError>(expectedValue.Schema);
-            var reader = new GenericReader<GenericError>(expectedValue.Schema, expectedValue.Schema);
+            var writer = new GenericWriter<GenericAvroError>(expectedValue.Schema);
+            var reader = new GenericReader<GenericAvroError>(expectedValue.Schema, expectedValue.Schema);
 
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))

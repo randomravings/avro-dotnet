@@ -28,15 +28,15 @@ namespace Avro.Ipc
         protected readonly bool _stateLess;
         protected bool _handshakePending;
 
-        protected Session(Protocol protocol, ITranceiver tranceiver)
+        protected Session(AvroProtocol protocol, ITranceiver tranceiver)
         {
             Protocol = protocol;
             _tranceiver = tranceiver;
         }
 
-        public Protocol Protocol { get; private set; }
+        public AvroProtocol Protocol { get; private set; }
 
-        public Protocol RemoteProtocol { get; protected set; }
+        public AvroProtocol RemoteProtocol { get; protected set; }
 
         public void Close()
         {

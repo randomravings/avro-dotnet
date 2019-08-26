@@ -5,7 +5,7 @@ namespace Avro.Schemas
         public DurationSchema()
             : this(new FixedSchema("duration", null, 12)) { }
 
-        public DurationSchema(Schema type)
+        public DurationSchema(AvroSchema type)
             : base(type, "duration")
         {
             if (!(type is FixedSchema) || (type as FixedSchema).Size != 12)

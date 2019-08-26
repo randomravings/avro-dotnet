@@ -7,13 +7,13 @@ namespace Avro.Schemas
         public DecimalSchema()
             : this(new BytesSchema(), 15, 2) { }
 
-        public DecimalSchema(Schema underlyingType)
+        public DecimalSchema(AvroSchema underlyingType)
             : this(underlyingType, 15, 2) { }
 
         public DecimalSchema(int precision, int scale)
             : this(new BytesSchema(), precision, scale) { }
 
-        public DecimalSchema(Schema underlyingType, int precision, int scale)
+        public DecimalSchema(AvroSchema underlyingType, int precision, int scale)
             : base(underlyingType, "decimal")
         {
             if (!(underlyingType is BytesSchema || underlyingType is FixedSchema))
@@ -34,7 +34,7 @@ namespace Avro.Schemas
             return  $"{base.ToString()}({Precision},{Scale})";
         }
 
-        public override bool Equals(Schema obj)
+        public override bool Equals(AvroSchema obj)
         {
             return base.Equals(obj) &&
                 (obj is DecimalSchema) &&

@@ -2,8 +2,8 @@
 using Avro.IO;
 using Avro.Ipc.Utils;
 using Avro.Schemas;
+using Avro.Types;
 using org.apache.avro.ipc;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -15,14 +15,14 @@ namespace Avro.Ipc.Generic
         private static readonly HashCompare COMPARE = new HashCompare();
         private static readonly IDictionary<MD5, IDictionary<MD5, GenericProtocolPair>> PROTOCOL_PARIS = new Dictionary<MD5, IDictionary<MD5, GenericProtocolPair>>(COMPARE);
 
-        private readonly IDictionary<string, IDatumReader<GenericRecord>> _requestReaders = new Dictionary<string, IDatumReader<GenericRecord>>();
-        private readonly IDictionary<string, IDatumWriter<GenericRecord>> _requestWriters = new Dictionary<string, IDatumWriter<GenericRecord>>();
+        private readonly IDictionary<string, IDatumReader<GenericAvroRecord>> _requestReaders = new Dictionary<string, IDatumReader<GenericAvroRecord>>();
+        private readonly IDictionary<string, IDatumWriter<GenericAvroRecord>> _requestWriters = new Dictionary<string, IDatumWriter<GenericAvroRecord>>();
         private readonly IDictionary<string, IDatumReader<object>> _responseReaders = new Dictionary<string, IDatumReader<object>>();
         private readonly IDictionary<string, IDatumWriter<object>> _responseWriters = new Dictionary<string, IDatumWriter<object>>();
         private readonly IDictionary<string, IDatumReader<object>> _errorReaders = new Dictionary<string, IDatumReader<object>>();
         private readonly IDictionary<string, IDatumWriter<object>> _errorWrtiers = new Dictionary<string, IDatumWriter<object>>();
 
-        public static GenericProtocolPair Get(Protocol protocol, Protocol remoteProtocol)
+        public static GenericProtocolPair Get(AvroProtocol protocol, AvroProtocol remoteProtocol)
         {
             lock (GUARD)
             {
@@ -53,7 +53,7 @@ namespace Avro.Ipc.Generic
             return genericProtocolPairs.ContainsKey(remoteHash);
         }
 
-        private GenericProtocolPair(Protocol protocol, Protocol remoteProtocol)
+        private GenericProtocolPair(AvroProtocol protocol, AvroProtocol remoteProtocol)
         {
             var messagePairs =
                 from lm in protocol.Messages
@@ -82,8 +82,8 @@ namespace Avro.Ipc.Generic
                 var localRequest = new RecordSchema($"{protocol.FullName}.messages.{messagePair.MessageName}", localRequestParameters);
                 var remoteRequest = new RecordSchema($"{remoteProtocol.FullName}.messages.{messagePair.MessageName}", remoteRequestParameters);
 
-                var requestReader = new GenericReader<GenericRecord>(localRequest, remoteRequest);
-                var requestWriter = new GenericWriter<GenericRecord>(localRequest);
+                var requestReader = new GenericReader<GenericAvroRecord>(localRequest, remoteRequest);
+                var requestWriter = new GenericWriter<GenericAvroRecord>(localRequest);
 
                 _requestReaders.Add(messagePair.MessageName, requestReader);
                 _requestWriters.Add(messagePair.MessageName, requestWriter);
@@ -102,12 +102,12 @@ namespace Avro.Ipc.Generic
             }
         }
 
-        internal GenericRecord ReadRequest(BinaryDecoder decoder, string message)
+        internal GenericAvroRecord ReadRequest(BinaryDecoder decoder, string message)
         {
             return _requestReaders[message].Read(decoder);
         }
 
-        internal void WriteRequest(BinaryEncoder encoder, string message, GenericRecord record)
+        internal void WriteRequest(BinaryEncoder encoder, string message, GenericAvroRecord record)
         {
             _requestWriters[message].Write(encoder, record);
         }

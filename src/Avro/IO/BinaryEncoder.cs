@@ -1,3 +1,4 @@
+using Avro.Types;
 using Avro.Utils;
 using System;
 using System.Collections.Generic;
@@ -160,22 +161,22 @@ namespace Avro.IO
             WriteLong(nanosecond);
         }
 
-        public void WriteDuration(ValueTuple<uint, uint, uint> value)
+        public void WriteDuration(AvroDuration value)
         {
-            _stream.WriteByte((byte)((value.Item1 >> 24) & 0xFF));
-            _stream.WriteByte((byte)((value.Item1 >> 16) & 0xFF));
-            _stream.WriteByte((byte)((value.Item1 >> 8) & 0xFF));
-            _stream.WriteByte((byte)((value.Item1) & 0xFF));
+            _stream.WriteByte((byte)((value.Months >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.Months >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.Months >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.Months) & 0xFF));
 
-            _stream.WriteByte((byte)((value.Item2 >> 24) & 0xFF));
-            _stream.WriteByte((byte)((value.Item2 >> 16) & 0xFF));
-            _stream.WriteByte((byte)((value.Item2 >> 8) & 0xFF));
-            _stream.WriteByte((byte)((value.Item2) & 0xFF));
+            _stream.WriteByte((byte)((value.Days >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.Days >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.Days >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.Days) & 0xFF));
 
-            _stream.WriteByte((byte)((value.Item3 >> 24) & 0xFF));
-            _stream.WriteByte((byte)((value.Item3 >> 16) & 0xFF));
-            _stream.WriteByte((byte)((value.Item3 >> 8) & 0xFF));
-            _stream.WriteByte((byte)((value.Item3) & 0xFF));
+            _stream.WriteByte((byte)((value.MilliSeconds >> 24) & 0xFF));
+            _stream.WriteByte((byte)((value.MilliSeconds >> 16) & 0xFF));
+            _stream.WriteByte((byte)((value.MilliSeconds >> 8) & 0xFF));
+            _stream.WriteByte((byte)((value.MilliSeconds) & 0xFF));
         }
 
         public void WriteUuid(Guid value)
@@ -198,7 +199,10 @@ namespace Avro.IO
         public void WriteArrayBlock<T>(IList<T> items, Action<IEncoder, T> itemsWriter)
         {
             if (items.Count == 0)
+            {
+                WriteLong(0);
                 return;
+            }
 
             var localEncoder = new BinaryEncoder();
             localEncoder.WriteLong(items.Count);
@@ -207,11 +211,6 @@ namespace Avro.IO
             WriteLong(-1 * localEncoder._stream.Length);
             localEncoder._stream.Seek(0, SeekOrigin.Begin);
             localEncoder._stream.CopyTo(_stream);
-        }
-
-        public void WriteArrayEnd()
-        {
-            WriteLong(0);
         }
 
         public void WriteMap<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
@@ -231,7 +230,10 @@ namespace Avro.IO
         public void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
         {
             if (keyValues.Count == 0)
+            {
+                WriteLong(0);
                 return;
+            }
 
             var localEncoder = new BinaryEncoder();
             localEncoder.WriteLong(keyValues.Count);
@@ -243,11 +245,6 @@ namespace Avro.IO
             WriteLong(-1 * localEncoder._stream.Length);
             localEncoder._stream.Seek(0, SeekOrigin.Begin);
             localEncoder._stream.CopyTo(_stream);
-        }
-
-        public void WriteMapEnd()
-        {
-            WriteLong(0);
         }
 
         public void WriteNull() { }

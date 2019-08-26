@@ -8,20 +8,20 @@ using System.Text;
 
 namespace Avro
 {
-    public class Protocol : AvroObject, IEquatable<Protocol>
+    public class AvroProtocol : AvroObject, IEquatable<AvroProtocol>
     {
         private string _name;
         private string _nameSpace;
         private readonly List<NamedSchema> _types;
         private readonly List<Message> _messages;
 
-        public Protocol()
+        public AvroProtocol()
             : this(null, null) { }
 
-        public Protocol(string name)
+        public AvroProtocol(string name)
             : this(name, null) { }
 
-        public Protocol(string name, string ns)
+        public AvroProtocol(string name, string ns)
             : base()
         {
             var items = name?.Split('.') ?? new string[0];
@@ -66,13 +66,13 @@ namespace Avro
             _messages.Add(message);
         }
 
-        public bool Equals(Protocol other)
+        public bool Equals(AvroProtocol other)
         {
             return other.FullName == FullName;
         }
 
         public override string ToString() => FullName;
 
-        public static Protocol Parse(string text) => AvroReader.ReadProtocol(text);
+        public static AvroProtocol Parse(string text) => AvroParser.ReadProtocol(text);
     }
 }

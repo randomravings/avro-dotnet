@@ -2,15 +2,15 @@ using System.Collections.Generic;
 
 namespace Avro.Schemas
 {
-    public class LogicalSchema : Schema
+    public class LogicalSchema : AvroSchema
     {
-        public LogicalSchema(Schema type, string logicalType)
+        public LogicalSchema(AvroSchema type, string logicalType)
         {
             Type = type;
             LogicalType = logicalType;
         }
 
-        public Schema Type { get; set; }
+        public AvroSchema Type { get; set; }
         public string LogicalType { get; protected set; }
         public override string ToString() => LogicalType;
     }

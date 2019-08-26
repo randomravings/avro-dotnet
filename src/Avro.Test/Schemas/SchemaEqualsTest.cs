@@ -8,7 +8,7 @@ namespace Avro.Test.Schemas
     class SchemaEqualsTest
     {
         [Test, TestCaseSource(typeof(EqualitySchemas))]
-        public void SchemaEquality(Schema schemaA, Schema schemaB)
+        public void SchemaEquality(AvroSchema schemaA, AvroSchema schemaB)
         {
             Assert.AreEqual(schemaA, schemaA);
             Assert.AreNotEqual(schemaA, schemaB);

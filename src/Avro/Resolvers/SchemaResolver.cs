@@ -1,26 +1,16 @@
 using Avro.Schemas;
+using Avro.Types;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Avro.Specific
+namespace Avro.Resolvers
 {
-    public static partial class SpecificResolver
+    public static partial class SchemaResolver
     {
-        private static Expression GetValueExpression(ParameterExpression valueParameter, Stack<PropertyInfo> propertyChain)
-        {
-            var valueExpression = valueParameter as Expression;
-            foreach (var property in propertyChain.Reverse())
-                valueExpression =
-                    Expression.MakeMemberAccess(
-                        valueExpression,
-                        property
-                    );
-            return valueExpression;
-        }
-
         private static Expression CastOrExpression(Expression expression, Type type)
         {
             if (type == null)
@@ -32,7 +22,7 @@ namespace Avro.Specific
                 );
         }
 
-        public static Type GetTypeFromSchema(Schema schema, Assembly assembly)
+        public static Type GetTypeFromSchema(AvroSchema schema, Assembly assembly = null)
         {
             switch (schema)
             {
@@ -73,15 +63,24 @@ namespace Avro.Specific
                 case TimeNanosSchema r:
                     return typeof(TimeSpan);
                 case DurationSchema r:
-                    return typeof(ValueTuple<uint, uint, uint>);
+                    return typeof(AvroDuration);
                 case UuidSchema r:
                     return typeof(Guid);
                 case EnumSchema r:
-                    return assembly.GetType(r.FullName);
+                    if (assembly == null)
+                        return typeof(GenericAvroEnum);
+                    else
+                        return assembly.GetType(r.FullName);
                 case FixedSchema r:
-                    return assembly.GetType(r.FullName);
+                    if (assembly == null)
+                        return typeof(GenericAvroFixed);
+                    else
+                        return assembly.GetType(r.FullName);
                 case RecordSchema r:
-                    return assembly.GetType(r.FullName);
+                    if (assembly == null)
+                        return typeof(GenericAvroRecord);
+                    else
+                        return assembly.GetType(r.FullName);
                 case UnionSchema r:
                     if (r.Count == 2 && r.Any(n => n.GetType().Equals(typeof(NullSchema))))
                     {
@@ -115,7 +114,7 @@ namespace Avro.Specific
             }
         }
 
-        private static int FindMatch(Schema schema, Schema[] schemas, out Schema matchingSchema)
+        private static int FindMatch(AvroSchema schema, AvroSchema[] schemas, out AvroSchema matchingSchema)
         {
             switch (schema)
             {

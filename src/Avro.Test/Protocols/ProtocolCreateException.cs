@@ -11,7 +11,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void DuplicateType()
         {
-            var protocol = new Protocol();
+            var protocol = new AvroProtocol();
             var record = new RecordSchema("Name");
 
             Assert.DoesNotThrow(
@@ -28,7 +28,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void MissingMessageType()
         {
-            var protocol = new Protocol();
+            var protocol = new AvroProtocol();
             var record = new RecordSchema("Name");
             var message = new Message("M");
 
@@ -43,7 +43,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void DuplicateMessage()
         {
-            var protocol = new Protocol();
+            var protocol = new AvroProtocol();
             var record = new RecordSchema("Name");
             var message = new Message("M");
 

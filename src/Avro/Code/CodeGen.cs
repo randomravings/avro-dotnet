@@ -57,13 +57,13 @@ namespace Avro.Code
 
         #region Public members
 
-        public void AddSchemas(IEnumerable<Schema> schemas, string parentNamespace = null)
+        public void AddSchemas(IEnumerable<AvroSchema> schemas, string parentNamespace = null)
         {
             foreach (var schema in schemas)
                 AddSchema(schema, parentNamespace);
         }
 
-        public void AddSchema(Schema schema, string parentNamespace = null)
+        public void AddSchema(AvroSchema schema, string parentNamespace = null)
         {
             if (schema is UnionSchema)
                 AddSchemas(schema as UnionSchema, parentNamespace);
@@ -86,7 +86,7 @@ namespace Avro.Code
             }
         }
 
-        public void AddProtocol(Protocol protocol)
+        public void AddProtocol(AvroProtocol protocol)
         {
             var memberDeclarationSyntax = CreateCode(protocol);
             _code.Add(protocol.FullName, memberDeclarationSyntax);
@@ -125,7 +125,7 @@ namespace Avro.Code
             }
         }
 
-        private static MemberDeclarationSyntax CreateCode(Protocol protocol)
+        private static MemberDeclarationSyntax CreateCode(AvroProtocol protocol)
         {
             var avro = protocol.ToAvroCanonical();
             var classDeclaration =
@@ -239,14 +239,6 @@ namespace Avro.Code
                     setSwitchSectionSyntaxes,
                     getSwitchSectionSyntaxes.Count() - 1
                 )
-            );
-
-            memberDeclarationSyntaxes.Add(
-                CreateRecorClassGetMethod()
-            );
-
-            memberDeclarationSyntaxes.Add(
-                CreateRecordClassSetMethod()
             );
 
             classDeclaration =

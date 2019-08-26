@@ -63,7 +63,7 @@ namespace Avro.Test.Protocols
         )]
         public void ProtocolParseBasic(string avroString, string expectedToString)
         {
-            var protocol = Protocol.Parse(avroString);
+            var protocol = AvroProtocol.Parse(avroString);
             Assert.AreEqual(expectedToString, protocol.ToString());
         }
     }

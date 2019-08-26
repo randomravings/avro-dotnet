@@ -1,4 +1,5 @@
 using Avro.IO;
+using Avro.Types;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -11,19 +12,20 @@ namespace Avro.Test.IO
     [TestFixture]
     public class BinaryDecoderTest
     {
-        [TestCase(null, 0, new byte[] { })]
-        public void DecodeNull(object expectedValue, int expectedLength, byte[] value)
+        [TestCase()]
+        public void DecodeNull()
         {
-            using (var stream = new MemoryStream(value))
+            var expectedValue = AvroNull.Value;
+            using (var stream = new MemoryStream(new byte[] { }))
             using (var decoder = new BinaryDecoder(stream))
             {
                 var decode = decoder.ReadNull();
-                Assert.AreEqual(expectedLength, stream.Position, "Decode offset error");
+                Assert.AreEqual(0, stream.Position, "Decode offset error");
                 Assert.AreEqual(expectedValue, decode);
 
                 stream.Seek(0, SeekOrigin.Begin);
                 decoder.SkipNull();
-                Assert.AreEqual(expectedLength, stream.Position, "Skip offset error");
+                Assert.AreEqual(0, stream.Position, "Skip offset error");
             }
         }
 
@@ -533,7 +535,7 @@ namespace Avro.Test.IO
         [TestCase(new uint[] { 4U, 7U, 34563456U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x02, 0x0F, 0x65, 0x80 })]
         public void DecodeDuration(uint[] expectedValue, int expectedLength, byte[] value)
         {
-            var duration = new ValueTuple<uint, uint, uint>(expectedValue[0], expectedValue[1], expectedValue[2]);
+            var duration = new AvroDuration(expectedValue[0], expectedValue[1], expectedValue[2]);
             using (var stream = new MemoryStream(value))
             using (var decoder = new BinaryDecoder(stream))
             {

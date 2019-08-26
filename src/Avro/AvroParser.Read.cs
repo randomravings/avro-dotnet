@@ -7,35 +7,9 @@ using System.Linq;
 
 namespace Avro
 {
-    public static class AvroReader
+    public static partial class AvroParser
     {
-        public static Protocol ReadProtocol(string text) => ReadProtocol(text, out _);
-
-        public static Protocol ReadProtocol(string text, out IEnumerable<Schema> namedSchemas)
-        {
-            var namedTypes = new Dictionary<string, NamedSchema>();
-            var jString = JSonEncodeString(text);
-
-            var json = JToken.Parse(jString);
-            var protocol = ParseProtocol(json, namedTypes, new Stack<string>(new string[] { null }));
-            namedSchemas = namedTypes.Values;
-            return protocol;
-        }
-
-        public static Schema ReadSchema(string text) => ReadSchema(text, out _);
-
-        public static Schema ReadSchema(string text, out IEnumerable<Schema> namedSchemas)
-        {
-            var namedTypes = new Dictionary<string, NamedSchema>();
-            var jString = JSonEncodeString(text);
-
-            var json = JToken.Parse(jString);
-            var schema = ParseSchema(json, namedTypes, new Stack<string>(new string[] { null }));
-            namedSchemas = namedTypes.Values;
-            return schema;
-        }
-
-        private static Schema ParseSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             switch (jToken.Type)
             {
@@ -50,7 +24,7 @@ namespace Avro
             }
         }
 
-        private static Schema ParseUnionSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseUnionSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var jArray = jToken as JArray;
             var unionSchema = new UnionSchema();
@@ -62,7 +36,7 @@ namespace Avro
             return unionSchema;
         }
 
-        private static Schema ParseComplexSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseComplexSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var type = JsonUtil.GetValue<JToken>(jToken, "type");
 
@@ -90,7 +64,7 @@ namespace Avro
             }
         }
 
-        private static Schema ParseLogicalSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseLogicalSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var logicalType = JsonUtil.GetValue<string>(jToken, "logicalType");
             var type = JsonUtil.GetValue<JToken>(jToken, "type");
@@ -120,7 +94,7 @@ namespace Avro
             }
         }
 
-        private static Schema ParseArraySchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseArraySchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "items" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -133,7 +107,7 @@ namespace Avro
             return arraySchema;
         }
 
-        private static Schema ParseMapSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseMapSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "values" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -146,7 +120,7 @@ namespace Avro
             return mapSchema;
         }
 
-        private static Schema ParseFixedSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseFixedSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "size", "name" };
             var optionalKeys = new HashSet<string>() { "namespace" };
@@ -164,7 +138,7 @@ namespace Avro
             return fixedSchema;
         }
 
-        private static Schema ParseDecimalSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseDecimalSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type", "precision", "scale" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -179,7 +153,7 @@ namespace Avro
             return decimalSchema;
         }
 
-        private static Schema ParseUuidSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseUuidSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -192,7 +166,7 @@ namespace Avro
             return uuidSchema;
         }
 
-        private static Schema ParseTimeMillisSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimeMillisSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -205,7 +179,7 @@ namespace Avro
             return timeMillisSchema;
         }
 
-        private static Schema ParseTimeMicrosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimeMicrosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -218,7 +192,7 @@ namespace Avro
             return timeMicrosSchema;
         }
 
-        private static Schema ParseTimeNanosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimeNanosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -231,7 +205,7 @@ namespace Avro
             return timeNanosSchema;
         }
 
-        private static Schema ParseTimestampMillisSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimestampMillisSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -244,7 +218,7 @@ namespace Avro
             return timestampMillisSchema;
         }
 
-        private static Schema ParseTimestampMicrosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimestampMicrosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -257,7 +231,7 @@ namespace Avro
             return timestampMicrosSchema;
         }
 
-        private static Schema ParseTimestampNanosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseTimestampNanosSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -270,7 +244,7 @@ namespace Avro
             return timestampNanosSchema;
         }
 
-        private static Schema ParseDurationSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseDurationSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "logicalType", "type" };
             JsonUtil.AssertKeys(jToken, keys, null, out var tags);
@@ -283,7 +257,7 @@ namespace Avro
             return durationSchema;
         }
 
-        private static Schema ParseEnumType(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseEnumType(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "name", "symbols" };
             var optionalKeys = new HashSet<string>() { "namespace", "aliases", "doc" };
@@ -312,7 +286,7 @@ namespace Avro
             return enumSchema;
         }
 
-        private static Schema ParseRecordSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParseRecordSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "name", "fields" };
             var optionalKeys = new HashSet<string>() { "namespace", "aliases", "doc" };
@@ -385,7 +359,7 @@ namespace Avro
             return fields;
         }
 
-        private static Schema ParsePrimitiveSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroSchema ParsePrimitiveSchema(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var type = string.Empty;
 
@@ -419,7 +393,7 @@ namespace Avro
             }
         }
 
-        private static Protocol ParseProtocol(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static AvroProtocol ParseProtocol(JToken jToken, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             switch (jToken.Type)
             {
@@ -429,7 +403,7 @@ namespace Avro
                     JsonUtil.AssertKeys(jToken, keys, optionalKeys, out _);
 
                     var name = JsonUtil.GetValue<string>(jToken, "protocol");
-                    var protocol = new Protocol(name);
+                    var protocol = new AvroProtocol(name);
 
                     if (JsonUtil.TryGetValue<string>(jToken, "namespace", out var ns))
                         protocol.Namespace = ns;
@@ -534,23 +508,6 @@ namespace Avro
                 requests.Add(new ParameterSchema(name, request.FullName));
             }
             return requests;
-        }
-
-        private static string JSonEncodeString(string jString)
-        {
-            var trimmed = jString?.Trim() ?? string.Empty;
-            if (trimmed.StartsWith('[') || trimmed.StartsWith('{') || trimmed.StartsWith('"') || double.TryParse(jString, out _))
-                return trimmed;
-            return $"\"{trimmed}\"";
-        }
-
-        private static string QualifyName(string name, Stack<string> enclosingNamespace)
-        {
-            if (name.Contains('.'))
-                return name;
-            if (!string.IsNullOrEmpty(enclosingNamespace.Peek()))
-                return $"{enclosingNamespace.Peek()}.{name}";
-            return name;
         }
     }
 }

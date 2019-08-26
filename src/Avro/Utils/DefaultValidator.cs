@@ -8,7 +8,7 @@ namespace Avro.Utils
 {
     public static class DefaultValidator
     {
-        public static void ValidateString(Schema schema, string value)
+        public static void ValidateString(AvroSchema schema, string value)
         {
             var jToken = default(JToken);
             if (value != null)
@@ -16,7 +16,7 @@ namespace Avro.Utils
             ValidateJson(schema, jToken);
         }
 
-        public static void ValidateJson(Schema schema, JToken jToken)
+        public static void ValidateJson(AvroSchema schema, JToken jToken)
         {
             if (jToken == null)
                 return;

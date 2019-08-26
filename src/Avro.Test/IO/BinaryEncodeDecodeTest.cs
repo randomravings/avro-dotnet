@@ -1,4 +1,5 @@
 using Avro.IO;
+using Avro.Types;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -21,7 +22,7 @@ namespace Avro.Test.IO
                 encoder.WriteNull();
                 stream.Seek(0, SeekOrigin.Begin);
                 var actual = decoder.ReadNull();
-                Assert.AreEqual(null, actual);
+                Assert.AreEqual(AvroNull.Value, actual);
             }
         }
 
@@ -367,7 +368,7 @@ namespace Avro.Test.IO
             using (var encoder = new BinaryEncoder(stream))
             using (var decoder = new BinaryDecoder(stream))
             {
-                var expectedDuration = new ValueTuple<uint, uint, uint>(expected[0], expected[1], expected[2]);
+                var expectedDuration = new AvroDuration(expected[0], expected[1], expected[2]);
                 encoder.WriteDuration(expectedDuration);
                 stream.Seek(0, SeekOrigin.Begin);
                 var actual = decoder.ReadDuration();

@@ -7,22 +7,22 @@ using System.Text;
 
 namespace Avro.File
 {
-    public class DataFileInfo
+    public class AvroFileInfo
     {
         private static readonly byte[] MAGIC_BYTES = new byte[] { 0x4F, 0x62, 0x6A, 0x01 };
         private FileInfo _fileInfo;
 
-        private DataFileInfo(DataFileInfo dataFileInfo, FileInfo fileInfo)
+        private AvroFileInfo(AvroFileInfo dataFileInfo, FileInfo fileInfo)
         {
             _fileInfo = fileInfo;
             Magic = dataFileInfo.Magic.Clone() as byte[];
-            Sync =  dataFileInfo.Sync.Clone() as byte[];
-            Codec = string.Copy(dataFileInfo.Codec);
-            Schema = AvroReader.ReadSchema(dataFileInfo.Schema.ToAvro());
+            Sync = dataFileInfo.Sync.Clone() as byte[];
+            Codec = dataFileInfo.Codec;
+            Schema = AvroParser.ReadSchema(dataFileInfo.Schema.ToAvro());
             FileHeaderSize = dataFileInfo.FileHeaderSize;
             Metadata = new Dictionary<string, byte[]>();
 
-            foreach(var keyValue in dataFileInfo.Metadata)
+            foreach (var keyValue in dataFileInfo.Metadata)
             {
                 var key = string.Copy(keyValue.Key);
                 var value = keyValue.Value.Clone() as byte[];
@@ -30,9 +30,9 @@ namespace Avro.File
             }
         }
 
-        public DataFileInfo(FileInfo fileInfo)
+        public AvroFileInfo(FileInfo fileInfo)
         {
-            FileInfo = fileInfo;            
+            FileInfo = fileInfo;
         }
 
         private void UpdateFromFile()
@@ -47,14 +47,17 @@ namespace Avro.File
                 Metadata = decoder.ReadMap(s => s.ReadBytes());
 
                 if (Metadata.TryGetValue("avro.schema", out var schemaBytes))
-                    Schema = AvroReader.ReadSchema(Encoding.UTF8.GetString(schemaBytes));
+                    Schema = AvroParser.ReadSchema(Encoding.UTF8.GetString(schemaBytes));
                 else
                     throw new Exception("Schema not found");
 
                 if (Metadata.TryGetValue("avro.codec", out var codecBytes))
-                    Codec = Encoding.UTF8.GetString(codecBytes);
+                    if (Enum.TryParse<Codec>(Encoding.UTF8.GetString(codecBytes), true, out var codec))
+                        Codec = codec;
+                    else
+                        throw new Exception("Codec not found");
                 else
-                    throw new Exception("Codec not found");
+                    Codec = null;
 
                 Sync = decoder.ReadFixed(16);
 
@@ -86,24 +89,24 @@ namespace Avro.File
         }
         public byte[] Magic { get; set; }
         public byte[] Sync { get; set; }
-        public string Codec { get; set; }
-        public Schema Schema { get; set; }
+        public Codec? Codec { get; set; }
+        public AvroSchema Schema { get; set; }
         public IDictionary<string, byte[]> Metadata { get; set; }
         public long FileHeaderSize { get; set; }
 
-        public DataFileInfo CloneNew(FileInfo fileInfo)
+        public AvroFileInfo CloneNew(FileInfo fileInfo)
         {
-            return new DataFileInfo(this, fileInfo);
+            return new AvroFileInfo(this, fileInfo);
         }
 
-        public IFileReader<T> OpenRead<T>(IDatumReader<T> datumReader)
+        public IAvroFileReader<T> OpenRead<T>(IDatumReader<T> datumReader)
         {
-            return new DataFileReader<T>(this, datumReader);
+            return new AvroFileReader<T>(this, datumReader);
         }
 
-        public IFileWriter<T> OpenWrite<T>(IDatumWriter<T> datumWriter, long maxBlockCount = 1000)
+        public IAvroFileWriter<T> OpenWrite<T>(IDatumWriter<T> datumWriter, long maxBlockCount = 1000)
         {
-            return new DataFileWriter<T>(this, datumWriter, maxBlockCount);
+            return new AvroFileWriter<T>(this, datumWriter, maxBlockCount);
         }
     }
 }

@@ -7,9 +7,9 @@ namespace Avro.Generic
     {
         private readonly Func<IDecoder, object> _reader;
         private readonly Action<IDecoder> _skipper;
-        public GenericReader(Schema readerSchema)
+        public GenericReader(AvroSchema readerSchema)
             : this(readerSchema, readerSchema) { }
-        public GenericReader(Schema readerSchema, Schema writerSchema)
+        public GenericReader(AvroSchema readerSchema, AvroSchema writerSchema)
         {
             var methods = GenericResolver.ResolveReader<T>(readerSchema, writerSchema);
 
@@ -18,8 +18,8 @@ namespace Avro.Generic
             ReaderSchema = readerSchema;
             WriterSchema = writerSchema;
         }
-        public Schema ReaderSchema { get; private set; }
-        public Schema WriterSchema { get; private set; }
+        public AvroSchema ReaderSchema { get; private set; }
+        public AvroSchema WriterSchema { get; private set; }
         public T Read(IDecoder stream) => (T) _reader.Invoke(stream);
         public T Read(IDecoder stream, ref T reuse) => reuse = (T) _reader.Invoke(stream);
         public void Skip(IDecoder stream) => _skipper.Invoke(stream);

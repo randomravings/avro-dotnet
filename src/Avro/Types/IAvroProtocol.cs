@@ -1,8 +1,8 @@
-﻿namespace Avro.Specific
+﻿namespace Avro.Types
 {
-    public interface ISpecificProtocol
+    public interface IAvroProtocol
     {
-        Protocol Protocol { get; }
+        AvroProtocol Protocol { get; }
         void Request(ICallbackRequestor requestor, string messageName, object[] args, object callback);
     }
 

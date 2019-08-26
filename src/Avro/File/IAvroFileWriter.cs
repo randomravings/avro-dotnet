@@ -2,7 +2,7 @@
 
 namespace Avro.File
 {
-    public interface IFileWriter<T> : IDisposable
+    public interface IAvroFileWriter<T> : IDisposable
     {
         void Write(T item);
     }

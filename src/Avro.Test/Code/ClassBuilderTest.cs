@@ -1,6 +1,7 @@
 using Avro.Code;
 using Avro.Schemas;
 using Avro.Specific;
+using Avro.Types;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using System;
@@ -34,7 +35,7 @@ namespace Avro.Test.Code
             var type = assembly.ExportedTypes.FirstOrDefault(r => r.Name == expectedName);
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(ISpecificFixed).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroFixed).IsAssignableFrom(type));
             Assert.AreEqual(expectedNamespace, type.Namespace);
 
             var size = Convert.ToInt32(type.GetField("_SIZE").GetValue(null));
@@ -72,7 +73,7 @@ namespace Avro.Test.Code
             var type = assembly.ExportedTypes.FirstOrDefault(r => r.Name == expectedName);
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroRecord).IsAssignableFrom(type));
             Assert.AreEqual(expectedNamespace, type.Namespace);
 
             var doc = GetSummaryText(xmlDocument, type.FullName);
@@ -90,7 +91,7 @@ namespace Avro.Test.Code
             var type = assembly.ExportedTypes.FirstOrDefault(r => r.Name == expectedName);
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroRecord).IsAssignableFrom(type));
             Assert.AreEqual(expectedNamespace, type.Namespace);
 
             var doc = GetSummaryText(xmlDocument, type.FullName);
@@ -108,7 +109,7 @@ namespace Avro.Test.Code
             var type = assembly.ExportedTypes.FirstOrDefault();
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroRecord).IsAssignableFrom(type));
 
             var property = type.GetProperty(expectedName);
             Assert.NotNull(property);
@@ -128,7 +129,7 @@ namespace Avro.Test.Code
             var type = assembly.ExportedTypes.FirstOrDefault();
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(ISpecificRecord).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroRecord).IsAssignableFrom(type));
 
             var property = type.GetProperty(fieldWithDefault);
             Assert.NotNull(property);
@@ -251,13 +252,13 @@ namespace Avro.Test.Code
                     new Func<object, object, bool>(
                         (a, b) =>
                         {
-                            var rec01 = a as ISpecificRecord;
+                            var rec01 = a as IAvroRecord;
                             Assert.IsNotNull(rec01);
-                            Assert.AreEqual(123, rec01.Get(0));
-                            var rec02 = rec01.Get(1) as ISpecificRecord;
+                            Assert.AreEqual(123, rec01[0]);
+                            var rec02 = rec01[1] as IAvroRecord;
                             Assert.IsNotNull(rec02);
-                            Assert.AreEqual("ABC", rec02.Get(0));
-                            Assert.AreEqual(0.0012F, rec02.Get(1));
+                            Assert.AreEqual("ABC", rec02[0]);
+                            Assert.AreEqual(0.0012F, rec02[1]);
                             return true;
                         }
                     )

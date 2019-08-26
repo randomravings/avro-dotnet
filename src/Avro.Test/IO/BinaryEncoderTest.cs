@@ -1,4 +1,5 @@
 using Avro.IO;
+using Avro.Types;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -249,7 +250,6 @@ namespace Avro.Test.IO
             {
                 foreach (var array in value)
                     encoder.WriteArrayBlock(array, (s, e) => s.WriteInt(e));
-                encoder.WriteArrayEnd();
                 Assert.AreEqual(expectedLength, stream.Position, "Encode offset error");
                 Assert.AreEqual(expectedValue, stream.GetBuffer().AsSpan(0, expectedLength).ToArray());
             }
@@ -275,7 +275,6 @@ namespace Avro.Test.IO
             {
                 foreach (var map in value)
                     encoder.WriteMapBlock(map, (s, e) => s.WriteInt(e));
-                encoder.WriteMapEnd();
                 Assert.AreEqual(expectedLength, stream.Position, "Encode offset error");
                 Assert.AreEqual(expectedValue, stream.GetBuffer().AsSpan(0, expectedLength).ToArray());
             }
@@ -423,7 +422,7 @@ namespace Avro.Test.IO
         [TestCase(new uint[] { 4U, 7U, 34563456U }, 12, new byte[] { 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x02, 0x0F, 0x65, 0x80 })]
         public void EncodeDuration(uint[] value, int expectedLength, byte[] expectedValue)
         {
-            var duration = new ValueTuple<uint, uint, uint>(value[0], value[1], value[2]);
+            var duration = new AvroDuration(value[0], value[1], value[2]);
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
             {
@@ -516,7 +515,8 @@ namespace Avro.Test.IO
                 {
                     new List<IList<int>>() {
                         new List<int>() { 5, 4, 3, 2, 1, 0 },
-                        new List<int>() { 0, 1, 2, 3, 4, 5 }
+                        new List<int>() { 0, 1, 2, 3, 4, 5 },
+                        new List<int>()
                     },
                     17,
                     new byte[]
@@ -572,7 +572,8 @@ namespace Avro.Test.IO
                     new List<IDictionary<string, int>>()
                     {
                         new Dictionary<string, int>() { { "Key0", 4 }, { "Key1", 3 }, { "Key2", 2 }, { "Key3", 1 }, { "Key4", 0 } },
-                        new Dictionary<string, int>() { { "Key5", 0 }, { "Key6", 1 }, { "Key7", 2 }, { "Key8", 3 }, { "Key9", 4 } }
+                        new Dictionary<string, int>() { { "Key5", 0 }, { "Key6", 1 }, { "Key7", 2 }, { "Key8", 3 }, { "Key9", 4 } },
+                        new Dictionary<string, int>()
                     },
                     65,
                     new byte[]

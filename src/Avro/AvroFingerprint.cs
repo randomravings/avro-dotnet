@@ -1,14 +1,13 @@
-﻿using System.Security.Cryptography;
-using System.Text;
+﻿using System.Text;
 
 namespace Avro
 {
-    public static class Fingerprint
+    public static class AvroFingerprint
     {
         private const long EMPTY = -4513414715797952619L;
         private static long[] FP_TABLE = null;
 
-        public static long CRC64Value(Schema s)
+        public static long CRC64Value(AvroSchema s)
         {
             var bytes = Encoding.UTF8.GetBytes(s.ToAvroCanonical());
             return Fingerprint64(bytes);

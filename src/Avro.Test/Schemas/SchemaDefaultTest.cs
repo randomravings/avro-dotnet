@@ -13,13 +13,13 @@ namespace Avro.Test.Schemas
     public class SchemaDefaultTest
     {
         [Test, TestCaseSource(typeof(SchemaDefaults))]
-        public void TestDefault(Schema schema, string defaultValue)
+        public void TestDefault(AvroSchema schema, string defaultValue)
         {
             Assert.DoesNotThrow(() => DefaultValidator.ValidateString(schema, defaultValue));
         }
 
         [Test, TestCaseSource(typeof(SchemaErrorDefaults))]
-        public void TestDefaultError(Schema schema, string defaultValue)
+        public void TestDefaultError(AvroSchema schema, string defaultValue)
         {
             Assert.Throws<AvroParseException>(() => DefaultValidator.ValidateString(schema, defaultValue));
         }
@@ -129,6 +129,6 @@ namespace Avro.Test.Schemas
             }
         }
 
-        class UnknowSchema : Schema { }
+        class UnknowSchema : AvroSchema { }
     }
 }

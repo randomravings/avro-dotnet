@@ -156,7 +156,7 @@ namespace Avro
             try
             {
                 var text = System.IO.File.ReadAllText(infile);
-                var schema = AvroReader.ReadSchema(text, out var schemas);
+                var schema = AvroParser.ReadSchema(text, out var schemas);
 
                 var codeGen = new CodeGen();
                 var codeWriter = new CodeWriter();

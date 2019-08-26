@@ -12,7 +12,7 @@ namespace Avro.Ipc.Generic
     {
         private GenericProtocolPair _protocolPair;
 
-        public GenericServer(Protocol protocol, ITranceiver tranceiver)
+        public GenericServer(AvroProtocol protocol, ITranceiver tranceiver)
             : base(protocol, tranceiver)
         {
             RemoteProtocol = protocol;

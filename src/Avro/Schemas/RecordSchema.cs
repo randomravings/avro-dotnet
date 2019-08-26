@@ -92,7 +92,7 @@ namespace Avro.Schemas
                 Aliases = new List<string>();
             }
 
-            public Field(string name, Schema type)
+            public Field(string name, AvroSchema type)
                 : base()
             {
                 Name = name;
@@ -103,7 +103,7 @@ namespace Avro.Schemas
 
             public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
 
-            public Schema Type { get; set; }
+            public AvroSchema Type { get; set; }
 
             public string Order { get; set; }
             public JToken  Default { get { return _default; } set { DefaultValidator.ValidateJson(Type, value); _default = value; } }

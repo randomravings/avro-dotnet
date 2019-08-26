@@ -1,6 +1,8 @@
 ﻿using Avro.IO;
+using Avro.Resolvers;
 using Avro.Schemas;
 using Avro.Specific;
+using Avro.Types;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -34,16 +36,16 @@ namespace Avro.Test.Specific
         public void TypeLookupTest(Type expectedType, Type schema)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var schemaInstance = Activator.CreateInstance(schema) as Schema;
-            var actualType = SpecificResolver.GetTypeFromSchema(schemaInstance, assembly);
+            var schemaInstance = Activator.CreateInstance(schema) as AvroSchema;
+            var actualType = SchemaResolver.GetTypeFromSchema(schemaInstance, assembly);
             Assert.AreEqual(expectedType, actualType);
         }
 
         [Test, TestCaseSource(typeof(TypeLookupSource))]
-        public void TypeLookupAdvancedTest(Type expectedType, Schema schema)
+        public void TypeLookupAdvancedTest(Type expectedType, AvroSchema schema)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var actualType = SpecificResolver.GetTypeFromSchema(schema, assembly);
+            var actualType = SchemaResolver.GetTypeFromSchema(schema, assembly);
             Assert.AreEqual(expectedType, actualType);
         }
 
@@ -52,17 +54,17 @@ namespace Avro.Test.Specific
         {
             var assembly = Assembly.GetExecutingAssembly();
             var schema = new TypeLookupSchema();
-            Assert.Throws<ArgumentException>(() => SpecificResolver.GetTypeFromSchema(schema, assembly));
+            Assert.Throws<ArgumentException>(() => SchemaResolver.GetTypeFromSchema(schema, assembly));
         }
 
         class TypeLookupSource : IEnumerable
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(uint), typeof(uint), typeof(uint)), new DurationSchema() };
+                yield return new object[] { typeof(AvroDuration), new DurationSchema() };
                 yield return new object[] { typeof(IList<>).MakeGenericType(typeof(int)), new ArraySchema(new IntSchema()) };
                 yield return new object[] { typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(Guid)), new MapSchema(new UuidSchema()) };
-                yield return new object[] { typeof(ValueTuple<,,>).MakeGenericType(typeof(uint), typeof(uint), typeof(uint)), new DurationSchema() };
+                yield return new object[] { typeof(AvroDuration), new DurationSchema() };
                 yield return new object[] { typeof(TypeLookupEnum), new EnumSchema(nameof(TypeLookupEnum), typeof(TypeLookupEnum).Namespace, new string[] { "A", "B", "C" }) };
                 yield return new object[] { typeof(TypeLookupRecord), new TypeLookupRecord().Schema };
                 yield return new object[] { typeof(TypeLookupError), new TypeLookupError().Schema };
@@ -76,7 +78,7 @@ namespace Avro.Test.Specific
         }
     }
 
-    public class TypeLookupSchema : Schema {}
+    public class TypeLookupSchema : AvroSchema {}
 
     public class TypeLookupLocialSchema : LogicalSchema
     {
@@ -91,11 +93,11 @@ namespace Avro.Test.Specific
         C
     }
 
-    public class TypeLookupRecord : ISpecificRecord
+    public class TypeLookupRecord : IAvroRecord
     {
         public object this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupRecord"",""type"":""record"",""fields"":[]}");
+        public RecordSchema Schema => AvroParser.ReadSchema(@"{""name"":""Avro.Test.Specific.TypeLookupRecord"",""type"":""record"",""fields"":[]}") as RecordSchema;
 
         public int FieldCount => throw new NotImplementedException();
 
@@ -110,16 +112,17 @@ namespace Avro.Test.Specific
         }
     }
 
-    public class TypeLookupError : SpecificError, ISpecificRecord
+    public class TypeLookupError : IAvroError
     {
-        public TypeLookupError()
-            : base(string.Empty) { }
+        public TypeLookupError() { }
 
         public object this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupError"",""type"":""error"",""fields"":[]}");
+        public RecordSchema Schema => AvroParser.ReadSchema(@"{""name"":""Avro.Test.Specific.TypeLookupError"",""type"":""error"",""fields"":[]}") as RecordSchema;
 
         public int FieldCount => throw new NotImplementedException();
+
+        public AvroException Exception => throw new NotImplementedException();
 
         public object Get(int fieldPos)
         {
@@ -132,15 +135,15 @@ namespace Avro.Test.Specific
         }
     }
 
-    public class TypeLookupFixed : ISpecificFixed
+    public class TypeLookupFixed : IAvroFixed
     {
-        public Schema Schema => Schema.Parse(@"{""name"":""Avro.Test.Specific.TypeLookupFixed"",""type"":""fixed"",""size"":12}");
+        public FixedSchema Schema => AvroParser.ReadSchema(@"{""name"":""Avro.Test.Specific.TypeLookupFixed"",""type"":""fixed"",""size"":12}") as FixedSchema;
 
         public int Size => throw new NotImplementedException();
 
         public byte[] Value => throw new NotImplementedException();
 
-        public bool Equals(ISpecificFixed other) => throw new NotImplementedException();
+        public bool Equals(IAvroFixed other) => throw new NotImplementedException();
         public byte this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public IEnumerator<byte> GetEnumerator()

@@ -11,7 +11,7 @@ namespace Avro.Test.Schemas
     public class SchemaConstructTest
     {
         [Test, TestCaseSource(typeof(NoExeptionStructors))]
-        public void SchemaConstructOK(Func<Schema> invoker)
+        public void SchemaConstructOK(Func<AvroSchema> invoker)
         {
             Assert.DoesNotThrow(() => invoker.Invoke());
         }
@@ -26,37 +26,37 @@ namespace Avro.Test.Schemas
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new Func<Schema>(() => new DateSchema());
-                yield return new Func<Schema>(() => new DateSchema(new IntSchema()));
+                yield return new Func<AvroSchema>(() => new DateSchema());
+                yield return new Func<AvroSchema>(() => new DateSchema(new IntSchema()));
 
-                yield return new Func<Schema>(() => new TimeMillisSchema());
-                yield return new Func<Schema>(() => new TimeMillisSchema(new IntSchema()));
-                yield return new Func<Schema>(() => new TimeMicrosSchema());
-                yield return new Func<Schema>(() => new TimeMicrosSchema(new LongSchema()));
-                yield return new Func<Schema>(() => new TimeNanosSchema());
-                yield return new Func<Schema>(() => new TimeNanosSchema(new LongSchema()));
+                yield return new Func<AvroSchema>(() => new TimeMillisSchema());
+                yield return new Func<AvroSchema>(() => new TimeMillisSchema(new IntSchema()));
+                yield return new Func<AvroSchema>(() => new TimeMicrosSchema());
+                yield return new Func<AvroSchema>(() => new TimeMicrosSchema(new LongSchema()));
+                yield return new Func<AvroSchema>(() => new TimeNanosSchema());
+                yield return new Func<AvroSchema>(() => new TimeNanosSchema(new LongSchema()));
 
-                yield return new Func<Schema>(() => new TimestampMillisSchema());
-                yield return new Func<Schema>(() => new TimestampMillisSchema(new LongSchema()));
-                yield return new Func<Schema>(() => new TimestampMicrosSchema());
-                yield return new Func<Schema>(() => new TimestampMicrosSchema(new LongSchema()));
-                yield return new Func<Schema>(() => new TimestampNanosSchema());
-                yield return new Func<Schema>(() => new TimestampNanosSchema(new LongSchema()));
+                yield return new Func<AvroSchema>(() => new TimestampMillisSchema());
+                yield return new Func<AvroSchema>(() => new TimestampMillisSchema(new LongSchema()));
+                yield return new Func<AvroSchema>(() => new TimestampMicrosSchema());
+                yield return new Func<AvroSchema>(() => new TimestampMicrosSchema(new LongSchema()));
+                yield return new Func<AvroSchema>(() => new TimestampNanosSchema());
+                yield return new Func<AvroSchema>(() => new TimestampNanosSchema(new LongSchema()));
 
-                yield return new Func<Schema>(() => new DecimalSchema(new BytesSchema()));
-                yield return new Func<Schema>(() => new DecimalSchema(20, 8));
+                yield return new Func<AvroSchema>(() => new DecimalSchema(new BytesSchema()));
+                yield return new Func<AvroSchema>(() => new DecimalSchema(20, 8));
 
-                yield return new Func<Schema>(() => new RecordSchema());
-                yield return new Func<Schema>(() => new RecordSchema("TestRecordSchema"));
-                yield return new Func<Schema>(() => new RecordSchema("TestRecordSchema", "TestNamespace"));
-                yield return new Func<Schema>(() => new RecordSchema("TestRecordSchema", new List<RecordSchema.Field>() { new RecordSchema.Field("X", new IntSchema()) }));
-                yield return new Func<Schema>(() => new RecordSchema("TestRecordSchema", "TestNamespace", new List<RecordSchema.Field>() { new RecordSchema.Field("TestField") }));
+                yield return new Func<AvroSchema>(() => new RecordSchema());
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema"));
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", "TestNamespace"));
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", new List<RecordSchema.Field>() { new RecordSchema.Field("X", new IntSchema()) }));
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", "TestNamespace", new List<RecordSchema.Field>() { new RecordSchema.Field("TestField") }));
 
-                yield return new Func<Schema>(() => new ErrorSchema());
-                yield return new Func<Schema>(() => new ErrorSchema("TestErrorSchema"));
-                yield return new Func<Schema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace"));
-                yield return new Func<Schema>(() => new ErrorSchema("TestErrorSchema", new List<RecordSchema.Field>()));
-                yield return new Func<Schema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace", new List<RecordSchema.Field>() { new RecordSchema.Field("TestField") }));
+                yield return new Func<AvroSchema>(() => new ErrorSchema());
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema"));
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace"));
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", new List<RecordSchema.Field>()));
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace", new List<RecordSchema.Field>() { new RecordSchema.Field("TestField") }));
             }
         }
 

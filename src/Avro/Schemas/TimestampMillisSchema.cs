@@ -7,7 +7,7 @@ namespace Avro.Schemas
         public TimestampMillisSchema()
             : this(new LongSchema()) { }
 
-        public TimestampMillisSchema(Schema type)
+        public TimestampMillisSchema(AvroSchema type)
             : base(type, "timestamp-millis")
         {
             if (!(type is LongSchema))

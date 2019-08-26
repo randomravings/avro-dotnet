@@ -21,7 +21,7 @@ namespace Avro.Schemas
 
         public int Size { get { return _size; } set { ValidateSize(value); _size = value; } }
 
-        public override bool Equals(Schema other)
+        public override bool Equals(AvroSchema other)
         {
             return base.Equals(other) &&
                 (other is FixedSchema) &&

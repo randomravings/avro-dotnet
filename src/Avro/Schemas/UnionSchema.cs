@@ -5,16 +5,16 @@ using System.Linq;
 
 namespace Avro.Schemas
 {
-    public class UnionSchema : Schema, IEnumerable<Schema>
+    public class UnionSchema : AvroSchema, IEnumerable<AvroSchema>
     {
-        private readonly IList<Schema> _types;
+        private readonly IList<AvroSchema> _types;
 
         public UnionSchema()
         {
-            _types = new List<Schema>();
+            _types = new List<AvroSchema>();
         }
 
-        public UnionSchema(params Schema[] schemas)
+        public UnionSchema(params AvroSchema[] schemas)
             : this()
         {
             if (schemas != null)
@@ -22,7 +22,7 @@ namespace Avro.Schemas
                     Add(schema);
         }
 
-        private void ValidateType(Schema item)
+        private void ValidateType(AvroSchema item)
         {
             switch (item)
             {
@@ -41,7 +41,7 @@ namespace Avro.Schemas
             }
         }
 
-        public void Add(Schema item)
+        public void Add(AvroSchema item)
         {
             ValidateType(item);
             _types.Add(item);
@@ -54,7 +54,7 @@ namespace Avro.Schemas
         public override void SetTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
         public override void RemoveTag(string key) => throw new NotSupportedException("Unions do not support tags");
 
-        public IEnumerator<Schema> GetEnumerator() => _types.GetEnumerator();
+        public IEnumerator<AvroSchema> GetEnumerator() => _types.GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => _types.GetEnumerator();
 
@@ -62,6 +62,6 @@ namespace Avro.Schemas
 
         public void Clear() => _types.Clear();
 
-        public Schema this[int index] { get { return _types[index]; } }
+        public AvroSchema this[int index] { get { return _types[index]; } }
     }
 }

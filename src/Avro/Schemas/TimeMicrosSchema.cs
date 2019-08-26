@@ -7,7 +7,7 @@ namespace Avro.Schemas
         public TimeMicrosSchema()
             : this(new LongSchema()) { }
 
-        public TimeMicrosSchema(Schema type)
+        public TimeMicrosSchema(AvroSchema type)
             : base(type, "time-micros")
         {
             if (!(type is LongSchema))

@@ -7,7 +7,7 @@ namespace Avro.Schemas
         public TimeMillisSchema()
             : this(new IntSchema()) { }
 
-        public TimeMillisSchema(Schema type)
+        public TimeMillisSchema(AvroSchema type)
             : base(type, "time-millis")
         {
             if (!(type is IntSchema))

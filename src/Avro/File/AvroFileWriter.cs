@@ -5,11 +5,11 @@ using System.IO.Compression;
 
 namespace Avro.File
 {
-    public class DataFileWriter<T> : IFileWriter<T>
+    public class AvroFileWriter<T> : IAvroFileWriter<T>
     {
         private const long MAX_CHUNK_SIZE = 1073741824;
 
-        private readonly DataFileInfo _fileHeader;
+        private readonly AvroFileInfo _fileHeader;
         private readonly IDatumWriter<T> _datumWriter;
         private readonly long _maxBlockCount;
         private readonly MemoryStream _serializeStream;
@@ -18,7 +18,7 @@ namespace Avro.File
 
         private long _count = 0;
 
-        public DataFileWriter(DataFileInfo header, IDatumWriter<T> datumWriter, long maxBlockCount = 1000)
+        public AvroFileWriter(AvroFileInfo header, IDatumWriter<T> datumWriter, long maxBlockCount = 1000)
         {
             if (header.Schema.ToAvroCanonical() != datumWriter.WriterSchema.ToAvroCanonical())
                 throw new ArgumentException("Incompatible DatumWriter");
@@ -63,14 +63,14 @@ namespace Avro.File
             _serializeStream.Seek(0, SeekOrigin.Begin);
         }
 
-        private ReadOnlySpan<byte> Compress(byte[] data, int count, string codec)
+        private ReadOnlySpan<byte> Compress(byte[] data, int count, Codec? codec)
         {
             switch (codec)
             {
-                case "null":
-                case "":
+                case null:
+                case Codec.Null:
                     return data.AsSpan(0, count);
-                case "deflate":
+                case Codec.Deflate:
                     var deflatedResult = new MemoryStream();
                     using (var deflater = new DeflateStream(deflatedResult, CompressionMode.Compress, true))
                     {

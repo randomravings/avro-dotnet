@@ -1,15 +1,14 @@
-using Avro;
-using Avro.Specific;
+using Avro.Schemas;
 using System;
 using System.Collections.Generic;
 
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    public class HandshakeRequest : Avro.Specific.ISpecificRecord
+    public class HandshakeRequest : Avro.Types.IAvroRecord
     {
-        public static readonly Avro.Schema _SCHEMA = Avro.Schema.Parse("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}");
-        public Avro.Schema Schema => _SCHEMA;
+        public static readonly RecordSchema _SCHEMA = Avro.AvroSchema.Parse("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}") as RecordSchema;
+        public RecordSchema Schema => _SCHEMA;
         public int FieldCount => 4;
         /// <summary></summary>
         public org.apache.avro.ipc.MD5 clientHash
@@ -78,16 +77,6 @@ namespace org.apache.avro.ipc
                         throw new IndexOutOfRangeException("Expected range: [0:3].");
                 }
             }
-        }
-
-        public object Get(int fieldPos)
-        {
-            return this[fieldPos];
-        }
-
-        public void Put(int fieldPos, object fieldValue)
-        {
-            this[fieldPos] = fieldValue;
         }
     }
 }

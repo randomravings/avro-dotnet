@@ -12,21 +12,21 @@ namespace Avro.Test.Protocols
     public class ProtocolWriteTest
     {
         [Test, TestCaseSource(typeof(ProtocolSource))]
-        public void ProtocolWrite(Protocol protocol, string expectedCanonicalAvro, string expectedDefaultAvro, string expectedFullAvro)
+        public void ProtocolWrite(AvroProtocol protocol, string expectedCanonicalAvro, string expectedDefaultAvro, string expectedFullAvro)
         {
             var canonicalAvro = new StringBuilder();
             using (var writer = new StringWriter(canonicalAvro))
-                AvroWriter.WriteAvroCanonical(writer, protocol);
+                AvroParser.WriteAvroCanonical(writer, protocol);
             var actualCanonicalAvro = canonicalAvro.ToString();
 
             var defaultAvro = new StringBuilder();
             using (var writer = new StringWriter(defaultAvro))
-                AvroWriter.WriteAvro(writer, protocol);
+                AvroParser.WriteAvro(writer, protocol);
             var actualDefaultAvro = defaultAvro.ToString();
 
             var fullAvro = new StringBuilder();
             using (var writer = new StringWriter(fullAvro))
-                AvroWriter.WriteAvroFull(writer, protocol);
+                AvroParser.WriteAvroFull(writer, protocol);
             var actualFullAvro = fullAvro.ToString();
 
             Assert.AreEqual(expectedCanonicalAvro, actualCanonicalAvro, "Canonical form mismatch");
@@ -65,7 +65,7 @@ namespace Avro.Test.Protocols
                 };
 
 
-                var protocol01 = new Protocol
+                var protocol01 = new AvroProtocol
                 {
                     Name = "ProtocolName"
                 };
@@ -77,7 +77,7 @@ namespace Avro.Test.Protocols
                     @"{ ""namespace"": """", ""protocol"": ""ProtocolName"", ""doc"": """", ""types"": [], ""messages"": {} }"
                 };
 
-                var protocol02 = new Protocol
+                var protocol02 = new AvroProtocol
                 {
                     Name = "ProtocolName",
                     Namespace = "Test.Namespace"
@@ -90,7 +90,7 @@ namespace Avro.Test.Protocols
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": """", ""types"": [], ""messages"": {} }"
                 };
 
-                var protocol03 = new Protocol
+                var protocol03 = new AvroProtocol
                 {
                     Name = "ProtocolName",
                     Namespace = "Test.Namespace",
@@ -104,7 +104,7 @@ namespace Avro.Test.Protocols
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"", ""types"": [], ""messages"": {} }"
                 };
 
-                var protocol04 = new Protocol
+                var protocol04 = new AvroProtocol
                 {
                     Name = "ProtocolName",
                     Namespace = "Test.Namespace",
@@ -141,7 +141,7 @@ namespace Avro.Test.Protocols
                     @" ""messages"": {} }"
                 };
 
-                var protocol05 = new Protocol
+                var protocol05 = new AvroProtocol
                 {
                     Name = "ProtocolName",
                     Namespace = "Test.Namespace",

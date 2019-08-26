@@ -1,13 +1,10 @@
-﻿using Avro.Generic;
-using Avro.Ipc.Generic;
+﻿using Avro.Ipc.Generic;
 using Avro.Ipc.Http;
 using Avro.Ipc.Local;
 using Avro.Ipc.Tcp;
 using Avro.Schemas;
-using Avro.Specific;
+using Avro.Types;
 using NUnit.Framework;
-using org.apache.avro.ipc;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,7 +15,7 @@ namespace Avro.Ipc.Test.Tcp
     public class SocketTest
     {
 
-        private static readonly Protocol HELLO_PROTOCOL = AvroReader.ReadProtocol(@"
+        private static readonly AvroProtocol HELLO_PROTOCOL = AvroParser.ReadProtocol(@"
         {
           ""namespace"": ""com.acme"",
           ""protocol"": ""HelloWorld"",
@@ -85,31 +82,31 @@ namespace Avro.Ipc.Test.Tcp
             }
         }
 
-        private async Task<GenericClient> ConnectLocalClient(Protocol protocol, LocalTranceiver tranceiver, CancellationToken token)
+        private async Task<GenericClient> ConnectLocalClient(AvroProtocol protocol, LocalTranceiver tranceiver, CancellationToken token)
         {
             return new GenericClient(protocol, tranceiver);
         }
 
-        private async Task<GenericClient> ConnectTcpClient(Protocol protocol, CancellationToken token)
+        private async Task<GenericClient> ConnectTcpClient(AvroProtocol protocol, CancellationToken token)
         {
             var tranceiver = await SocketClient.ConnectAsync("127.0.0.1", 3456);
             return new GenericClient(protocol, tranceiver);
         }
 
-        private async Task<GenericClient> ConnectHttpClient(Protocol protocol, CancellationToken token)
+        private async Task<GenericClient> ConnectHttpClient(AvroProtocol protocol, CancellationToken token)
         {
             var tranceiver = await HttpClient.ConnectAsync($"http://localhost:8080/{protocol.Name}");
             return new GenericClient(protocol, tranceiver);
         }
 
-        private async Task<GenericServer> RunLocalServer(Protocol protocol, LocalTranceiver tranceiver, CancellationToken token)
+        private async Task<GenericServer> RunLocalServer(AvroProtocol protocol, LocalTranceiver tranceiver, CancellationToken token)
         {
             var server = new GenericServer(protocol, tranceiver);
             await RunGenericServer(server, token);
             return server;
         }
 
-        private async Task<GenericServer> RunTcpServer(Protocol protocol, CancellationToken token)
+        private async Task<GenericServer> RunTcpServer(AvroProtocol protocol, CancellationToken token)
         {
             var listener = new SocketListener("127.0.0.1", 3456);
             listener.Start();
@@ -120,7 +117,7 @@ namespace Avro.Ipc.Test.Tcp
             return server;
         }
 
-        private async Task<GenericServer> RunHttpServer(Protocol protocol, CancellationToken token)
+        private async Task<GenericServer> RunHttpServer(AvroProtocol protocol, CancellationToken token)
         {
             var urls = protocol.Messages.Select(r => $"http://localhost:8080/{protocol.Name}/{r.Name}/");
             var tranceiver = HttpServer.Create(urls.ToArray());
@@ -132,13 +129,13 @@ namespace Avro.Ipc.Test.Tcp
         public async Task RunGenericServer(GenericServer server, CancellationToken token)
         {
             var rpcContext = await server.ReceiveAsync(token);
-            var response = new GenericRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
+            var response = new GenericAvroRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
             response[0] = "World!";
             rpcContext.Response = response;
             await server.RespondAsync(rpcContext, token);
         }
 
-        private async Task<GenericRecord> RunGenericClient(GenericClient client, CancellationToken token)
+        private async Task<GenericAvroRecord> RunGenericClient(GenericClient client, CancellationToken token)
         {
             var parameterType = client.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema;
             var parameterRecordSchema = new RecordSchema(
@@ -149,12 +146,12 @@ namespace Avro.Ipc.Test.Tcp
                     new RecordSchema.Field("greeting", parameterType)
                 }
             );
-            var parameter = new GenericRecord(parameterType);
+            var parameter = new GenericAvroRecord(parameterType);
             parameter[0] = "Hello!";
-            var parameterRecord = new GenericRecord(parameterRecordSchema);
+            var parameterRecord = new GenericAvroRecord(parameterRecordSchema);
             parameterRecord[0] = parameter;
             var rpcContext = await client.RequestAsync("hello", parameterRecord, token);
-            return rpcContext.Response as GenericRecord;
+            return rpcContext.Response as GenericAvroRecord;
         }
     }
 }

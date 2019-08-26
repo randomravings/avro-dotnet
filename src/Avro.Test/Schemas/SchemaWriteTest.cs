@@ -10,7 +10,7 @@ namespace Avro.Test.Schemas
     [TestFixture()]
     public class SchemaWriteTest
     {
-        class UnknownSchema : Schema { }
+        class UnknownSchema : AvroSchema { }
 
         [TestCase(TestName = "Unknown Schema")]
         public void UnknownSchemaTest()
@@ -19,25 +19,25 @@ namespace Avro.Test.Schemas
 
             var canonicalAvro = new StringBuilder();
             using (var writer = new StringWriter(canonicalAvro))
-                Assert.Throws(typeof(AvroException), () => AvroWriter.WriteAvroCanonical(writer, schema));
+                Assert.Throws(typeof(AvroException), () => AvroParser.WriteAvroCanonical(writer, schema));
         }
 
         [Test, TestCaseSource(typeof(SchemaSource))]
-        public void SchemaWrite(Schema schema, string expectedCanonicalAvro, string expectedDefaultAvro, string expectedFullAvro)
+        public void SchemaWrite(AvroSchema schema, string expectedCanonicalAvro, string expectedDefaultAvro, string expectedFullAvro)
         {
             var canonicalAvro = new StringBuilder();
             using (var writer = new StringWriter(canonicalAvro))
-                AvroWriter.WriteAvroCanonical(writer, schema);
+                AvroParser.WriteAvroCanonical(writer, schema);
             var actualCanonicalAvro = canonicalAvro.ToString();
 
             var defaultAvro = new StringBuilder();
             using (var writer = new StringWriter(defaultAvro))
-                AvroWriter.WriteAvro(writer, schema);
+                AvroParser.WriteAvro(writer, schema);
             var actualDefaultAvro = defaultAvro.ToString();
 
             var fullAvro = new StringBuilder();
             using (var writer = new StringWriter(fullAvro))
-                AvroWriter.WriteAvroFull(writer, schema);
+                AvroParser.WriteAvroFull(writer, schema);
             var actualFullAvro = fullAvro.ToString();
 
             Assert.AreEqual(expectedCanonicalAvro, actualCanonicalAvro, "Canonical form mismatch");

@@ -7,11 +7,11 @@ namespace Avro.Generic
 {
     public class GenericProtocol
     {
-        private readonly Protocol _protocol;
+        private readonly AvroProtocol _protocol;
         private readonly IReadOnlyList<GenericMessage> _messages;
         private readonly IReadOnlyDictionary<string, int> _requestLookup;
 
-        public GenericProtocol(Protocol protocol)
+        public GenericProtocol(AvroProtocol protocol)
         {
             _protocol = protocol;
 

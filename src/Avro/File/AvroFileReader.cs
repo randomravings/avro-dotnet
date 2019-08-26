@@ -8,12 +8,12 @@ using System.Linq;
 
 namespace Avro.File
 {
-    public class DataFileReader<T> : IFileReader<T>
+    public class AvroFileReader<T> : IAvroFileReader<T>
     {
-        private readonly DataFileInfo _fileHeader;
+        private readonly AvroFileInfo _fileHeader;
         private readonly IDatumReader<T> _datumReader;
 
-        public DataFileReader(DataFileInfo header, IDatumReader<T> datumReader)
+        public AvroFileReader(AvroFileInfo header, IDatumReader<T> datumReader)
         {
             if (header.Schema.ToAvroCanonical() != datumReader.WriterSchema.ToAvroCanonical())
                 throw new ArgumentException("Incompatible DatumReader");
@@ -62,9 +62,9 @@ namespace Avro.File
             switch (_fileHeader.Codec)
             {
                 case null:
-                case "":
+                case Codec.Null:
                     return new MemoryStream(bytes);
-                case "deflate":
+                case Codec.Deflate:
                     return new DeflateStream(new MemoryStream(bytes), CompressionMode.Decompress, true);
                 default:
                     throw new NotSupportedException($"Codec: '{_fileHeader.Codec}' is not supported");

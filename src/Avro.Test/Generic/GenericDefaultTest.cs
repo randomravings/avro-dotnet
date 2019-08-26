@@ -1,5 +1,6 @@
 ﻿using Avro.Generic;
 using Avro.Schemas;
+using Avro.Types;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using System;
@@ -14,7 +15,7 @@ namespace Avro.Test.Generic
         [Test, TestCaseSource(typeof(RecordFieldDefaultSource))]
         public void TestGenericDefault(RecordSchema schema, string fieldName, object expectedValue)
         {
-            var record = new GenericRecord(schema);
+            var record = new GenericAvroRecord(schema);
             Assert.AreEqual(expectedValue, record[fieldName]);
         }
 
@@ -55,12 +56,12 @@ namespace Avro.Test.Generic
                     ) { Default = JToken.Parse(@"{""f1"":123,""f2"":{""f3"":""ABC"",""f4"":0.0012}}") }
                 };
 
-            var record = new GenericRecord(schema);
+            var record = new GenericAvroRecord(schema);
 
-            var record01 = record[0] as GenericRecord;
+            var record01 = record[0] as GenericAvroRecord;
             Assert.IsNotNull(record01);
             Assert.AreEqual(123, record01[0]);
-            var record02 = record01[1] as GenericRecord;
+            var record02 = record01[1] as GenericAvroRecord;
             Assert.IsNotNull(record02);
             Assert.AreEqual("ABC", record02[0]);
             Assert.AreEqual(0.0012F, record02[1]);
@@ -89,5 +90,5 @@ namespace Avro.Test.Generic
         }
     }
 
-    class UnknownSchema : Schema { }
+    class UnknownSchema : AvroSchema { }
 }

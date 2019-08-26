@@ -8,5 +8,5 @@ using System.Linq;
 
 namespace Avro.File
 {
-    public interface IFileReader<T> : IEnumerable<T>, IDisposable { }
+    public interface IAvroFileReader<T> : IEnumerable<T>, IDisposable { }
 }

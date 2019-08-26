@@ -7,7 +7,7 @@ namespace Avro.Schemas
         public UuidSchema()
             : this(new StringSchema()) { }
 
-        public UuidSchema(Schema type)
+        public UuidSchema(AvroSchema type)
             : base(type, "uuid")
         {
             if (!(type is StringSchema))

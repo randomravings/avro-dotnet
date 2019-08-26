@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Avro
 {
-    public static class AvroWriter
+    public static partial class AvroParser
     {
         private enum WriterMode
         {
@@ -16,22 +16,22 @@ namespace Avro
             Full
         };
 
-        public static void WriteAvro(TextWriter writer, Schema schema)
+        public static void WriteAvro(TextWriter writer, AvroSchema schema)
         {
             Write(writer, schema, WriterMode.None);
         }
 
-        public static void WriteAvroFull(TextWriter writer, Schema schema)
+        public static void WriteAvroFull(TextWriter writer, AvroSchema schema)
         {
             Write(writer, schema, WriterMode.Full);
         }
 
-        public static void WriteAvroCanonical(TextWriter writer, Schema schema)
+        public static void WriteAvroCanonical(TextWriter writer, AvroSchema schema)
         {
             Write(writer, schema, WriterMode.Canonical);
         }
 
-        public static string ToAvroCanonical(this Schema schema)
+        public static string ToAvroCanonical(this AvroSchema schema)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -39,7 +39,7 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static string ToAvro(this Schema schema)
+        public static string ToAvro(this AvroSchema schema)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -47,7 +47,7 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static string ToAvroFull(this Schema schema)
+        public static string ToAvroFull(this AvroSchema schema)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -55,7 +55,7 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static string ToAvroCanonical(this Protocol protocol)
+        public static string ToAvroCanonical(this AvroProtocol protocol)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -63,7 +63,7 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static string ToAvro(this Protocol protocol)
+        public static string ToAvro(this AvroProtocol protocol)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -71,7 +71,7 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static string ToAvroFull(this Protocol protocol)
+        public static string ToAvroFull(this AvroProtocol protocol)
         {
             var sb = new StringBuilder();
             using (var sw = new StringWriter(sb))
@@ -79,22 +79,22 @@ namespace Avro
             return sb.ToString();
         }
 
-        public static void WriteAvro(TextWriter writer, Protocol protocol)
+        public static void WriteAvro(TextWriter writer, AvroProtocol protocol)
         {
             Write(writer, protocol, WriterMode.None);
         }
 
-        public static void WriteAvroFull(TextWriter writer, Protocol protocol)
+        public static void WriteAvroFull(TextWriter writer, AvroProtocol protocol)
         {
             Write(writer, protocol, WriterMode.Full);
         }
 
-        public static void WriteAvroCanonical(TextWriter writer, Protocol protocol)
+        public static void WriteAvroCanonical(TextWriter writer, AvroProtocol protocol)
         {
             Write(writer, protocol, WriterMode.Canonical);
         }
 
-        private static void Write(TextWriter writer, Schema schema, WriterMode mode, ISet<string> namedSchemas = null)
+        private static void Write(TextWriter writer, AvroSchema schema, WriterMode mode, ISet<string> namedSchemas = null)
         {
             if (namedSchemas == null)
                 namedSchemas = new HashSet<string>();
@@ -171,7 +171,7 @@ namespace Avro
             }
         }
 
-        private static void Write(TextWriter writer, Protocol protocol, WriterMode mode, ISet<string> namedSchemas = null)
+        private static void Write(TextWriter writer, AvroProtocol protocol, WriterMode mode, ISet<string> namedSchemas = null)
         {
             switch (mode)
             {
@@ -247,7 +247,7 @@ namespace Avro
             }
         }
 
-        private static void WritePrimitive(TextWriter writer, Schema schema, WriterMode mode)
+        private static void WritePrimitive(TextWriter writer, AvroSchema schema, WriterMode mode)
         {
             switch (mode)
             {
@@ -756,7 +756,7 @@ namespace Avro
             }
         }
 
-        private static void WriteTypes(TextWriter writer, IEnumerable<Schema> schemas, WriterMode mode, ISet<string> namedSchemas)
+        private static void WriteTypes(TextWriter writer, IEnumerable<AvroSchema> schemas, WriterMode mode, ISet<string> namedSchemas)
         {
             var i = 0;
             foreach (var schema in schemas)

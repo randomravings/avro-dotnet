@@ -8,7 +8,7 @@ namespace Avro.Test.Protocols
     [TestFixture]
     public class ProtocolMD5Test
     {
-        private static readonly byte[] EXPECTED_MD5 = AvroReader.ReadProtocol(BASE_PROTOCOL, out _).MD5;
+        private static readonly byte[] EXPECTED_MD5 = AvroParser.ReadProtocol(BASE_PROTOCOL, out _).MD5;
 
         private const string BASE_PROTOCOL = @"{
             ""protocol"": ""TestProtocol"",
@@ -57,8 +57,8 @@ namespace Avro.Test.Protocols
         )]
         public void ProtocolParseBasic(string protocolAvro, string baseProtocolAvro)
         {
-            var expectedMD5 = AvroReader.ReadProtocol(baseProtocolAvro).MD5;
-            var actualMD5 = AvroReader.ReadProtocol(protocolAvro).MD5;
+            var expectedMD5 = AvroParser.ReadProtocol(baseProtocolAvro).MD5;
+            var actualMD5 = AvroParser.ReadProtocol(protocolAvro).MD5;
             Assert.AreEqual(expectedMD5, actualMD5);
         }
     }

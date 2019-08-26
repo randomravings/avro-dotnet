@@ -1,3 +1,4 @@
+using Avro.Types;
 using System;
 using System.Collections.Generic;
 
@@ -14,7 +15,7 @@ namespace Avro.IO
         decimal ReadDecimal(int scale);
         decimal ReadDecimal(int scale, int len);
         double ReadDouble();
-        ValueTuple<uint, uint, uint> ReadDuration();
+        AvroDuration ReadDuration();
         byte[] ReadFixed(byte[] bytes);
         byte[] ReadFixed(int len);
         float ReadFloat();
@@ -22,7 +23,7 @@ namespace Avro.IO
         long ReadLong();
         IDictionary<string, T> ReadMap<T>(Func<IDecoder, T> valuesReader);
         bool ReadMapBlock<T>(Func<IDecoder, T> valuesReader, out IDictionary<string, T> map);
-        object ReadNull();
+        AvroNull ReadNull();
         T ReadNullableObject<T>(Func<IDecoder, T> reader, long nullIndex) where T : class;
         T? ReadNullableValue<T>(Func<IDecoder, T> reader, long nullIndex) where T : struct;
         string ReadString();

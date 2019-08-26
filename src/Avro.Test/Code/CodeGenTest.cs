@@ -55,7 +55,7 @@ namespace Avro.Test.Code
             var codeGen = new CodeGen();
 
             var recordSchema = new RecordSchema("TestRecord", null, new RecordSchema.Field[] { new RecordSchema.Field("A", new IntSchema()) });
-            var protocol = new Protocol("TestProtocol", "Test.Namespace");
+            var protocol = new AvroProtocol("TestProtocol", "Test.Namespace");
             protocol.AddType(recordSchema);
 
             codeGen.AddProtocol(protocol);
@@ -96,7 +96,7 @@ namespace Avro.Test.Code
         }
 
         [Test, TestCaseSource(typeof(SchemaSource))]
-        public void TestGetSystemType(Schema schema, string expectedTypeString)
+        public void TestGetSystemType(AvroSchema schema, string expectedTypeString)
         {
             var actualTypeString = CodeGen.GetSystemType(schema);
             Assert.AreEqual(expectedTypeString, actualTypeString);
@@ -143,7 +143,7 @@ namespace Avro.Test.Code
                 yield return new object[] { new TimestampMicrosSchema(), "DateTime" };
                 yield return new object[] { new TimestampNanosSchema(), "DateTime" };
                 yield return new object[] { new DateSchema(), "DateTime" };
-                yield return new object[] { new DurationSchema(), "ValueTuple<uint, uint, uint>" };
+                yield return new object[] { new DurationSchema(), "AvroDuration" };
                 yield return new object[] { new UuidSchema(), "Guid" };
 
                 yield return new object[] { new UnionSchema() { new NullSchema(), new DecimalSchema() }, "decimal?" };
@@ -154,7 +154,7 @@ namespace Avro.Test.Code
                 yield return new object[] { new UnionSchema() { new NullSchema(), new TimestampMicrosSchema() }, "DateTime?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new TimestampNanosSchema() }, "DateTime?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new DateSchema() }, "DateTime?" };
-                yield return new object[] { new UnionSchema() { new NullSchema(), new DurationSchema() }, "ValueTuple<uint, uint, uint>?" };
+                yield return new object[] { new UnionSchema() { new NullSchema(), new DurationSchema() }, "AvroDuration?" };
                 yield return new object[] { new UnionSchema() { new NullSchema(), new UuidSchema() }, "Guid?" };
 
                 yield return new object[] { new CodeGenTestLogicalSchema(), "byte[]" };
@@ -164,7 +164,7 @@ namespace Avro.Test.Code
             }
         }
 
-        public class CodeGenTestSchema : Schema { }
+        public class CodeGenTestSchema : AvroSchema { }
 
         public class CodeGenTestLogicalSchema : LogicalSchema
         {

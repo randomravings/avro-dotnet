@@ -1,11 +1,11 @@
 using Avro.Schemas;
 using System;
 
-namespace Avro.Generic
+namespace Avro.Types
 {
-    public class GenericEnum : IEquatable<GenericEnum>, IEquatable<string>
+    public class GenericAvroEnum : IEquatable<GenericAvroEnum>, IEquatable<string>
     {
-        public GenericEnum(EnumSchema schema, string symbol)
+        public GenericAvroEnum(EnumSchema schema, string symbol)
         {
             var value = schema.Symbols.IndexOf(symbol);
             if (value < 0)
@@ -14,7 +14,7 @@ namespace Avro.Generic
             Value = value;
         }
 
-        public GenericEnum(EnumSchema schema, int value = 0)
+        public GenericAvroEnum(EnumSchema schema, int value = 0)
         {
             if (value < 0 || value >= schema.Symbols.Count)
                 throw new IndexOutOfRangeException();
@@ -22,7 +22,7 @@ namespace Avro.Generic
             Value = value;
         }
 
-        public GenericEnum(GenericEnum e, bool copy = false)
+        public GenericAvroEnum(GenericAvroEnum e, bool copy = false)
         {
             Schema = e.Schema;
             if (copy)
@@ -35,7 +35,7 @@ namespace Avro.Generic
         public int Value { get; private set; }
         public string Symbol => Schema.Symbols[Value];
 
-        public bool Equals(GenericEnum other)
+        public bool Equals(GenericAvroEnum other)
         {
             return Symbol == other.Symbol;
         }
@@ -46,5 +46,7 @@ namespace Avro.Generic
         }
 
         public override string ToString() => Symbol;
+
+        public static implicit operator int(GenericAvroEnum e) => e.Value;
     }
 }

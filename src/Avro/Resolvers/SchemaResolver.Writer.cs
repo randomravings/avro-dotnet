@@ -1,22 +1,26 @@
 using Avro.IO;
 using Avro.Schemas;
+using Avro.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Avro.Specific
+namespace Avro.Resolvers
 {
-    public static partial class SpecificResolver
+    public static partial class SchemaResolver
     {
-        public static Action<IEncoder, T> ResolveWriter<T>(Schema writerSchema)
+        public static Action<IEncoder, T> ResolveWriter<T>(AvroSchema writerSchema)
         {
             var type = typeof(T);
             var streamParameter = Expression.Parameter(typeof(IEncoder), "s");
             var valueParameter = Expression.Parameter(type, "v");
             var writeAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), type);
-            if (!ResolveWriter(type.Assembly, type, writerSchema, streamParameter, valueParameter, null, out var writeExpression))
+            var assembly = type.Assembly;
+            if (type.Equals(typeof(GenericAvroRecord)))
+                assembly = null;
+            if (!ResolveWriter(assembly, type, writerSchema, streamParameter, valueParameter, null, out var writeExpression))
                 throw new AvroException($"Unable to resolve writer: '{writerSchema}' for type: '{type}'");
 
 
@@ -30,7 +34,7 @@ namespace Avro.Specific
                 .Compile() as Action<IEncoder, T>;
         }
 
-        private static bool ResolveWriter(Assembly origin, Type type, Schema writerSchema, ParameterExpression streamParameter, Expression valueExpression, Type valueParameterCast, out Expression writeExpression)
+        private static bool ResolveWriter(Assembly origin, Type type, AvroSchema writerSchema, ParameterExpression streamParameter, Expression valueExpression, Type valueParameterCast, out Expression writeExpression)
         {
             writeExpression = null;
 
@@ -163,7 +167,7 @@ namespace Avro.Specific
                     );
                     break;
 
-                case DurationSchema r when type.Equals(typeof(ValueTuple<uint, uint, uint>)):
+                case DurationSchema r when type.Equals(typeof(AvroDuration)):
                     writeExpression = Expression.Call(
                         streamParameter,
                         typeof(IEncoder).GetMethod(nameof(IEncoder.WriteDuration)),
@@ -226,53 +230,109 @@ namespace Avro.Specific
                             mapItemExpression,
                             streamParameter,
                             mapValueParameter
-                        )                        
+                        )
                     );
                     break;
 
-                case EnumSchema r when type.IsEnum && (Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count):
-                    var switchCases = new SwitchCase[r.Symbols.Count];
-                    for (int i = 0; i < r.Symbols.Count; i++)
+                case EnumSchema r when (typeof(GenericAvroEnum).IsAssignableFrom(type)) || (type.IsEnum && (Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count)):
+                    if (typeof(GenericAvroEnum).IsAssignableFrom(type))
                     {
-                        switchCases[i] =
-                            Expression.SwitchCase(
-                                Expression.Call(
-                                    streamParameter,
-                                    typeof(IEncoder).GetMethod(nameof(IEncoder.WriteInt)),
-                                    Expression.Constant(i, typeof(int))
-                                ),
-                                Expression.Constant(
-                                    Enum.Parse(type, r.Symbols[i])
+                        writeExpression =
+                            Expression.Call(
+                                streamParameter,
+                                typeof(IEncoder).GetMethod(nameof(IEncoder.WriteInt)),
+                                Expression.MakeMemberAccess(
+                                    valueExpression,
+                                    typeof(GenericAvroEnum).GetProperty(nameof(GenericAvroEnum.Value))
                                 )
                             );
                     }
-                    writeExpression =
-                        Expression.Switch(
-                            CastOrExpression(valueExpression, valueParameterCast),
-                            switchCases
+                    else
+                    {
+                        var switchCases = new SwitchCase[r.Symbols.Count];
+                        for (int i = 0; i < r.Symbols.Count; i++)
+                        {
+                            switchCases[i] =
+                                Expression.SwitchCase(
+                                    Expression.Call(
+                                        streamParameter,
+                                        typeof(IEncoder).GetMethod(nameof(IEncoder.WriteInt)),
+                                        Expression.Constant(i, typeof(int))
+                                    ),
+                                    Expression.Constant(
+                                        Enum.Parse(type, r.Symbols[i]),
+                                        type
+                                    )
+                                );
+                        }
+                        writeExpression =
+                            Expression.Switch(
+                                CastOrExpression(valueExpression, valueParameterCast),
+                                switchCases
+                            );
+                    }
+                    break;
+
+                case FixedSchema r when typeof(IAvroFixed).IsAssignableFrom(type):
+                    if (typeof(GenericAvroFixed).IsAssignableFrom(type))
+                    {
+                        writeExpression = Expression.Call(
+                            streamParameter,
+                            typeof(IEncoder).GetMethod(nameof(IEncoder.WriteFixed)),
+                            Expression.Convert(valueExpression, typeof(byte[]))
                         );
+                    }
+                    else
+                    {
+                        writeExpression = Expression.Call(
+                            streamParameter,
+                            typeof(IEncoder).GetMethod(nameof(IEncoder.WriteFixed)),
+                            CastOrExpression(Expression.Convert(valueExpression, typeof(byte[])), valueParameterCast)
+                        );
+                    }
                     break;
 
-                case FixedSchema r when typeof(ISpecificFixed).IsAssignableFrom(type):
-                    writeExpression = Expression.Call(
-                        streamParameter,
-                        typeof(IEncoder).GetMethod(nameof(IEncoder.WriteFixed)),
-                        CastOrExpression(Expression.Convert(valueExpression, typeof(byte[])), valueParameterCast)
-                    );
-                    break;
-
-                case RecordSchema r when typeof(ISpecificRecord).IsAssignableFrom(type):
+                case RecordSchema r when typeof(IAvroRecord).IsAssignableFrom(type):
                     var fieldExpressions = new List<Expression>();
+                    int x = 0;
                     foreach (var field in r)
                     {
-                        var recordProperty = type.GetProperty(field.Name);
-                        var fieldValueExpression =
-                            Expression.MakeMemberAccess(
-                                valueExpression,
-                                recordProperty
-                            );
-                        ResolveWriter(origin, recordProperty.PropertyType, field.Type, streamParameter, fieldValueExpression, null, out var fieldExpression);
-                        fieldExpressions.Add(fieldExpression);
+                        var fieldType = default(Type);
+                        var fieldValueExpression = default(Expression);
+                        if (typeof(GenericAvroRecord).IsAssignableFrom(type))
+                        {
+                            var recordProperty = type.GetProperty("Item", typeof(object), new Type[] { typeof(int) });
+                            fieldType = GetTypeFromSchema(field.Type, origin);
+                            fieldValueExpression =
+                                Expression.Convert(
+                                    Expression.MakeIndex(
+                                        valueExpression,
+                                        recordProperty,
+                                        new Expression[] {
+                                            Expression.Constant(
+                                                x,
+                                                typeof(int)
+                                            )
+                                        }
+                                    ),
+                                    fieldType
+                                );
+                            ResolveWriter(origin, fieldType, field.Type, streamParameter, fieldValueExpression, fieldType, out var fieldExpression);
+                            fieldExpressions.Add(fieldExpression);
+                            x++;
+                        }
+                        else
+                        {
+                            var recordProperty = type.GetProperty(field.Name);
+                            fieldType = recordProperty.PropertyType;
+                            fieldValueExpression =
+                                Expression.MakeMemberAccess(
+                                    valueExpression,
+                                    recordProperty
+                                );
+                            ResolveWriter(origin, fieldType, field.Type, streamParameter, fieldValueExpression, null, out var fieldExpression);
+                            fieldExpressions.Add(fieldExpression);
+                        }
                     }
                     writeExpression = Expression.Block(fieldExpressions);
                     break;

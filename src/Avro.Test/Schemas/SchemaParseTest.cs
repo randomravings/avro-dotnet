@@ -334,7 +334,7 @@ namespace Avro.Test.Schemas
         )]
         public void SchemaParseBasic(Type expectedSchema, string avroString, string expectedToString)
         {
-            var schema = Schema.Parse(avroString);
+            var schema = AvroSchema.Parse(avroString);
             Assert.AreEqual(expectedSchema, schema.GetType());
             Assert.AreEqual(expectedToString, schema.ToString());
         }

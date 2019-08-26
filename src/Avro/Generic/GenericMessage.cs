@@ -1,14 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Avro.IO;
+﻿using Avro.IO;
 using Avro.Protocols;
+using Avro.Types;
+using System.Collections.Generic;
 
 namespace Avro.Generic
 {
     public class GenericMessage
     {
-        private readonly IReadOnlyDictionary<string, GenericRecord> _namedParameter;
+        private readonly IReadOnlyDictionary<string, GenericAvroRecord> _namedParameter;
         private Message messageType;
 
         public GenericMessage(Message messageType)

@@ -2,16 +2,16 @@ using System.Collections.Generic;
 
 namespace Avro.Schemas
 {
-    public class ArraySchema : Schema
+    public class ArraySchema : AvroSchema
     {
-        public ArraySchema(Schema items)
+        public ArraySchema(AvroSchema items)
         {
             Items = items;
         }
 
-        public Schema Items { get; set; }
+        public AvroSchema Items { get; set; }
 
-        public override bool Equals(Schema other)
+        public override bool Equals(AvroSchema other)
         {
             return base.Equals(other) &&
                 (other as ArraySchema).Items.Equals(Items);

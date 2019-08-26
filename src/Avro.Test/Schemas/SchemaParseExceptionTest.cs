@@ -101,7 +101,7 @@ namespace Avro.Test.Schemas
         )]
         public void SchemaParseException(string avroString, Type expectedExceptionType)
         {
-            Assert.Throws(expectedExceptionType, () => { AvroReader.ReadSchema(avroString); });
+            Assert.Throws(expectedExceptionType, () => { AvroParser.ReadSchema(avroString); });
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Avro.Schemas
 {
-    public abstract class NamedSchema : Schema
+    public abstract class NamedSchema : AvroSchema
     {
         private string _name;
         private string _nameSpace;
@@ -40,7 +40,7 @@ namespace Avro.Schemas
 
         public override string ToString() => FullName;
 
-        public override bool Equals(Schema other)
+        public override bool Equals(AvroSchema other)
         {
             return (other is NamedSchema) &&
                 (other as NamedSchema).FullName == FullName

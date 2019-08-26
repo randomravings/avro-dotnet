@@ -12,8 +12,8 @@ namespace Avro.Test.Schemas
         [Test, TestCaseSource(typeof(SchemaFingerprints))]
         public void TestFingerprint(string avro, long expectedFp)
         {
-            var s = Schema.Parse(avro);
-            var fp = Fingerprint.CRC64Value(s);
+            var s = AvroSchema.Parse(avro);
+            var fp = AvroFingerprint.CRC64Value(s);
             Assert.AreEqual(expectedFp, fp);
         }
     }

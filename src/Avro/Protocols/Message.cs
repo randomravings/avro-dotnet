@@ -24,7 +24,7 @@ namespace Avro.Protocols
 
         public IReadOnlyList<ParameterSchema> RequestParameters => _requestParameters.AsReadOnly();
 
-        public Schema Response { get; set; }
+        public AvroSchema Response { get; set; }
 
         public UnionSchema Error { get; private set; }
 

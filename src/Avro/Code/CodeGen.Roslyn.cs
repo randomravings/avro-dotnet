@@ -1,6 +1,6 @@
 using Avro.Protocols;
 using Avro.Schemas;
-using Avro.Specific;
+using Avro.Types;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -55,37 +55,45 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(ISpecificRecord).FullName)
+                        ParseTypeName(typeof(IAvroRecord).FullName)
                     )
                 )
                 .AddMembers(
                     FieldDeclaration(
                         VariableDeclaration(
-                            ParseTypeName(typeof(Schema).FullName)
+                            IdentifierName(nameof(RecordSchema))
                         )
-                        .AddVariables(
-                            VariableDeclarator(
-                                Identifier("_SCHEMA")
-                            ).WithInitializer(
-                                EqualsValueClause(
-                                    InvocationExpression(
-                                        MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
+                        .WithVariables(
+                            SingletonSeparatedList(
+                                VariableDeclarator(
+                                    Identifier("_SCHEMA")
+                                )
+                                .WithInitializer(
+                                    EqualsValueClause(
+                                        InvocationExpression(
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
-                                                IdentifierName(typeof(Schema).Namespace),
-                                                IdentifierName(typeof(Schema).Name)
-                                            ),
-                                            IdentifierName(nameof(Schema.Parse))
+                                                IdentifierName(nameof(AvroParser)),
+                                                GenericName(
+                                                    Identifier(nameof(AvroParser.ReadSchema))
+                                                )
+                                                .WithTypeArgumentList(
+                                                    TypeArgumentList(
+                                                        SingletonSeparatedList<TypeSyntax>(
+                                                            IdentifierName(nameof(RecordSchema))
+                                                        )
+                                                    )
+                                                )
+                                            )
                                         )
-                                    )
-                                    .WithArgumentList(
-                                        ArgumentList(
-                                            SingletonSeparatedList(
-                                                Argument(
-                                                    LiteralExpression(
-                                                        SyntaxKind.StringLiteralExpression,
-                                                        Literal(avro)
+                                        .WithArgumentList(
+                                            ArgumentList(
+                                                SingletonSeparatedList(
+                                                    Argument(
+                                                        LiteralExpression(
+                                                            SyntaxKind.StringLiteralExpression,
+                                                            Literal(avro)
+                                                        )
                                                     )
                                                 )
                                             )
@@ -95,16 +103,17 @@ namespace Avro.Code
                             )
                         )
                     )
-                    .AddModifiers(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.ReadOnlyKeyword)
+                    .WithModifiers(
+                        TokenList(
+                            new[]{
+                                Token(SyntaxKind.PublicKeyword),
+                                Token(SyntaxKind.StaticKeyword),
+                                Token(SyntaxKind.ReadOnlyKeyword)
+                            }
+                        )
                     ),
                     PropertyDeclaration(
-                        QualifiedName(
-                            IdentifierName(typeof(Schema).Namespace),
-                            IdentifierName(nameof(Schema))
-                        ),
+                        IdentifierName(nameof(RecordSchema)),
                         Identifier("Schema")
                     )
                     .WithModifiers(
@@ -161,40 +170,48 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(SpecificError).FullName)
+                        ParseTypeName(typeof(IAvroError).FullName)
                     ),
                     SimpleBaseType(
-                        ParseTypeName(typeof(ISpecificRecord).FullName)
+                        ParseTypeName(typeof(IAvroRecord).FullName)
                     )
                 )
                 .AddMembers(
                     FieldDeclaration(
                         VariableDeclaration(
-                            ParseTypeName(typeof(Schema).FullName)
+                            IdentifierName(nameof(ErrorSchema))
                         )
-                        .AddVariables(
-                            VariableDeclarator(
-                                Identifier("_SCHEMA")
-                            ).WithInitializer(
-                                EqualsValueClause(
-                                    InvocationExpression(
-                                        MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
+                        .WithVariables(
+                            SingletonSeparatedList(
+                                VariableDeclarator(
+                                    Identifier("_SCHEMA")
+                                )
+                                .WithInitializer(
+                                    EqualsValueClause(
+                                        InvocationExpression(
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
-                                                IdentifierName(typeof(Schema).Namespace),
-                                                IdentifierName(typeof(Schema).Name)
-                                            ),
-                                            IdentifierName(nameof(Schema.Parse))
+                                                IdentifierName(nameof(AvroParser)),
+                                                GenericName(
+                                                    Identifier(nameof(AvroParser.ReadSchema))
+                                                )
+                                                .WithTypeArgumentList(
+                                                    TypeArgumentList(
+                                                        SingletonSeparatedList<TypeSyntax>(
+                                                            IdentifierName(nameof(ErrorSchema))
+                                                        )
+                                                    )
+                                                )
+                                            )
                                         )
-                                    )
-                                    .WithArgumentList(
-                                        ArgumentList(
-                                            SingletonSeparatedList(
-                                                Argument(
-                                                    LiteralExpression(
-                                                        SyntaxKind.StringLiteralExpression,
-                                                        Literal(avro)
+                                        .WithArgumentList(
+                                            ArgumentList(
+                                                SingletonSeparatedList(
+                                                    Argument(
+                                                        LiteralExpression(
+                                                            SyntaxKind.StringLiteralExpression,
+                                                            Literal(avro)
+                                                        )
                                                     )
                                                 )
                                             )
@@ -204,10 +221,14 @@ namespace Avro.Code
                             )
                         )
                     )
-                    .AddModifiers(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.ReadOnlyKeyword)
+                    .WithModifiers(
+                        TokenList(
+                            new[]{
+                                Token(SyntaxKind.PublicKeyword),
+                                Token(SyntaxKind.StaticKeyword),
+                                Token(SyntaxKind.ReadOnlyKeyword)
+                            }
+                        )
                     ),
                     ConstructorDeclaration(
                         Identifier(name)
@@ -217,29 +238,79 @@ namespace Avro.Code
                             Token(SyntaxKind.PublicKeyword)
                         )
                     )
-                    .WithInitializer(
-                        ConstructorInitializer(
-                            SyntaxKind.BaseConstructorInitializer,
-                            ArgumentList(
-                                SingletonSeparatedList(
-                                    Argument(
-                                        LiteralExpression(
-                                            SyntaxKind.StringLiteralExpression,
-                                            Literal(errorMessage)
-                                        )
+                    .WithParameterList(
+                        ParameterList(
+                            SingletonSeparatedList(
+                                Parameter(
+                                    Identifier("errorMessage")
+                                )
+                                .WithType(
+                                    PredefinedType(
+                                        Token(SyntaxKind.StringKeyword)
                                     )
                                 )
                             )
                         )
                     )
                     .WithBody(
-                        Block()
+                        Block(
+                            SingletonList<StatementSyntax>(
+                                ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(nameof(IAvroError.Exception)),
+                                        ObjectCreationExpression(
+                                            IdentifierName(nameof(AvroException))
+                                        )
+                                        .WithArgumentList(
+                                            ArgumentList(
+                                                SingletonSeparatedList(
+                                                    Argument(
+                                                        IdentifierName("errorMessage")
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    ConstructorDeclaration(
+                        Identifier(name)
+                    )
+                    .WithModifiers(
+                        TokenList(
+                            Token(SyntaxKind.PublicKeyword)
+                        )
+                    )
+                    .WithParameterList(
+                        ParameterList(
+                            SingletonSeparatedList(
+                                Parameter(
+                                    Identifier("exception")
+                                )
+                                .WithType(
+                                    IdentifierName(nameof(AvroException))
+                                )
+                            )
+                        )
+                    )
+                    .WithBody(
+                        Block(
+                            SingletonList<StatementSyntax>(
+                                ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(nameof(IAvroError.Exception)),
+                                        IdentifierName("exception")
+                                    )
+                                )
+                            )
+                        )
                     ),
                     PropertyDeclaration(
-                        QualifiedName(
-                            IdentifierName(typeof(Schema).Namespace),
-                            IdentifierName(nameof(Schema))
-                        ),
+                        IdentifierName(nameof(RecordSchema)),
                         Identifier("Schema")
                     )
                     .WithModifiers(
@@ -254,6 +325,35 @@ namespace Avro.Code
                     )
                     .WithSemicolonToken(
                         Token(SyntaxKind.SemicolonToken)
+                    ),
+                    PropertyDeclaration(
+                        IdentifierName(nameof(AvroException)),
+                        Identifier(nameof(IAvroError.Exception))
+                    )
+                    .AddModifiers(
+                        Token(SyntaxKind.PublicKeyword)
+                    )
+                    .WithAccessorList(
+                        AccessorList()
+                            .AddAccessors(
+                                AccessorDeclaration(
+                                    SyntaxKind.GetAccessorDeclaration
+                                )
+                                .WithSemicolonToken(
+                                    Token(SyntaxKind.SemicolonToken)
+                                ),
+                                AccessorDeclaration(
+                                    SyntaxKind.SetAccessorDeclaration
+                                )
+                                .WithModifiers(
+                                    TokenList(
+                                        Token(SyntaxKind.PrivateKeyword)
+                                    )
+                                )
+                                .WithSemicolonToken(
+                                    Token(SyntaxKind.SemicolonToken)
+                                )
+                            )
                     ),
                     PropertyDeclaration(
                         PredefinedType(
@@ -296,7 +396,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(ISpecificFixed).FullName)
+                        ParseTypeName(typeof(IAvroFixed).FullName)
                     )
                 )
                 .WithMembers(
@@ -304,10 +404,7 @@ namespace Avro.Code
                         new MemberDeclarationSyntax[]{
                             FieldDeclaration(
                                 VariableDeclaration(
-                                    QualifiedName(
-                                        IdentifierName(typeof(Schema).Namespace),
-                                        IdentifierName(nameof(Schema))
-                                    )
+                                    IdentifierName(nameof(FixedSchema))
                                 )
                                 .WithVariables(
                                     SingletonSeparatedList(
@@ -319,12 +416,17 @@ namespace Avro.Code
                                                 InvocationExpression(
                                                     MemberAccessExpression(
                                                         SyntaxKind.SimpleMemberAccessExpression,
-                                                        MemberAccessExpression(
-                                                            SyntaxKind.SimpleMemberAccessExpression,
-                                                            IdentifierName(typeof(Schema).Namespace),
-                                                            IdentifierName(typeof(Schema).Name)
-                                                        ),
-                                                        IdentifierName(nameof(Schema.Parse))
+                                                        IdentifierName(nameof(AvroParser)),
+                                                        GenericName(
+                                                            Identifier(nameof(AvroParser.ReadSchema))
+                                                        )
+                                                        .WithTypeArgumentList(
+                                                            TypeArgumentList(
+                                                                SingletonSeparatedList<TypeSyntax>(
+                                                                    IdentifierName(nameof(FixedSchema))
+                                                                )
+                                                            )
+                                                        )
                                                     )
                                                 )
                                                 .WithArgumentList(
@@ -346,7 +448,7 @@ namespace Avro.Code
                             )
                             .WithModifiers(
                                 TokenList(
-                                    new []{
+                                    new[]{
                                         Token(SyntaxKind.PublicKeyword),
                                         Token(SyntaxKind.StaticKeyword),
                                         Token(SyntaxKind.ReadOnlyKeyword)
@@ -543,10 +645,7 @@ namespace Avro.Code
                                 )
                             ),
                             PropertyDeclaration(
-                                QualifiedName(
-                                    IdentifierName(typeof(Schema).Namespace),
-                                    IdentifierName(nameof(Schema))
-                                ),
+                                IdentifierName(nameof(FixedSchema)),
                                 Identifier("Schema")
                             )
                             .WithModifiers(
@@ -566,7 +665,7 @@ namespace Avro.Code
                                 PredefinedType(
                                     Token(SyntaxKind.IntKeyword)
                                 ),
-                                Identifier(nameof(ISpecificFixed.Size))
+                                Identifier(nameof(IAvroFixed.Size))
                             )
                             .WithModifiers(
                                 TokenList(
@@ -684,7 +783,7 @@ namespace Avro.Code
                                             Identifier("other")
                                         )
                                         .WithType(
-                                            IdentifierName(nameof(ISpecificFixed))
+                                            IdentifierName(nameof(IAvroFixed))
                                         )
                                     )
                                 )
@@ -694,11 +793,11 @@ namespace Avro.Code
                                     IfStatement(
                                         BinaryExpression(
                                             SyntaxKind.NotEqualsExpression,
-                                            IdentifierName(nameof(ISpecificFixed.Size)),
+                                            IdentifierName(nameof(IAvroFixed.Size)),
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
                                                 IdentifierName("other"),
-                                                IdentifierName(nameof(ISpecificFixed.Size))
+                                                IdentifierName(nameof(IAvroFixed.Size))
                                             )
                                         ),
                                         ReturnStatement(
@@ -769,7 +868,7 @@ namespace Avro.Code
                                         BinaryExpression(
                                             SyntaxKind.LessThanExpression,
                                             IdentifierName("i"),
-                                            IdentifierName(nameof(ISpecificFixed.Size))
+                                            IdentifierName(nameof(IAvroFixed.Size))
                                         )
                                     )
                                     .WithIncrementors(
@@ -967,7 +1066,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(ISpecificProtocol).FullName)
+                        ParseTypeName(typeof(IAvroProtocol).FullName)
                     )
                 )
                 .WithMembers(
@@ -976,8 +1075,8 @@ namespace Avro.Code
                             FieldDeclaration(
                                 VariableDeclaration(
                                     QualifiedName(
-                                        IdentifierName(typeof(Schema).Namespace),
-                                        IdentifierName(nameof(Schema))
+                                        IdentifierName(typeof(AvroSchema).Namespace),
+                                        IdentifierName(nameof(AvroSchema))
                                     )
                                 )
                                 .WithVariables(
@@ -992,10 +1091,10 @@ namespace Avro.Code
                                                         SyntaxKind.SimpleMemberAccessExpression,
                                                         MemberAccessExpression(
                                                             SyntaxKind.SimpleMemberAccessExpression,
-                                                            IdentifierName(typeof(Protocol).Namespace),
-                                                            IdentifierName(typeof(Protocol).Name)
+                                                            IdentifierName(typeof(AvroProtocol).Namespace),
+                                                            IdentifierName(typeof(AvroProtocol).Name)
                                                         ),
-                                                        IdentifierName(nameof(Protocol.Parse))
+                                                        IdentifierName(nameof(AvroProtocol.Parse))
                                                     )
                                                 )
                                                 .WithArgumentList(
@@ -1173,123 +1272,6 @@ namespace Avro.Code
                         )
                     )
                 ;
-        }
-
-        internal static MemberDeclarationSyntax CreateRecorClassGetMethod()
-        {
-            return
-                MethodDeclaration(
-                    PredefinedType(
-                        Token(SyntaxKind.ObjectKeyword)
-                    ),
-                    Identifier("Get")
-                )
-                .WithModifiers(
-                    TokenList(
-                        Token(SyntaxKind.PublicKeyword)
-                    )
-                )
-                .WithParameterList(
-                    ParameterList(
-                        SingletonSeparatedList(
-                            Parameter(
-                                Identifier("fieldPos")
-                            )
-                            .WithType(
-                                PredefinedType(
-                                    Token(SyntaxKind.IntKeyword)
-                                )
-                            )
-                        )
-                    )
-                )
-                .WithBody(
-                    Block(
-                        SingletonList<StatementSyntax>(
-                            ReturnStatement(
-                                ElementAccessExpression(
-                                    ThisExpression()
-                                )
-                                .WithArgumentList(
-                                    BracketedArgumentList(
-                                        SingletonSeparatedList(
-                                            Argument(
-                                                IdentifierName("fieldPos")
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            ;
-        }
-
-        internal static MemberDeclarationSyntax CreateRecordClassSetMethod()
-        {
-            return
-                MethodDeclaration(
-                    PredefinedType(
-                        Token(SyntaxKind.VoidKeyword)
-                    ),
-                    Identifier("Put")
-                )
-                .WithModifiers(
-                    TokenList(
-                        Token(SyntaxKind.PublicKeyword)
-                    )
-                )
-                .WithParameterList(
-                    ParameterList(
-                        SeparatedList<ParameterSyntax>(
-                            new SyntaxNodeOrToken[]{
-                                Parameter(
-                                    Identifier("fieldPos")
-                                )
-                                .WithType(
-                                    PredefinedType(
-                                        Token(SyntaxKind.IntKeyword)
-                                    )
-                                ),
-                                Token(SyntaxKind.CommaToken),
-                                Parameter(
-                                    Identifier("fieldValue")
-                                )
-                                .WithType(
-                                    PredefinedType(
-                                        Token(SyntaxKind.ObjectKeyword)
-                                    )
-                                )
-                            }
-                        )
-                    )
-                )
-                .WithBody(
-                    Block(
-                        SingletonList<StatementSyntax>(
-                            ExpressionStatement(
-                                AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    ElementAccessExpression(
-                                        ThisExpression()
-                                    )
-                                    .WithArgumentList(
-                                        BracketedArgumentList(
-                                            SingletonSeparatedList(
-                                                Argument(
-                                                    IdentifierName("fieldPos")
-                                                )
-                                            )
-                                        )
-                                    ),
-                                    IdentifierName("fieldValue")
-                                )
-                            )
-                        )
-                    )
-                )
-            ;
         }
 
         internal static SwitchSectionSyntax SwitchCaseGetProperty(int caseLabel, string propertyName)
@@ -1771,7 +1753,10 @@ namespace Avro.Code
                                 IdentifierName("Avro")
                             ),
                             UsingDirective(
-                                IdentifierName("Avro.Specific")
+                                IdentifierName("Avro.Schemas")
+                            ),
+                            UsingDirective(
+                                IdentifierName("Avro.Types")
                             ),
                             UsingDirective(
                                 IdentifierName("System")
@@ -1796,7 +1781,7 @@ namespace Avro.Code
         {
             var references = new[] {
                 MetadataReference.CreateFromFile(typeof(object).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(ISpecificRecord).GetTypeInfo().Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location),
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
             };
 
@@ -1844,7 +1829,7 @@ namespace Avro.Code
             }
         }
 
-        public static string GetSystemType(Schema schema, bool nullable = false)
+        public static string GetSystemType(AvroSchema schema, bool nullable = false)
         {
             switch (schema)
             {
@@ -1927,9 +1912,9 @@ namespace Avro.Code
 
                 case DurationSchema _:
                     if (nullable)
-                        return "ValueTuple<uint, uint, uint>?";
+                        return "AvroDuration?";
                     else
-                        return "ValueTuple<uint, uint, uint>";
+                        return "AvroDuration";
 
                 case UuidSchema _:
                     if (nullable)
@@ -1945,7 +1930,7 @@ namespace Avro.Code
             }
         }
 
-        public static string GetSystemTypeInitialization(Schema schema, JToken value)
+        public static string GetSystemTypeInitialization(AvroSchema schema, JToken value)
         {
             var defaultInit = string.Empty;
             switch (schema)
