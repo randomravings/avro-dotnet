@@ -1,7 +1,5 @@
-﻿using Avro.Generic;
-using Avro.Types;
+﻿using Avro.Types;
 using org.apache.avro.ipc;
-using System;
 using System.Collections.Generic;
 
 namespace Avro.Ipc.Generic

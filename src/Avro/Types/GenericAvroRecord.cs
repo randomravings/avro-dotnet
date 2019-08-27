@@ -1,4 +1,3 @@
-using Avro.Generic;
 using Avro.Schemas;
 using Newtonsoft.Json.Linq;
 using System;

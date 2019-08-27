@@ -1,5 +1,4 @@
-﻿using Avro.Generic;
-using Avro.IO;
+﻿using Avro.IO;
 using Avro.Ipc.IO;
 using Avro.Types;
 using org.apache.avro.ipc;

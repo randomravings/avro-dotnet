@@ -1,9 +1,8 @@
-﻿using Avro.Generic;
-using Avro.IO;
+﻿using Avro.IO;
 using Avro.Schemas;
+using Avro.Specific;
 using Avro.Types;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -33,8 +32,8 @@ namespace Avro.Test.IO
             }") as RecordSchema;
 
             var genericRecord = new GenericAvroRecord(schema);
-            var reader = new GenericReader<GenericAvroRecord>(schema);
-            var writer = new GenericWriter<GenericAvroRecord>(schema);
+            var reader = new SpecificReader<GenericAvroRecord>(schema);
+            var writer = new SpecificWriter<GenericAvroRecord>(schema);
 
 
             var delimiter = ",";
@@ -47,9 +46,9 @@ namespace Avro.Test.IO
                     var record = new GenericAvroRecord(genericRecord);
                     record[0] = i;
                     record[1] = $"foo{i}";
-                    record[2] = new List<object> { };
+                    record[2] = new List<string> { };
                     record[3] = null;
-                    record[4] = new Dictionary<string, object>() { };
+                    record[4] = new Dictionary<string, string>() { };
                     writer.Write(encoder, record);
                 }
             }

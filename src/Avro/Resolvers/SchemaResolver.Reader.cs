@@ -18,7 +18,7 @@ namespace Avro.Resolvers
             var skipAction = typeof(Action<>).MakeGenericType(typeof(IDecoder));
             var streamParameter = Expression.Parameter(typeof(IDecoder), "s");
             var assembly = type.Assembly;
-            if (type.Equals(typeof(GenericAvroRecord)))
+            if (type.Equals(typeof(GenericAvroRecord)) || type.Equals(typeof(object)))
                 assembly = null;
             var expressions = ResolveReader(assembly, type, readerSchema, writerSchema, streamParameter);
             if (expressions == null)
@@ -160,13 +160,13 @@ namespace Avro.Resolvers
                     expressions = ResolveMap(streamParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
                     break;
 
-                case EnumSchema r when writerSchema is EnumSchema && r.Equals(writerSchema) && (type.IsEnum || typeof(GenericAvroEnum).IsAssignableFrom(type)):
+                case EnumSchema r when writerSchema is EnumSchema && r.Equals(writerSchema) && (type.IsEnum || typeof(GenericAvroEnum).IsAssignableFrom(type) || type.Equals(typeof(object))):
                     expressions = ResolveEnum(streamParameter, r, type, r.Symbols, (writerSchema as EnumSchema).Symbols);
                     break;
-                case FixedSchema r when writerSchema is FixedSchema && r.Equals(writerSchema) && typeof(IAvroFixed).IsAssignableFrom(type):
+                case FixedSchema r when writerSchema is FixedSchema && r.Equals(writerSchema) && (typeof(IAvroFixed).IsAssignableFrom(type) || type.Equals(typeof(object))):
                     expressions = ResolveFixed(streamParameter, r, type, r.Size);
                     break;
-                case RecordSchema r when writerSchema is RecordSchema && r.Equals(writerSchema) && typeof(IAvroRecord).IsAssignableFrom(type):
+                case RecordSchema r when writerSchema is RecordSchema && r.Equals(writerSchema) && (typeof(IAvroRecord).IsAssignableFrom(type) || type.Equals(typeof(object))):
                     expressions = ResolveRecord(streamParameter, type, origin, r, (writerSchema as RecordSchema));
                     break;
 
@@ -769,7 +769,7 @@ namespace Avro.Resolvers
 
             for (int i = 0; i < writerSymbols.Count(); i++)
             {
-                if (typeof(GenericAvroEnum).IsAssignableFrom(enumType))
+                if (typeof(GenericAvroEnum).IsAssignableFrom(enumType) || enumType.Equals(typeof(object)))
                 {
                     switchCases[i] =
                         Expression.SwitchCase(
@@ -853,12 +853,12 @@ namespace Avro.Resolvers
         {
             var readExression = default(Expression);
 
-            if(typeof(GenericAvroFixed).IsAssignableFrom(fixedType))
+            if(typeof(GenericAvroFixed).IsAssignableFrom(fixedType) || fixedType.Equals(typeof(object)))
             {
                 readExression =
                     Expression.Block(
                         Expression.New(
-                            fixedType.GetConstructor(
+                            typeof(GenericAvroFixed).GetConstructor(
                                 new Type[] {
                                     typeof(FixedSchema),
                                     typeof(byte[])
@@ -932,14 +932,14 @@ namespace Avro.Resolvers
                     "record"
                 );
 
-            if (typeof(GenericAvroRecord).IsAssignableFrom(recordType))
+            if (typeof(GenericAvroRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(object)))
             {
                 var modelRecord = new GenericAvroRecord(readerSchema);
                 fieldReaders.Add(
                     Expression.Assign(
                         recordParameter,
                         Expression.New(
-                            recordType.GetConstructor(
+                            typeof(GenericAvroRecord).GetConstructor(
                                 new Type[] {
                                     typeof(GenericAvroRecord),
                                     typeof(bool)
@@ -986,13 +986,16 @@ namespace Avro.Resolvers
                 else
                 {
                     fieldExpressions = ResolveReader(origin, GetTypeFromSchema(readerField.Type, origin), readerField.Type, writerField.Type, streamParameter);
-                    if (typeof(GenericAvroRecord).IsAssignableFrom(recordType))
+                    if (typeof(GenericAvroRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(object)))
                     {
                         fieldReaders.Add(
                             Expression.Assign(
                                 Expression.MakeIndex(
-                                    recordParameter,
-                                    recordType.GetProperty("Item", typeof(object), new Type[] { typeof(int) }),
+                                    Expression.TypeAs(
+                                        recordParameter,
+                                        typeof(GenericAvroRecord)
+                                    ),
+                                    typeof(GenericAvroRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) }),
                                     new Expression[] {
                                         Expression.Constant(
                                             i,

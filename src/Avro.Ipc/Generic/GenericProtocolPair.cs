@@ -1,7 +1,7 @@
-﻿using Avro.Generic;
-using Avro.IO;
+﻿using Avro.IO;
 using Avro.Ipc.Utils;
 using Avro.Schemas;
+using Avro.Specific;
 using Avro.Types;
 using org.apache.avro.ipc;
 using System.Collections.Generic;
@@ -82,20 +82,20 @@ namespace Avro.Ipc.Generic
                 var localRequest = new RecordSchema($"{protocol.FullName}.messages.{messagePair.MessageName}", localRequestParameters);
                 var remoteRequest = new RecordSchema($"{remoteProtocol.FullName}.messages.{messagePair.MessageName}", remoteRequestParameters);
 
-                var requestReader = new GenericReader<GenericAvroRecord>(localRequest, remoteRequest);
-                var requestWriter = new GenericWriter<GenericAvroRecord>(localRequest);
+                var requestReader = new SpecificReader<GenericAvroRecord>(localRequest, remoteRequest);
+                var requestWriter = new SpecificWriter<GenericAvroRecord>(localRequest);
 
                 _requestReaders.Add(messagePair.MessageName, requestReader);
                 _requestWriters.Add(messagePair.MessageName, requestWriter);
 
-                var responseReader = new GenericReader<object>(messagePair.LocalMessage.Response, messagePair.RemoteMessage.Response);
-                var responseWriter = new GenericWriter<object>(messagePair.LocalMessage.Response);
+                var responseReader = new SpecificReader<object>(messagePair.LocalMessage.Response, messagePair.RemoteMessage.Response);
+                var responseWriter = new SpecificWriter<object>(messagePair.LocalMessage.Response);
 
                 _responseReaders.Add(messagePair.MessageName, responseReader);
                 _responseWriters.Add(messagePair.MessageName, responseWriter);
 
-                var errorReader = new GenericReader<object>(messagePair.LocalMessage.Error, messagePair.RemoteMessage.Error);
-                var errorWriter = new GenericWriter<object>(messagePair.LocalMessage.Error);
+                var errorReader = new SpecificReader<object>(messagePair.LocalMessage.Error, messagePair.RemoteMessage.Error);
+                var errorWriter = new SpecificWriter<object>(messagePair.LocalMessage.Error);
 
                 _errorReaders.Add(messagePair.MessageName, errorReader);
                 _errorWrtiers.Add(messagePair.MessageName, errorWriter);

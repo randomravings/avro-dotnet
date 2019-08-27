@@ -18,7 +18,7 @@ namespace Avro.Resolvers
             var valueParameter = Expression.Parameter(type, "v");
             var writeAction = typeof(Action<,>).MakeGenericType(typeof(IEncoder), type);
             var assembly = type.Assembly;
-            if (type.Equals(typeof(GenericAvroRecord)))
+            if (type.Equals(typeof(GenericAvroRecord)) || type.Equals(typeof(object)))
                 assembly = null;
             if (!ResolveWriter(assembly, type, writerSchema, streamParameter, valueParameter, null, out var writeExpression))
                 throw new AvroException($"Unable to resolve writer: '{writerSchema}' for type: '{type}'");
@@ -234,7 +234,7 @@ namespace Avro.Resolvers
                     );
                     break;
 
-                case EnumSchema r when (typeof(GenericAvroEnum).IsAssignableFrom(type)) || (type.IsEnum && (Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count)):
+                case EnumSchema r when typeof(GenericAvroEnum).IsAssignableFrom(type) || type.Equals(typeof(object)) || (type.IsEnum && (Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count)):
                     if (typeof(GenericAvroEnum).IsAssignableFrom(type))
                     {
                         writeExpression =
@@ -273,8 +273,8 @@ namespace Avro.Resolvers
                     }
                     break;
 
-                case FixedSchema r when typeof(IAvroFixed).IsAssignableFrom(type):
-                    if (typeof(GenericAvroFixed).IsAssignableFrom(type))
+                case FixedSchema r when typeof(IAvroFixed).IsAssignableFrom(type) || type.Equals(typeof(object)):
+                    if (typeof(GenericAvroFixed).IsAssignableFrom(type) || type.Equals(typeof(object)))
                     {
                         writeExpression = Expression.Call(
                             streamParameter,
@@ -292,21 +292,24 @@ namespace Avro.Resolvers
                     }
                     break;
 
-                case RecordSchema r when typeof(IAvroRecord).IsAssignableFrom(type):
+                case RecordSchema r when typeof(IAvroRecord).IsAssignableFrom(type) || type.Equals(typeof(object)):
                     var fieldExpressions = new List<Expression>();
                     int x = 0;
                     foreach (var field in r)
                     {
                         var fieldType = default(Type);
                         var fieldValueExpression = default(Expression);
-                        if (typeof(GenericAvroRecord).IsAssignableFrom(type))
+                        if (typeof(GenericAvroRecord).IsAssignableFrom(type) || type.Equals(typeof(object)))
                         {
-                            var recordProperty = type.GetProperty("Item", typeof(object), new Type[] { typeof(int) });
+                            var recordProperty = typeof(IAvroRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) });
                             fieldType = GetTypeFromSchema(field.Type, origin);
                             fieldValueExpression =
                                 Expression.Convert(
                                     Expression.MakeIndex(
-                                        valueExpression,
+                                        Expression.TypeAs(
+                                            valueExpression,
+                                            typeof(IAvroRecord)
+                                        ),
                                         recordProperty,
                                         new Expression[] {
                                             Expression.Constant(
