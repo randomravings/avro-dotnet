@@ -1,9 +1,9 @@
 ﻿using Avro;
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System.Collections;
 
-namespace Avro.Test.Schemas
+namespace Avro.Test.Schema
 {
     [TestFixture()]
     class SchemaRecordTest

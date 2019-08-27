@@ -1,5 +1,5 @@
 ﻿using Avro.Code;
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;

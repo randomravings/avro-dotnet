@@ -8,7 +8,7 @@ namespace Avro.Ipc.Generic
     {
         public IDictionary<string, byte[]> Metadata { get; set; }
         public string MessageName { get; set; }
-        public GenericAvroRecord RequestParameters { get; set; }
+        public GenericRecord RequestParameters { get; set; }
         public bool IsError { get; set; }
         public object Response { get; set; }
         public object Error { get; set; }

@@ -1,4 +1,4 @@
-using Avro.Schemas;
+using Avro.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

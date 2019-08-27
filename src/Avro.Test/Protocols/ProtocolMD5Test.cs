@@ -1,5 +1,5 @@
 using Avro;
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System;
 

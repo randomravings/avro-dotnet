@@ -1,11 +1,11 @@
 ﻿using Avro;
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Avro.Test.Schemas
+namespace Avro.Test.Schema
 {
     [TestFixture(TypeArgs = new Type[] { typeof(IntSchema) })]
     [TestFixture(TypeArgs = new Type[] { typeof(RecordSchema.Field) })]

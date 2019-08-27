@@ -1,11 +1,11 @@
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Avro.Test.Schemas
+namespace Avro.Test.Schema
 {
     [TestFixture()]
     public class SchemaWriteTest

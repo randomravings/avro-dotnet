@@ -1,7 +1,5 @@
 ﻿using Avro.IO;
-using Avro.Ipc.Utils;
-using Avro.Schemas;
-using Avro.Specific;
+using Avro.Schema;
 using org.apache.avro.ipc;
 using System.Collections.Generic;
 
@@ -15,14 +13,14 @@ namespace Avro.Ipc
         protected static readonly IDictionary<string, byte[]> EMPTY_META = new Dictionary<string, byte[]>();
         protected static readonly byte[] END_OF_FRAME = new byte[] { };
 
-        protected static readonly IDatumReader<IDictionary<string, byte[]>> META_READER = new SpecificReader<IDictionary<string, byte[]>>(META_SCHEMA);
-        protected static readonly IDatumWriter<IDictionary<string, byte[]>> META_WRITER = new SpecificWriter<IDictionary<string, byte[]>>(META_SCHEMA);
-        protected static readonly IDatumWriter<byte[]> END_OF_FRAME_WRITER = new SpecificWriter<byte[]>(END_OF_FRAME_SCHEMA);
+        protected static readonly IAvroReader<IDictionary<string, byte[]>> META_READER = new DatumReader<IDictionary<string, byte[]>>(META_SCHEMA);
+        protected static readonly IAvroWriter<IDictionary<string, byte[]>> META_WRITER = new DatumWriter<IDictionary<string, byte[]>>(META_SCHEMA);
+        protected static readonly IAvroWriter<byte[]> END_OF_FRAME_WRITER = new DatumWriter<byte[]>(END_OF_FRAME_SCHEMA);
 
-        protected static readonly IDatumReader<HandshakeRequest> HANDSHAKE_REQUEST_READER = new SpecificReader<HandshakeRequest>(HandshakeRequest._SCHEMA);
-        protected static readonly IDatumWriter<HandshakeRequest> HANDSHAKE_REQUEST_WRITER = new SpecificWriter<HandshakeRequest>(HandshakeRequest._SCHEMA);
-        protected static readonly IDatumReader<HandshakeResponse> HANDSHAKE_RESPONSE_READER = new SpecificReader<HandshakeResponse>(HandshakeResponse._SCHEMA);
-        protected static readonly IDatumWriter<HandshakeResponse> HANDSHAKE_RESPONSE_WRITER = new SpecificWriter<HandshakeResponse>(HandshakeResponse._SCHEMA);
+        protected static readonly IAvroReader<HandshakeRequest> HANDSHAKE_REQUEST_READER = new DatumReader<HandshakeRequest>(HandshakeRequest._SCHEMA);
+        protected static readonly IAvroWriter<HandshakeRequest> HANDSHAKE_REQUEST_WRITER = new DatumWriter<HandshakeRequest>(HandshakeRequest._SCHEMA);
+        protected static readonly IAvroReader<HandshakeResponse> HANDSHAKE_RESPONSE_READER = new DatumReader<HandshakeResponse>(HandshakeResponse._SCHEMA);
+        protected static readonly IAvroWriter<HandshakeResponse> HANDSHAKE_RESPONSE_WRITER = new DatumWriter<HandshakeResponse>(HandshakeResponse._SCHEMA);
 
         protected readonly ITranceiver _tranceiver;
         protected readonly bool _stateLess;

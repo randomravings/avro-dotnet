@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Avro.IO
 {
-    public sealed class BinaryDecoder : IDecoder
+    public sealed class BinaryDecoder : IAvroDecoder
     {
         private readonly Stream _stream;
 
@@ -17,7 +17,7 @@ namespace Avro.IO
             _stream = stream;
         }
 
-        public IList<T> ReadArray<T>(Func<IDecoder, T> itemsReader)
+        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
         {
             var array = new List<T>();
             var len = 0L;
@@ -36,7 +36,7 @@ namespace Avro.IO
             return array;
         }
 
-        public bool ReadArrayBlock<T>(Func<IDecoder, T> itemsReader, out IList<T> array)
+        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array)
         {
             array = new List<T>();
             var len = ReadLong();
@@ -201,7 +201,7 @@ namespace Avro.IO
             return (-(value & 0x01L)) ^ ((value >> 1) & 0x7FFFFFFFFFFFFFFFL);
         }
 
-        public IDictionary<string, T> ReadMap<T>(Func<IDecoder, T> valuesReader)
+        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
         {
             var map = new Dictionary<string, T>() as IDictionary<string, T>;
             var len = 0L;
@@ -221,7 +221,7 @@ namespace Avro.IO
             return map;
         }
 
-        public bool ReadMapBlock<T>(Func<IDecoder, T> valuesReader, out IDictionary<string, T> map)
+        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map)
         {
             map = new Dictionary<string, T>() as IDictionary<string, T>;
             var len = ReadLong();
@@ -247,7 +247,7 @@ namespace Avro.IO
             return new AvroNull();
         }
 
-        public T ReadNullableObject<T>(Func<IDecoder, T> reader, long nullIndex) where T : class
+        public T ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
         {
             var index = ReadLong();
             if (index == nullIndex)
@@ -255,7 +255,7 @@ namespace Avro.IO
             return reader.Invoke(this);
         }
 
-        public T? ReadNullableValue<T>(Func<IDecoder, T> reader, long nullIndex) where T : struct
+        public T? ReadNullableValue<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : struct
         {
             var index = ReadLong();
             if (index == nullIndex)
@@ -311,7 +311,7 @@ namespace Avro.IO
             return Guid.Parse(s);
         }
 
-        public void SkipArray(Action<IDecoder> itemsSkipper)
+        public void SkipArray(Action<IAvroDecoder> itemsSkipper)
         {
             var len = 0L;
             do
@@ -389,7 +389,7 @@ namespace Avro.IO
                 b = (byte)_stream.ReadByte();
         }
 
-        public void SkipMap(Action<IDecoder> valuesSkipper)
+        public void SkipMap(Action<IAvroDecoder> valuesSkipper)
         {
             var len = 0L;
             do
@@ -412,7 +412,7 @@ namespace Avro.IO
 
         public void SkipNull() { }
 
-        public void SkipNullable(Action<IDecoder> skipper, long nullIndex)
+        public void SkipNullable(Action<IAvroDecoder> skipper, long nullIndex)
         {
             var index = ReadLong();
             if (index != nullIndex)

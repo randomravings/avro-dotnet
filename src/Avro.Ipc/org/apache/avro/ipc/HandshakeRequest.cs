@@ -1,4 +1,4 @@
-using Avro.Schemas;
+using Avro.Schema;
 using System;
 using System.Collections.Generic;
 

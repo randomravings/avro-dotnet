@@ -7,7 +7,7 @@ using System.IO;
 
 namespace Avro.IO
 {
-    public class JsonDecoder : IDecoder
+    public class JsonDecoder : IAvroDecoder
     {
         private readonly TextReader _stream;
         private readonly AvroSchema _schema;
@@ -55,7 +55,7 @@ namespace Avro.IO
             }
         }
 
-        public IList<T> ReadArray<T>(Func<IDecoder, T> itemsReader)
+        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
         {
             ReadStart();
             var loop = _index;
@@ -73,7 +73,7 @@ namespace Avro.IO
             return items;
         }
 
-        public bool ReadArrayBlock<T>(Func<IDecoder, T> itemsReader, out IList<T> array)
+        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array)
         {
             throw new NotImplementedException();
         }
@@ -145,7 +145,7 @@ namespace Avro.IO
             throw new NotImplementedException();
         }
 
-        public IDictionary<string, T> ReadMap<T>(Func<IDecoder, T> valuesReader)
+        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
         {
             ReadStart();
             var loop = _index;
@@ -165,7 +165,7 @@ namespace Avro.IO
             return items;
         }
 
-        public bool ReadMapBlock<T>(Func<IDecoder, T> valuesReader, out IDictionary<string, T> map)
+        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map)
         {
             throw new NotImplementedException();
         }
@@ -176,12 +176,12 @@ namespace Avro.IO
             return new AvroNull();
         }
 
-        public T ReadNullableObject<T>(Func<IDecoder, T> reader, long nullIndex) where T : class
+        public T ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public T? ReadNullableValue<T>(Func<IDecoder, T> reader, long nullIndex) where T : struct
+        public T? ReadNullableValue<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : struct
         {
             throw new NotImplementedException();
         }
@@ -227,7 +227,7 @@ namespace Avro.IO
             throw new NotImplementedException();
         }
 
-        public void SkipArray(Action<IDecoder> itemsSkipper)
+        public void SkipArray(Action<IAvroDecoder> itemsSkipper)
         {
             throw new NotImplementedException();
         }
@@ -287,7 +287,7 @@ namespace Avro.IO
             throw new NotImplementedException();
         }
 
-        public void SkipMap(Action<IDecoder> valuesSkipper)
+        public void SkipMap(Action<IAvroDecoder> valuesSkipper)
         {
             throw new NotImplementedException();
         }
@@ -297,7 +297,7 @@ namespace Avro.IO
             throw new NotImplementedException();
         }
 
-        public void SkipNullable(Action<IDecoder> skipper, long nullIndex)
+        public void SkipNullable(Action<IAvroDecoder> skipper, long nullIndex)
         {
             throw new NotImplementedException();
         }

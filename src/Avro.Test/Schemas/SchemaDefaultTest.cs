@@ -1,5 +1,5 @@
 using Avro;
-using Avro.Schemas;
+using Avro.Schema;
 using Avro.Utils;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -7,7 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Avro.Test.Schemas
+namespace Avro.Test.Schema
 {
     [TestFixture()]
     public class SchemaDefaultTest

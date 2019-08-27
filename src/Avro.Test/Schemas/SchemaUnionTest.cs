@@ -1,10 +1,10 @@
 ﻿using Avro;
-using Avro.Schemas;
+using Avro.Schema;
 using NUnit.Framework;
 using System.Collections;
 using System.Linq;
 
-namespace Avro.Test.Schemas
+namespace Avro.Test.Schema
 {
     [TestFixture()]
     class SchemaUnionTest

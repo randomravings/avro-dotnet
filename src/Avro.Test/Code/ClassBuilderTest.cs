@@ -1,6 +1,5 @@
 using Avro.Code;
-using Avro.Schemas;
-using Avro.Specific;
+using Avro.Schema;
 using Avro.Types;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;

@@ -1,5 +1,5 @@
-using Avro.Protocols;
-using Avro.Schemas;
+using Avro.Protocol;
+using Avro.Schema;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;

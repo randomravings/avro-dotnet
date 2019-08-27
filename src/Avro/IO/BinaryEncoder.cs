@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Avro.IO
 {
-    public class BinaryEncoder : IEncoder
+    public class BinaryEncoder : IAvroEncoder
     {
         private readonly Stream _stream;
 
@@ -185,7 +185,7 @@ namespace Avro.IO
             WriteString(s);
         }
 
-        public void WriteArray<T>(IList<T> items, Action<IEncoder, T> itemsWriter)
+        public void WriteArray<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter)
         {
             if (items.Count > 0)
             {
@@ -196,7 +196,7 @@ namespace Avro.IO
             WriteLong(0);
         }
 
-        public void WriteArrayBlock<T>(IList<T> items, Action<IEncoder, T> itemsWriter)
+        public void WriteArrayBlock<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter)
         {
             if (items.Count == 0)
             {
@@ -213,7 +213,7 @@ namespace Avro.IO
             localEncoder._stream.CopyTo(_stream);
         }
 
-        public void WriteMap<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
+        public void WriteMap<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter)
         {
             if (keyValues.Count > 0)
             {
@@ -227,7 +227,7 @@ namespace Avro.IO
             WriteLong(0);
         }
 
-        public void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IEncoder, T> valuesWriter)
+        public void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter)
         {
             if (keyValues.Count == 0)
             {
@@ -249,7 +249,7 @@ namespace Avro.IO
 
         public void WriteNull() { }
 
-        public void WriteNullableObject<T>(T value, Action<IEncoder, T> valueWriter, long nullIndex) where T : class
+        public void WriteNullableObject<T>(T value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : class
         {
             if (value == null)
             {
@@ -262,7 +262,7 @@ namespace Avro.IO
             }
         }
 
-        public void WriteNullableValue<T>(T? value, Action<IEncoder, T> valueWriter, long nullIndex) where T : struct
+        public void WriteNullableValue<T>(T? value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : struct
         {
             if (value.HasValue)
             {

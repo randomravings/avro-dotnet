@@ -18,7 +18,7 @@ namespace Avro.Ipc.Generic
             _protocolPair = GenericProtocolPair.Get(Protocol, RemoteProtocol);
         }
 
-        public async Task<GenericContext> RequestAsync(string messageName, GenericAvroRecord parameters, CancellationToken token)
+        public async Task<GenericContext> RequestAsync(string messageName, GenericRecord parameters, CancellationToken token)
         {
             var rpcContext = new GenericContext()
             {

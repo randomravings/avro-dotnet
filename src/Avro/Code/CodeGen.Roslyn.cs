@@ -1,5 +1,5 @@
-using Avro.Protocols;
-using Avro.Schemas;
+using Avro.Protocol;
+using Avro.Schema;
 using Avro.Types;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -1724,7 +1724,7 @@ namespace Avro.Code
                                 IdentifierName("Avro")
                             ),
                             UsingDirective(
-                                IdentifierName("Avro.Specific")
+                                IdentifierName("Avro.")
                             ),
                             UsingDirective(
                                 IdentifierName("System")
@@ -1753,7 +1753,7 @@ namespace Avro.Code
                                 IdentifierName("Avro")
                             ),
                             UsingDirective(
-                                IdentifierName("Avro.Schemas")
+                                IdentifierName("Avro.Schema")
                             ),
                             UsingDirective(
                                 IdentifierName("Avro.Types")

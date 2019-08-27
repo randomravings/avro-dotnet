@@ -1,4 +1,4 @@
-using Avro.Schemas;
+using Avro.Schema;
 
 namespace Avro.Types
 {

@@ -2,7 +2,7 @@
 using Avro.Ipc.Http;
 using Avro.Ipc.Local;
 using Avro.Ipc.Tcp;
-using Avro.Schemas;
+using Avro.Schema;
 using Avro.Types;
 using NUnit.Framework;
 using System.Linq;
@@ -129,13 +129,13 @@ namespace Avro.Ipc.Test.Tcp
         public async Task RunGenericServer(GenericServer server, CancellationToken token)
         {
             var rpcContext = await server.ReceiveAsync(token);
-            var response = new GenericAvroRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
+            var response = new GenericRecord(server.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema);
             response[0] = "World!";
             rpcContext.Response = response;
             await server.RespondAsync(rpcContext, token);
         }
 
-        private async Task<GenericAvroRecord> RunGenericClient(GenericClient client, CancellationToken token)
+        private async Task<GenericRecord> RunGenericClient(GenericClient client, CancellationToken token)
         {
             var parameterType = client.Protocol.Types.First(r => r.Name == "Greeting") as RecordSchema;
             var parameterRecordSchema = new RecordSchema(
@@ -146,12 +146,12 @@ namespace Avro.Ipc.Test.Tcp
                     new RecordSchema.Field("greeting", parameterType)
                 }
             );
-            var parameter = new GenericAvroRecord(parameterType);
+            var parameter = new GenericRecord(parameterType);
             parameter[0] = "Hello!";
-            var parameterRecord = new GenericAvroRecord(parameterRecordSchema);
+            var parameterRecord = new GenericRecord(parameterRecordSchema);
             parameterRecord[0] = parameter;
             var rpcContext = await client.RequestAsync("hello", parameterRecord, token);
-            return rpcContext.Response as GenericAvroRecord;
+            return rpcContext.Response as GenericRecord;
         }
     }
 }

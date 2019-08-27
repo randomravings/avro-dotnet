@@ -1,7 +1,6 @@
 ﻿using Avro.IO;
 using Avro.Ipc.Utils;
-using Avro.Schemas;
-using Avro.Specific;
+using Avro.Schema;
 using Avro.Types;
 using org.apache.avro.ipc;
 using System.Collections.Generic;
@@ -15,12 +14,12 @@ namespace Avro.Ipc.Generic
         private static readonly HashCompare COMPARE = new HashCompare();
         private static readonly IDictionary<MD5, IDictionary<MD5, GenericProtocolPair>> PROTOCOL_PARIS = new Dictionary<MD5, IDictionary<MD5, GenericProtocolPair>>(COMPARE);
 
-        private readonly IDictionary<string, IDatumReader<GenericAvroRecord>> _requestReaders = new Dictionary<string, IDatumReader<GenericAvroRecord>>();
-        private readonly IDictionary<string, IDatumWriter<GenericAvroRecord>> _requestWriters = new Dictionary<string, IDatumWriter<GenericAvroRecord>>();
-        private readonly IDictionary<string, IDatumReader<object>> _responseReaders = new Dictionary<string, IDatumReader<object>>();
-        private readonly IDictionary<string, IDatumWriter<object>> _responseWriters = new Dictionary<string, IDatumWriter<object>>();
-        private readonly IDictionary<string, IDatumReader<object>> _errorReaders = new Dictionary<string, IDatumReader<object>>();
-        private readonly IDictionary<string, IDatumWriter<object>> _errorWrtiers = new Dictionary<string, IDatumWriter<object>>();
+        private readonly IDictionary<string, IAvroReader<GenericRecord>> _requestReaders = new Dictionary<string, IAvroReader<GenericRecord>>();
+        private readonly IDictionary<string, IAvroWriter<GenericRecord>> _requestWriters = new Dictionary<string, IAvroWriter<GenericRecord>>();
+        private readonly IDictionary<string, IAvroReader<object>> _responseReaders = new Dictionary<string, IAvroReader<object>>();
+        private readonly IDictionary<string, IAvroWriter<object>> _responseWriters = new Dictionary<string, IAvroWriter<object>>();
+        private readonly IDictionary<string, IAvroReader<object>> _errorReaders = new Dictionary<string, IAvroReader<object>>();
+        private readonly IDictionary<string, IAvroWriter<object>> _errorWrtiers = new Dictionary<string, IAvroWriter<object>>();
 
         public static GenericProtocolPair Get(AvroProtocol protocol, AvroProtocol remoteProtocol)
         {
@@ -82,32 +81,32 @@ namespace Avro.Ipc.Generic
                 var localRequest = new RecordSchema($"{protocol.FullName}.messages.{messagePair.MessageName}", localRequestParameters);
                 var remoteRequest = new RecordSchema($"{remoteProtocol.FullName}.messages.{messagePair.MessageName}", remoteRequestParameters);
 
-                var requestReader = new SpecificReader<GenericAvroRecord>(localRequest, remoteRequest);
-                var requestWriter = new SpecificWriter<GenericAvroRecord>(localRequest);
+                var requestReader = new DatumReader<GenericRecord>(localRequest, remoteRequest);
+                var requestWriter = new DatumWriter<GenericRecord>(localRequest);
 
                 _requestReaders.Add(messagePair.MessageName, requestReader);
                 _requestWriters.Add(messagePair.MessageName, requestWriter);
 
-                var responseReader = new SpecificReader<object>(messagePair.LocalMessage.Response, messagePair.RemoteMessage.Response);
-                var responseWriter = new SpecificWriter<object>(messagePair.LocalMessage.Response);
+                var responseReader = new DatumReader<object>(messagePair.LocalMessage.Response, messagePair.RemoteMessage.Response);
+                var responseWriter = new DatumWriter<object>(messagePair.LocalMessage.Response);
 
                 _responseReaders.Add(messagePair.MessageName, responseReader);
                 _responseWriters.Add(messagePair.MessageName, responseWriter);
 
-                var errorReader = new SpecificReader<object>(messagePair.LocalMessage.Error, messagePair.RemoteMessage.Error);
-                var errorWriter = new SpecificWriter<object>(messagePair.LocalMessage.Error);
+                var errorReader = new DatumReader<object>(messagePair.LocalMessage.Error, messagePair.RemoteMessage.Error);
+                var errorWriter = new DatumWriter<object>(messagePair.LocalMessage.Error);
 
                 _errorReaders.Add(messagePair.MessageName, errorReader);
                 _errorWrtiers.Add(messagePair.MessageName, errorWriter);
             }
         }
 
-        internal GenericAvroRecord ReadRequest(BinaryDecoder decoder, string message)
+        internal GenericRecord ReadRequest(BinaryDecoder decoder, string message)
         {
             return _requestReaders[message].Read(decoder);
         }
 
-        internal void WriteRequest(BinaryEncoder encoder, string message, GenericAvroRecord record)
+        internal void WriteRequest(BinaryEncoder encoder, string message, GenericRecord record)
         {
             _requestWriters[message].Write(encoder, record);
         }

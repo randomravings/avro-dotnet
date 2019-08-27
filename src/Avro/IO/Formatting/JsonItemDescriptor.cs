@@ -1,4 +1,4 @@
-﻿using Avro.Schemas;
+﻿using Avro.Schema;
 using System.Collections.Generic;
 
 namespace Avro.IO.Formatting

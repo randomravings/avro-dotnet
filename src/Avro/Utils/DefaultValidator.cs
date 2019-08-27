@@ -1,4 +1,4 @@
-﻿using Avro.Schemas;
+﻿using Avro.Schema;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;

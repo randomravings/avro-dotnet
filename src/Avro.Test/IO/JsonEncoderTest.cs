@@ -1,6 +1,5 @@
 ﻿using Avro.IO;
-using Avro.Schemas;
-using Avro.Specific;
+using Avro.Schema;
 using Avro.Types;
 using NUnit.Framework;
 using System.Collections.Generic;
@@ -31,9 +30,9 @@ namespace Avro.Test.IO
                 ]
             }") as RecordSchema;
 
-            var genericRecord = new GenericAvroRecord(schema);
-            var reader = new SpecificReader<GenericAvroRecord>(schema);
-            var writer = new SpecificWriter<GenericAvroRecord>(schema);
+            var genericRecord = new GenericRecord(schema);
+            var reader = new DatumReader<GenericRecord>(schema);
+            var writer = new DatumWriter<GenericRecord>(schema);
 
 
             var delimiter = ",";
@@ -43,7 +42,7 @@ namespace Avro.Test.IO
             {
                 for (int i = 0; i < 10; i++)
                 {
-                    var record = new GenericAvroRecord(genericRecord);
+                    var record = new GenericRecord(genericRecord);
                     record[0] = i;
                     record[1] = $"foo{i}";
                     record[2] = new List<string> { };
