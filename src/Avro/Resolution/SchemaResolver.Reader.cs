@@ -18,7 +18,7 @@ namespace Avro.Resolution
             var skipAction = typeof(Action<>).MakeGenericType(typeof(IAvroDecoder));
             var streamParameter = Expression.Parameter(typeof(IAvroDecoder), "s");
             var assembly = type.Assembly;
-            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(object)))
+            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
                 assembly = null;
             var expressions = ResolveReader(assembly, type, readerSchema, writerSchema, streamParameter);
             if (expressions == null)
@@ -932,7 +932,7 @@ namespace Avro.Resolution
                     "record"
                 );
 
-            if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(object)))
+            if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(IAvroRecord)) || recordType.Equals(typeof(object)))
             {
                 var modelRecord = new GenericRecord(readerSchema);
                 fieldReaders.Add(
@@ -986,7 +986,7 @@ namespace Avro.Resolution
                 else
                 {
                     fieldExpressions = ResolveReader(origin, GetTypeFromSchema(readerField.Type, origin), readerField.Type, writerField.Type, streamParameter);
-                    if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(object)))
+                    if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(IAvroRecord)) || recordType.Equals(typeof(object)))
                     {
                         fieldReaders.Add(
                             Expression.Assign(

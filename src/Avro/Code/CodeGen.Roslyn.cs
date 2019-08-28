@@ -1066,7 +1066,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(IAvroProtocol).FullName)
+                        ParseTypeName(typeof(IProtocol).FullName)
                     )
                 )
                 .WithMembers(

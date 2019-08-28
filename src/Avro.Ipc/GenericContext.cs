@@ -2,7 +2,7 @@
 using org.apache.avro.ipc;
 using System.Collections.Generic;
 
-namespace Avro.Ipc.Generic
+namespace Avro.Ipc
 {
     public class GenericContext
     {

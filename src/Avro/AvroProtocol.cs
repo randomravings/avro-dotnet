@@ -4,12 +4,14 @@ using Avro.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Avro
 {
     public class AvroProtocol : AvroObject, IEquatable<AvroProtocol>
     {
+        private static readonly MD5 HASH = System.Security.Cryptography.MD5.Create();
         private string _name;
         private string _nameSpace;
         private readonly List<NamedSchema> _types;
@@ -44,7 +46,7 @@ namespace Avro
         public string Namespace { get { return _nameSpace; } set { NameValidator.ValidateNamespace(value); _nameSpace = value; } }
         public string FullName => string.IsNullOrEmpty(Namespace) ? Name : $"{Namespace}.{Name}";
         public string Doc { get; set; }
-        public byte[] MD5 => System.Security.Cryptography.MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(this.ToAvroCanonical()));
+        public byte[] MD5 => HASH.ComputeHash(Encoding.UTF8.GetBytes(this.ToAvroCanonical()));
 
         public IReadOnlyList<NamedSchema> Types => _types.AsReadOnly();
         public IReadOnlyList<Message> Messages => _messages.AsReadOnly();

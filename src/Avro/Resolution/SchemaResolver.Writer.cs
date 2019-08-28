@@ -18,7 +18,7 @@ namespace Avro.Resolution
             var valueParameter = Expression.Parameter(type, "v");
             var writeAction = typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), type);
             var assembly = type.Assembly;
-            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(object)))
+            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
                 assembly = null;
             if (!ResolveWriter(assembly, type, writerSchema, streamParameter, valueParameter, null, out var writeExpression))
                 throw new AvroException($"Unable to resolve writer: '{writerSchema}' for type: '{type}'");
@@ -299,7 +299,7 @@ namespace Avro.Resolution
                     {
                         var fieldType = default(Type);
                         var fieldValueExpression = default(Expression);
-                        if (typeof(GenericRecord).IsAssignableFrom(type) || type.Equals(typeof(object)))
+                        if (typeof(GenericRecord).IsAssignableFrom(type) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
                         {
                             var recordProperty = typeof(IAvroRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) });
                             fieldType = GetTypeFromSchema(field.Type, origin);

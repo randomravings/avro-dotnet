@@ -1,22 +1,24 @@
 ﻿using Avro.IO;
 using Avro.Ipc.IO;
+using Avro.Protocol;
+using Avro.Types;
 using org.apache.avro.ipc;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Avro.Ipc.Generic
+namespace Avro.Ipc
 {
 
     public class GenericServer : Session
     {
-        private GenericProtocolPair _protocolPair;
+        private GenericProtocol _protocol;
 
         public GenericServer(AvroProtocol protocol, ITranceiver tranceiver)
             : base(protocol, tranceiver)
         {
             RemoteProtocol = protocol;
-            _protocolPair = GenericProtocolPair.Get(Protocol, RemoteProtocol);
+            _protocol = GenericProtocol.Get(Protocol, RemoteProtocol);
         }
 
         public async Task<GenericContext> ReceiveAsync(CancellationToken token)
@@ -29,9 +31,9 @@ namespace Avro.Ipc.Generic
                 if (DoHandshake())
                 {
                     var handshakeRequest = HANDSHAKE_REQUEST_READER.Read(decoder);
-                    context.HandshakeResponse = NewHandshakeResponse(HandshakeMatch.NONE, Protocol.MD5);
-                    var serverMatch = GenericProtocolPair.AreSame(Protocol.MD5, context.HandshakeResponse.serverHash);
-                    var clientMatch = GenericProtocolPair.Exists(Protocol.MD5, handshakeRequest.clientHash);
+                    context.HandshakeResponse = NewHandshakeResponse(HandshakeMatch.NONE, (MD5)Protocol.MD5);
+                    var serverMatch = GenericProtocol.AreSame(Protocol.MD5, context.HandshakeResponse.serverHash);
+                    var clientMatch = GenericProtocol.Exists(Protocol.MD5, handshakeRequest.clientHash);
 
                     if (serverMatch && clientMatch)
                         context.HandshakeResponse.match = HandshakeMatch.BOTH;
@@ -42,7 +44,7 @@ namespace Avro.Ipc.Generic
                 }
                 context.Metadata = META_READER.Read(decoder);
                 context.MessageName = decoder.ReadString();
-                context.RequestParameters = _protocolPair.ReadRequest(decoder, context.MessageName);
+                context.RequestParameters = _protocol.ReadRequest<GenericRecord>(decoder, context.MessageName);
                 return context;
             }
         }
@@ -60,9 +62,9 @@ namespace Avro.Ipc.Generic
                 META_WRITER.Write(encoder, EMPTY_META);
                 encoder.WriteBoolean(rpcContext.IsError);
                 if (rpcContext.IsError)
-                    _protocolPair.WriteError(encoder, rpcContext.MessageName, rpcContext.Error);
+                    _protocol.WriteError(encoder, rpcContext.MessageName, rpcContext.Error);
                 else
-                    _protocolPair.WriteReponse(encoder, rpcContext.MessageName, rpcContext.Response);
+                    _protocol.WriteReponse(encoder, rpcContext.MessageName, rpcContext.Response);
                 encoder.WriteBytes(END_OF_FRAME);
                 responseData.Seek(0, SeekOrigin.Begin);
                 return await _tranceiver.SendAsync(responseData, token);

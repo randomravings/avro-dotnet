@@ -1,5 +1,4 @@
-﻿using Avro.Ipc.Generic;
-using Avro.Ipc.Http;
+﻿using Avro.Ipc.Http;
 using Avro.Ipc.Local;
 using Avro.Ipc.Tcp;
 using Avro.Schema;
