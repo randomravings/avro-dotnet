@@ -1,4 +1,4 @@
-﻿using Avro.IO;
+﻿using Avro.Container;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,19 +6,19 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 
-namespace Avro.File
+namespace Avro.IO
 {
     public class FileReader<T> : IAvroFileReader<T>
     {
-        private readonly FileHeader _fileHeader;
-        private readonly IAvroReader<T> _datumReader;
+        private readonly Header _fileHeader;
+        private readonly IAvroReader<T> _reader;
 
-        public FileReader(FileHeader header, IAvroReader<T> datumReader)
+        public FileReader(Header header, IAvroReader<T> reader)
         {
-            if (header.Schema.ToAvroCanonical() != datumReader.WriterSchema.ToAvroCanonical())
+            if (header.Schema.ToAvroCanonical() != reader.WriterSchema.ToAvroCanonical())
                 throw new ArgumentException("Incompatible DatumReader");
             _fileHeader = header;
-            _datumReader = datumReader;
+            _reader = reader;
         }
 
         public IEnumerator<T> GetEnumerator()
@@ -47,7 +47,7 @@ namespace Avro.File
                     using (var memoryStream = CreateDataStream(blockData))
                     using (var decoder = new BinaryDecoder(memoryStream))
                         for (var i = 0L; i < blockCount; i++)
-                            yield return _datumReader.Read(decoder);
+                            yield return _reader.Read(decoder);
                 }
             }
         }

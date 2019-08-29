@@ -5,14 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Avro.File
+namespace Avro.Container
 {
-    public class FileHeader
+    public class Header
     {
         private static readonly byte[] MAGIC_BYTES = new byte[] { 0x4F, 0x62, 0x6A, 0x01 };
         private FileInfo _fileInfo;
 
-        private FileHeader(FileHeader header, FileInfo fileInfo)
+        private Header(Header header, FileInfo fileInfo)
         {
             _fileInfo = fileInfo;
             Magic = header.Magic.Clone() as byte[];
@@ -30,7 +30,7 @@ namespace Avro.File
             }
         }
 
-        public FileHeader(FileInfo fileInfo)
+        public Header(FileInfo fileInfo)
         {
             FileInfo = fileInfo;
         }
@@ -94,9 +94,9 @@ namespace Avro.File
         public IDictionary<string, byte[]> Metadata { get; set; }
         public long FileHeaderSize { get; set; }
 
-        public FileHeader CloneNew(FileInfo fileInfo)
+        public Header CloneNew(FileInfo fileInfo)
         {
-            return new FileHeader(this, fileInfo);
+            return new Header(this, fileInfo);
         }
 
         public IAvroFileReader<T> OpenRead<T>(IAvroReader<T> datumReader)

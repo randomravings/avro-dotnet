@@ -1,4 +1,4 @@
-﻿namespace Avro.File
+﻿namespace Avro.Container
 {
     public enum  Codec
     {

@@ -1,4 +1,5 @@
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
 using Microsoft.CodeAnalysis;
@@ -55,7 +56,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(IAvroRecord).FullName)
+                        ParseTypeName(typeof(IAvroRecord).Name)
                     )
                 )
                 .AddMembers(
@@ -170,10 +171,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(IAvroError).FullName)
-                    ),
-                    SimpleBaseType(
-                        ParseTypeName(typeof(IAvroRecord).FullName)
+                        ParseTypeName(typeof(IAvroError).Name)
                     )
                 )
                 .AddMembers(
@@ -396,7 +394,7 @@ namespace Avro.Code
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(IAvroFixed).FullName)
+                        ParseTypeName(nameof(IAvroFixed))
                     )
                 )
                 .WithMembers(
@@ -1059,14 +1057,14 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateProtocolClass(string name, string avro, string doc, IEnumerable<Message> messages)
+        internal static ClassDeclarationSyntax CreateProtocolClass(string name, string avro, string doc, IEnumerable<MessageSchema> messages)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
-                        ParseTypeName(typeof(IProtocol).FullName)
+                        ParseTypeName(typeof(AvroProtocol).FullName)
                     )
                 )
                 .WithMembers(
@@ -1724,10 +1722,16 @@ namespace Avro.Code
                                 IdentifierName("Avro")
                             ),
                             UsingDirective(
-                                IdentifierName("Avro.")
+                                IdentifierName("Avro.Schema")
+                            ),
+                            UsingDirective(
+                                IdentifierName("Avro.Types")
                             ),
                             UsingDirective(
                                 IdentifierName("System")
+                            ),
+                            UsingDirective(
+                                IdentifierName("System.Collections")
                             ),
                             UsingDirective(
                                 IdentifierName("System.Collections.Generic")
@@ -2020,7 +2024,7 @@ namespace Avro.Code
 
         private static string GetSystemType(NamedSchema schema)
         {
-            return schema.FullName;
+            return schema.Name;
         }
 
         private static string GetSystemType(LogicalSchema schema)

@@ -1,4 +1,5 @@
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Utils;
 using Newtonsoft.Json.Linq;
@@ -443,11 +444,11 @@ namespace Avro
             return namedSchemas;
         }
 
-        private static IList<Message> ParseMessages(JObject jObject, IDictionary<string, NamedSchema> types, Stack<string> enclosingNamespace)
+        private static IList<MessageSchema> ParseMessages(JObject jObject, IDictionary<string, NamedSchema> types, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "request", "response" };
             var optionalKeys = new HashSet<string>() { "doc", "errors", "one-way" };
-            var messages = new List<Message>();
+            var messages = new List<MessageSchema>();
             foreach (var item in JsonUtil.GetKeyValues(jObject))
             {
                 var name = item.Key;
@@ -455,7 +456,7 @@ namespace Avro
 
                 JsonUtil.AssertKeys(item.Value, keys, optionalKeys, out _);
 
-                var message = new Message(name);
+                var message = new MessageSchema(name);
                 var request = JsonUtil.GetValue<JArray>(jToken, "request");
                 var response = JsonUtil.GetValue<JToken>(jToken, "response");
 

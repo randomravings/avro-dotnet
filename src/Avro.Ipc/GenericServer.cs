@@ -1,6 +1,7 @@
 ﻿using Avro.IO;
 using Avro.Ipc.IO;
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Types;
 using org.apache.avro.ipc;
 using System.IO;
@@ -12,13 +13,13 @@ namespace Avro.Ipc
 
     public class GenericServer : Session
     {
-        private GenericProtocol _protocol;
+        private IAvroResponder _protocol;
 
         public GenericServer(AvroProtocol protocol, ITranceiver tranceiver)
             : base(protocol, tranceiver)
         {
             RemoteProtocol = protocol;
-            _protocol = GenericProtocol.Get(Protocol, RemoteProtocol);
+            _protocol = new GenericResponder(Protocol, RemoteProtocol);
         }
 
         public async Task<GenericContext> ReceiveAsync(CancellationToken token)
@@ -32,8 +33,8 @@ namespace Avro.Ipc
                 {
                     var handshakeRequest = HANDSHAKE_REQUEST_READER.Read(decoder);
                     context.HandshakeResponse = NewHandshakeResponse(HandshakeMatch.NONE, (MD5)Protocol.MD5);
-                    var serverMatch = GenericProtocol.AreSame(Protocol.MD5, context.HandshakeResponse.serverHash);
-                    var clientMatch = GenericProtocol.Exists(Protocol.MD5, handshakeRequest.clientHash);
+                    var serverMatch = GenericProtocolPair.AreSame(Protocol.MD5, context.HandshakeResponse.serverHash);
+                    var clientMatch = GenericProtocolPair.Exists(Protocol.MD5, handshakeRequest.clientHash);
 
                     if (serverMatch && clientMatch)
                         context.HandshakeResponse.match = HandshakeMatch.BOTH;

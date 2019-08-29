@@ -1,5 +1,6 @@
 ﻿using Avro;
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using NUnit.Framework;
 
@@ -30,7 +31,7 @@ namespace Avro.Test.Protocols
         {
             var protocol = new AvroProtocol();
             var record = new RecordSchema("Name");
-            var message = new Message("M");
+            var message = new MessageSchema("M");
 
             message.AddParameter(new ParameterSchema("par", record.FullName));
 
@@ -45,7 +46,7 @@ namespace Avro.Test.Protocols
         {
             var protocol = new AvroProtocol();
             var record = new RecordSchema("Name");
-            var message = new Message("M");
+            var message = new MessageSchema("M");
 
             protocol.AddType(record);
             message.AddParameter(new ParameterSchema("par", record.FullName));

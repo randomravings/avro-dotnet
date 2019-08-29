@@ -1,4 +1,5 @@
 using Avro;
+using Avro.Protocol.Schema;
 using NUnit.Framework;
 
 namespace Avro.Test.Protocols

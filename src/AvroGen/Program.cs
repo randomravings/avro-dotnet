@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Avro
 {
@@ -94,6 +95,8 @@ namespace Avro
                 }
             }
 
+            
+
             // Ensure we got all the command line arguments we need
             bool isValid = true;
             if (!isProtocol.HasValue || inputFile == null)
@@ -108,11 +111,22 @@ namespace Avro
             }
 
             if (!isValid)
+            {
                 Usage();
+                return;
+            }
+
             else if (isProtocol.Value)
+            {
                 GenProtocol(inputFile, outputDir, namespaceMapping);
+                return;
+            }
+
             else
-                GenSchema(inputFile, outputDir, namespaceMapping);
+            {
+                var files = GetFiles(inputFile, ".avsc");
+                GenSchema(files, outputDir, namespaceMapping);
+            }
         }
 
         static void Usage()
@@ -129,6 +143,16 @@ namespace Avro
                 AppDomain.CurrentDomain.FriendlyName);
             return;
         }
+
+        static IEnumerable<FileInfo> GetFiles(string fileOrDirectory, string fileExt)
+        {
+            if (File.Exists(fileOrDirectory) || Path.GetExtension(fileOrDirectory) == fileExt)
+                return new FileInfo[] { new FileInfo(fileOrDirectory) };
+            if (Directory.Exists(fileOrDirectory))
+                return Directory.GetFiles(fileOrDirectory, $"*{fileExt}").Select(r => new FileInfo(r));
+            return null;
+        }
+
         static void GenProtocol(string infile, string outdir, IEnumerable<KeyValuePair<string, string>> namespaceMapping)
         {
             //try
@@ -151,18 +175,24 @@ namespace Avro
             //}
         }
 
-        static void GenSchema(string infile, string outdir, IEnumerable<KeyValuePair<string, string>> namespaceMapping)
+        static void GenSchema(IEnumerable<FileInfo> files, string outdir, IEnumerable<KeyValuePair<string, string>> nsMap)
         {
             try
             {
-                var text = System.IO.File.ReadAllText(infile);
-                var schema = AvroParser.ReadSchema(text, out var schemas);
-
                 var codeGen = new CodeGen();
                 var codeWriter = new CodeWriter();
-                //foreach (var entry in namespaceMapping)
-                //    codegen.NamespaceMapping[entry.Key] = entry.Value;
-                codeGen.AddSchemas(schemas);
+
+                foreach (var file in files)
+                {
+                    using (var reader = new StreamReader(file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8))
+                    {
+                        var text = reader.ReadToEnd();
+                        var schema = AvroParser.ReadSchema(text, out var schemas);
+                        codeGen.AddSchemas(schemas);
+                    }
+                }
+                //foreach (var map in nsMap)
+                //    codegen.NamespaceMapping[map.Key] = map.Value;
                 codeWriter.WriteProject(outdir, codeGen);
 
             }

@@ -1,4 +1,4 @@
-using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Utils;
 using System;
@@ -9,13 +9,13 @@ using System.Text;
 
 namespace Avro
 {
-    public class AvroProtocol : AvroObject, IEquatable<AvroProtocol>
+    public class AvroProtocol : AvroMeta, IEquatable<AvroProtocol>
     {
         private static readonly MD5 HASH = System.Security.Cryptography.MD5.Create();
         private string _name;
         private string _nameSpace;
         private readonly List<NamedSchema> _types;
-        private readonly List<Message> _messages;
+        private readonly List<MessageSchema> _messages;
 
         public AvroProtocol()
             : this(null, null) { }
@@ -39,7 +39,7 @@ namespace Avro
                 Namespace = ns;
             }
             _types = new List<NamedSchema>();
-            _messages = new List<Message>();
+            _messages = new List<MessageSchema>();
         }
 
         public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
@@ -49,7 +49,7 @@ namespace Avro
         public byte[] MD5 => HASH.ComputeHash(Encoding.UTF8.GetBytes(this.ToAvroCanonical()));
 
         public IReadOnlyList<NamedSchema> Types => _types.AsReadOnly();
-        public IReadOnlyList<Message> Messages => _messages.AsReadOnly();
+        public IReadOnlyList<MessageSchema> Messages => _messages.AsReadOnly();
 
         public void AddType(NamedSchema schema)
         {
@@ -58,7 +58,7 @@ namespace Avro
             _types.Add(schema);
         }
 
-        public void AddMessage(Message message)
+        public void AddMessage(MessageSchema message)
         {
             if (_messages.Contains(message))
                 throw new AvroException($"Protocol already contains the message: '{message.Name}'");

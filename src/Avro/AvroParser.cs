@@ -1,3 +1,4 @@
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;

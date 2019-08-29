@@ -130,7 +130,7 @@ namespace Avro.Test.Protocols
         {
             Assert.Throws(
                 expectedExceptionType,
-                () => AvroProtocol.Parse(avroString)
+                () => AvroParser.ReadProtocol(avroString)
             );
         }
     }

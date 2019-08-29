@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Avro.File
+namespace Avro.IO
 {
     public interface IAvroFileWriter<T> : IDisposable
     {

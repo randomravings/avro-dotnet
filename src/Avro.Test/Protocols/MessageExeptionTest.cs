@@ -1,5 +1,6 @@
 using Avro;
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using NUnit.Framework;
 
@@ -11,7 +12,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void AddParameter()
         {
-            var message = new Message("A");
+            var message = new MessageSchema("A");
             var parameter = new ParameterSchema("X", "Y");
 
             Assert.DoesNotThrow(
@@ -27,7 +28,7 @@ namespace Avro.Test.Protocols
         [TestCase]
         public void AddError()
         {
-            var message = new Message("A");
+            var message = new MessageSchema("A");
             var error = new ErrorSchema("X");
 
             Assert.DoesNotThrow(

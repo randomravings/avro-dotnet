@@ -1,17 +1,20 @@
+using Avro;
 using Avro.Schema;
+using Avro.Types;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    public class HandshakeRequest : Avro.Types.IAvroRecord
+    public class HandshakeRequest : IAvroRecord
     {
-        public static readonly RecordSchema _SCHEMA = Avro.AvroSchema.Parse("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}") as RecordSchema;
+        public static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}");
         public RecordSchema Schema => _SCHEMA;
         public int FieldCount => 4;
         /// <summary></summary>
-        public org.apache.avro.ipc.MD5 clientHash
+        public MD5 clientHash
         {
             get;
             set;
@@ -25,7 +28,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        public org.apache.avro.ipc.MD5 serverHash
+        public MD5 serverHash
         {
             get;
             set;
@@ -62,13 +65,13 @@ namespace org.apache.avro.ipc
                 switch (i)
                 {
                     case 0:
-                        clientHash = (org.apache.avro.ipc.MD5)value;
+                        clientHash = (MD5)value;
                         break;
                     case 1:
                         clientProtocol = (string)value;
                         break;
                     case 2:
-                        serverHash = (org.apache.avro.ipc.MD5)value;
+                        serverHash = (MD5)value;
                         break;
                     case 3:
                         meta = (IDictionary<string, byte[]>)value;

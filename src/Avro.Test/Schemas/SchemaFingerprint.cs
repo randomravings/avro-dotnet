@@ -12,7 +12,7 @@ namespace Avro.Test.Schema
         [Test, TestCaseSource(typeof(SchemaFingerprints))]
         public void TestFingerprint(string avro, long expectedFp)
         {
-            var s = AvroSchema.Parse(avro);
+            var s = AvroParser.ReadSchema(avro);
             var fp = AvroFingerprint.CRC64Value(s);
             Assert.AreEqual(expectedFp, fp);
         }

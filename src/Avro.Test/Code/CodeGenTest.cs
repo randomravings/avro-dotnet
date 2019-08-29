@@ -1,5 +1,6 @@
 using Avro;
 using Avro.Code;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using NUnit.Framework;
 using System.Collections;

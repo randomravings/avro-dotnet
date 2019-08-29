@@ -1,4 +1,5 @@
 ﻿using Avro.IO;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using org.apache.avro.ipc;
 using System.Collections.Generic;

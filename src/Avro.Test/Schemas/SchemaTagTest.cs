@@ -9,23 +9,21 @@ namespace Avro.Test.Schema
 {
     [TestFixture(TypeArgs = new Type[] { typeof(IntSchema) })]
     [TestFixture(TypeArgs = new Type[] { typeof(RecordSchema.Field) })]
-    public class SchemaTagTest<T> where T : AvroObject, new()
+    public class SchemaTagTest<T> where T : AvroSchema, new()
     {
-        private readonly AvroObject _avroObject;
+        private readonly AvroSchema _avroSchema;
 
         public SchemaTagTest()
         {
-            _avroObject = new T();
+            _avroSchema = new T();
         }
         [TestCase("SomeTag", int.MaxValue, "Some Text")]
         public void InstanceSingleTag(string tag, object value, object newValue)
         {
-            Assert.DoesNotThrow(() => _avroObject.AddTag(tag, value));
-            Assert.AreEqual(value, _avroObject.Tags[tag]);
-            Assert.DoesNotThrow(() => _avroObject.SetTag(tag, newValue));
-            Assert.AreEqual(newValue, _avroObject.Tags[tag]);
-            Assert.DoesNotThrow(() => _avroObject.RemoveTag(tag));
-            Assert.IsFalse(_avroObject.Tags.ContainsKey(tag));
+            Assert.DoesNotThrow(() => _avroSchema.AddTag(tag, value));
+            Assert.AreEqual(value, _avroSchema.Tags[tag]);
+            Assert.DoesNotThrow(() => _avroSchema.RemoveTag(tag));
+            Assert.IsFalse(_avroSchema.Tags.ContainsKey(tag));
         }
 
         [TestCase(12)]
@@ -35,14 +33,14 @@ namespace Avro.Test.Schema
             for (int i = 0; i < count; i++)
                 tags[i] = i;
 
-            Assert.DoesNotThrow(() => _avroObject.AddTags(tags.ToDictionary(k => $"Key{k}", v => (object)$"Value{v}")));
-            Assert.AreEqual(count, _avroObject.Tags.Count);
+            Assert.DoesNotThrow(() => _avroSchema.AddTags(tags.ToDictionary(k => $"Key{k}", v => (object)$"Value{v}")));
+            Assert.AreEqual(count, _avroSchema.Tags.Count);
         }
 
         [TestCase("record")]
         public void InstanceReservedTags(string tag)
         {
-            Assert.Throws(typeof(InvalidOperationException), () => _avroObject.AddTag(tag, null));
+            Assert.Throws(typeof(InvalidOperationException), () => _avroSchema.AddTag(tag, null));
         }
     }
 
@@ -52,11 +50,10 @@ namespace Avro.Test.Schema
         [TestCase]
         public void TestUnion()
         {
-            var schema = new UnionSchema() as AvroObject;
+            var schema = new UnionSchema() as AvroSchema;
             Assert.Throws(typeof(NotSupportedException), () => { schema.AddTag("tagKey1", null); });
             Assert.Throws(typeof(NotSupportedException), () => { schema.AddTags(new List<KeyValuePair<string, object>>());});
             Assert.Throws(typeof(NotSupportedException), () => { schema.RemoveTag("tagKey1"); });
-            Assert.Throws(typeof(NotSupportedException), () => { schema.SetTag("tagKey1", null); });
 
 
             Assert.IsEmpty(schema.Tags.Values);

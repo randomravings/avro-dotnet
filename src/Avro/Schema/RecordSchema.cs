@@ -73,7 +73,7 @@ namespace Avro.Schema
 
         IEnumerator IEnumerable.GetEnumerator() => _fields.GetEnumerator();
 
-        public class Field : AvroObject, IEquatable<Field>
+        public class Field : AvroSchema, IEquatable<Field>
         {
             private string _name;
             private IList<string> _aliases;

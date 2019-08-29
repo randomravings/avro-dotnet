@@ -1,6 +1,7 @@
 ﻿using Avro.IO;
 using Avro.Ipc.IO;
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Types;
 using org.apache.avro.ipc;
 using System.IO;
@@ -11,12 +12,12 @@ namespace Avro.Ipc
 {
     public class GenericClient : Session
     {
-        private GenericProtocol _protocol;
+        private GenericRequestor _protocol;
         public GenericClient(AvroProtocol protocol, ITranceiver tranceiver)
             : base(protocol, tranceiver)
         {
             RemoteProtocol = protocol;
-            _protocol = GenericProtocol.Get(Protocol, RemoteProtocol);
+            _protocol = new GenericRequestor(Protocol, RemoteProtocol);
         }
 
         public async Task<GenericContext> RequestAsync(string messageName, GenericRecord parameters, CancellationToken token)
@@ -62,14 +63,14 @@ namespace Avro.Ipc
                         if (rpcContext.HandshakeResponse.match == HandshakeMatch.CLIENT || rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
                         {
                             remoteProtocol = AvroParser.ReadProtocol(rpcContext.HandshakeResponse.serverProtocol);
-                            _protocol = GenericProtocol.Get(Protocol, remoteProtocol);
+                            _protocol = new GenericRequestor(Protocol, remoteProtocol);
                         }
 
                         if (rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
                         {
                             rpcContext.HandshakeRequest.serverHash = (MD5)remoteProtocol.MD5;
                             rpcContext.HandshakeRequest.clientProtocol = Protocol.ToAvroCanonical();
-                            _protocol = GenericProtocol.Get(Protocol, remoteProtocol);
+                            _protocol = new GenericRequestor(Protocol, remoteProtocol);
                             rpcContext = await Request(rpcContext, token);
                         }
                     }

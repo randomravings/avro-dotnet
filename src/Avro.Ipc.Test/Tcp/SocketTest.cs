@@ -1,6 +1,7 @@
 ﻿using Avro.Ipc.Http;
 using Avro.Ipc.Local;
 using Avro.Ipc.Tcp;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
 using NUnit.Framework;

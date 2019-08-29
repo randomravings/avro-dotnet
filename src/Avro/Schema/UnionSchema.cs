@@ -51,7 +51,6 @@ namespace Avro.Schema
 
         public override void AddTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
         public override void AddTags(IEnumerable<KeyValuePair<string, object>> tags) => throw new NotSupportedException("Unions do not support tags");
-        public override void SetTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
         public override void RemoveTag(string key) => throw new NotSupportedException("Unions do not support tags");
 
         public IEnumerator<AvroSchema> GetEnumerator() => _types.GetEnumerator();

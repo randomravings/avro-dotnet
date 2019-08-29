@@ -1,4 +1,5 @@
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using System.Collections.Generic;
 using System.IO;
@@ -783,7 +784,7 @@ namespace Avro
             }
         }
 
-        private static void WriteMessages(TextWriter writer, IEnumerable<Message> messages, WriterMode mode, ISet<string> namedSchemas)
+        private static void WriteMessages(TextWriter writer, IEnumerable<MessageSchema> messages, WriterMode mode, ISet<string> namedSchemas)
         {
             var i = 0;
             foreach (var message in messages)

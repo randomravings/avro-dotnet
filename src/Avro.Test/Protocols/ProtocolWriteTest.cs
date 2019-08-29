@@ -1,5 +1,6 @@
 using Avro;
 using Avro.Protocol;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using NUnit.Framework;
 using System.Collections;
@@ -153,14 +154,14 @@ namespace Avro.Test.Protocols
                 protocol05.AddType(errord01);
                 protocol05.AddType(errord02);
 
-                var message01 = new Message("M01") { Doc = "Test Doc 01" };
+                var message01 = new MessageSchema("M01") { Doc = "Test Doc 01" };
                 message01.AddParameter(new ParameterSchema("p01", record01.FullName));
                 message01.AddParameter(new ParameterSchema("p02", record02.FullName));
                 message01.AddError(errord01);
                 message01.AddError(errord02);
                 message01.Response = new DoubleSchema();
 
-                var message02 = new Message("M02");
+                var message02 = new MessageSchema("M02");
                 message02.AddParameter(new ParameterSchema("p01", record01.FullName));
                 message02.AddError(errord01);
                 message02.Oneway = true;

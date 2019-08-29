@@ -4,14 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Avro.Protocol
+namespace Avro.Protocol.Schema
 {
-    public class Message : IEquatable<Message>
+    public class MessageSchema : IEquatable<MessageSchema>
     {
         private readonly List<ParameterSchema> _requestParameters;
         private string _name;
 
-        public Message(string name)
+        public MessageSchema(string name)
         {
             Name = name;
             Error = new UnionSchema(new StringSchema());
@@ -44,7 +44,7 @@ namespace Avro.Protocol
             Error.Add(error);
         }
 
-        public bool Equals(Message other)
+        public bool Equals(MessageSchema other)
         {
             return other.Name == Name;
         }

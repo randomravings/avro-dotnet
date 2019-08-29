@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Avro.Protocol
+namespace Avro.Protocol.Schema
 {
     public class ParameterSchema : IEquatable<ParameterSchema>
     {

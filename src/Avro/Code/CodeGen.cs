@@ -1,3 +1,4 @@
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,10 +16,12 @@ namespace Avro.Code
     public partial class CodeGen : IReadOnlyDictionary<string, string>
     {
         private readonly IDictionary<string, MemberDeclarationSyntax> _code;
+        private readonly IDictionary<string, string> _nsMap;
 
-        public CodeGen()
+        public CodeGen(IDictionary<string, string> nsMap = null)
         {
             _code = new Dictionary<string, MemberDeclarationSyntax>();
+            _nsMap = nsMap ?? new Dictionary<string, string>();
         }
 
         public IDictionary<string, string> Code => _code.ToDictionary(k => k.Key, v => CreateCompileUnit(v.Value).NormalizeWhitespace().ToFullString());

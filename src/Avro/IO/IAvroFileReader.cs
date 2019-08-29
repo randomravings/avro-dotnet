@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Avro.File
+namespace Avro.IO
 {
     public interface IAvroFileReader<T> : IEnumerable<T>, IDisposable { }
 }
