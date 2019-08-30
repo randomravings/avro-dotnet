@@ -995,7 +995,7 @@ namespace Avro.Code
                                 Token(SyntaxKind.SemicolonToken)
                             ),
                             ConversionOperatorDeclaration(
-                                Token(SyntaxKind.ExplicitKeyword),
+                                Token(SyntaxKind.ImplicitKeyword),
                                 ArrayType(
                                     PredefinedType(
                                         Token(SyntaxKind.ByteKeyword)

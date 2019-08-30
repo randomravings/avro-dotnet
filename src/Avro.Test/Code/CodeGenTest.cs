@@ -131,10 +131,10 @@ namespace Avro.Test.Code
                 yield return new object[] { new ArraySchema(new BooleanSchema()), "IList<bool>" };
                 yield return new object[] { new MapSchema(new FloatSchema()), "IDictionary<string, float>" };
 
-                yield return new object[] { new FixedSchema("FixedName", "Test.Namespace", 12), "Test.Namespace.FixedName" };
-                yield return new object[] { new EnumSchema("EnumName", "Test.Namespace", new string[] { "int", "V" }), "Test.Namespace.EnumName" };
-                yield return new object[] { new RecordSchema("RecordName", "Test.Namespace"), "Test.Namespace.RecordName" };
-                yield return new object[] { new ErrorSchema("ErrorName", "Test.Namespace"), "Test.Namespace.ErrorName" };
+                yield return new object[] { new FixedSchema("FixedName", "Test.Namespace", 12), "FixedName" };
+                yield return new object[] { new EnumSchema("EnumName", "Test.Namespace", new string[] { "int", "V" }), "EnumName" };
+                yield return new object[] { new RecordSchema("RecordName", "Test.Namespace"), "RecordName" };
+                yield return new object[] { new ErrorSchema("ErrorName", "Test.Namespace"), "ErrorName" };
 
                 yield return new object[] { new DecimalSchema(), "decimal" };
                 yield return new object[] { new TimeMillisSchema(), "TimeSpan" };

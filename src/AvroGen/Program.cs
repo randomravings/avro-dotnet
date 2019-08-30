@@ -3,35 +3,49 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
+/// <summary>
+/// 
+/// </summary>
 namespace Avro
 {
     public class AvroGen
     {
+        static readonly string assmbly = typeof(AvroGen).Assembly.GetName().Name;
+        static readonly string version = typeof(AvroGen).Assembly.GetName().Version.ToString();
+        static readonly string program = AppDomain.CurrentDomain.FriendlyName;
 
         static void Main(string[] args)
         {
-            //var foo = new Avro.File.DataFileInfo(new FileInfo(@"E:\workspaces\github\avro\share\test\data\syncInMeta.avro"));
-            //var bar = foo.CloneNew(new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"syncInMeta.avro")));
-            //var reader = new Avro.Generic.GenericReader<object>(foo.Schema, foo.Schema);
-            //var writer = new Avro.Generic.GenericWriter<object>(foo.Schema);
-
-            //using (var fileReader = foo.OpenRead(reader))
-            //using (var fileWriter = bar.OpenWrite(writer, 600))
-            //    foreach (var item in fileReader)
-            //        fileWriter.Write(item);
-
-            //using (var fileReader = bar.OpenRead(reader))
-            //    foreach (var item in fileReader)
-            //        Console.WriteLine(item);
-            //return;
-
             // Print usage if no arguments provided or help requested
-            if (args.Length == 0 || args[0] == " - h" || args[0] == "--help")
+            if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
             {
                 Usage();
                 return;
+            }
+
+            switch(args.FirstOrDefault())
+            {
+                case null:
+                case "-h":
+                case "--help":
+                    Help();
+                    break;
+                case "-v":
+                case "--version":
+                    Version();
+                    break;
+                case "-s":
+                case "--schema":
+                    break;
+                case "-p":
+                case "--protocol":
+                    break;
+                default:
+                    Usage();
+                    break;
             }
 
             // Parse command line arguments
@@ -129,19 +143,33 @@ namespace Avro
             }
         }
 
+        static void Version()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{assmbly} ({version})");
+            Console.WriteLine();
+        }
+
         static void Usage()
         {
-            Console.WriteLine("{0}\n\n" +
-                "Usage:\n" +
-                "  avrogen -p <protocolfile> <outputdir> [--namespace <my.avro.ns:my.csharp.ns>]\n" +
-                "  avrogen -s <schemafile> <outputdir> [--namespace <my.avro.ns:my.csharp.ns>]\n\n" +
-                "Options:\n" +
-                "  -h --help   Show this screen.\n" +
-                "  --namespace Map an Avro schema/protocol namespace to a C# namespace.\n" +
-                "              The format is \"my.avro.namespace:my.csharp.namespace\".\n" +
-                "              May be specified multiple times to map multiple namespaces.\n",
-                AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine($"Usage:");
+            Console.WriteLine($"  {program} [options]");
+            Console.WriteLine(); 
+            Console.WriteLine($"Options:");
+            Console.WriteLine($"  -h|--help      Display help.");
+            Console.WriteLine($"  -v|--version   Display installed {program} version.");
+            Console.WriteLine();
             return;
+        }
+
+        static void Help()
+        {
+            Console.WriteLine($"  {program} -s | --schema | -p | --protocol <path> <outdir> [options]");
+            Console.WriteLine($"  --namespace Map an Avro schema/protocol namespace to a C# namespace.");
+            Console.WriteLine($"              The format is \"my.avro.namespace:my.csharp.namespace\".");
+            Console.WriteLine($"              May be specified multiple times to map multiple namespaces.");
         }
 
         static IEnumerable<FileInfo> GetFiles(string fileOrDirectory, string fileExt)

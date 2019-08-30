@@ -32,7 +32,7 @@ namespace Avro.Ipc
                 if (DoHandshake())
                 {
                     var handshakeRequest = HANDSHAKE_REQUEST_READER.Read(decoder);
-                    context.HandshakeResponse = NewHandshakeResponse(HandshakeMatch.NONE, (MD5)Protocol.MD5);
+                    context.HandshakeResponse = NewHandshakeResponse(HandshakeMatch.NONE, Protocol.MD5);
                     var serverMatch = GenericProtocolPair.AreSame(Protocol.MD5, context.HandshakeResponse.serverHash);
                     var clientMatch = GenericProtocolPair.Exists(Protocol.MD5, handshakeRequest.clientHash);
 

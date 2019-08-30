@@ -51,6 +51,6 @@ namespace org.apache.avro.ipc
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public static implicit operator MD5(byte[] value) => new MD5(value);
-        public static explicit operator byte[](MD5 value) => value._value;
+        public static implicit operator byte[](MD5 value) => value._value;
     }
 }
