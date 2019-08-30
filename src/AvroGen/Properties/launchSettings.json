@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "AvroGen": {
-      "commandName": "Project",
-      "commandLineArgs": "-s D:\\avrogen\\handshake D:\\avrogen\\Ipc"
-    }
-  }
-}
