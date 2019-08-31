@@ -39,7 +39,7 @@ namespace Avro.Test.Code
             var rootDir = mockFileSystem.AllDirectories.First(r => r.EndsWith(projectname));
 
             var codeWriter = new CodeWriter(mockFileSystem);
-            codeWriter.WriteProject(rootDir, codeGen);
+            codeWriter.WriteProject(rootDir, codeGen, projectname);
 
             var class01 = GetCodeFileName(schema01, rootDir);
             var class02 = GetCodeFileName(schema02, rootDir);

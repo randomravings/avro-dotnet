@@ -1,4 +1,3 @@
-using Avro.Protocol.Schema;
 using Avro.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -151,6 +150,7 @@ namespace Avro.Code
             var avro = fixedSchema.ToAvroCanonical();
             var classDeclaration =
                 CreateFixedClass(
+                    fixedSchema.Namespace,
                     fixedSchema.Name,
                     avro,
                     fixedSchema.Size,
@@ -168,17 +168,14 @@ namespace Avro.Code
         {
             var enumDeclaration =
                 CreateEnum(
+                    enumSchema.Namespace,
                     enumSchema.Name,
                     enumSchema.Symbols,
                     enumSchema.Doc,
                     enumSchema.Aliases
                 );
 
-            return
-                QualifyMember(
-                    enumDeclaration,
-                    enumSchema.Namespace
-                );
+            return enumDeclaration;
         }
 
         private static MemberDeclarationSyntax CreateRecordCode(RecordSchema recordSchema, bool isError)
@@ -187,6 +184,7 @@ namespace Avro.Code
             var classDeclaration =
                 isError ?
                 CreateErrorClass(
+                    recordSchema.Namespace,
                     recordSchema.Name,
                     recordSchema.FullName,
                     recordSchema.Count,
@@ -195,6 +193,7 @@ namespace Avro.Code
                     recordSchema.Aliases
                 ) :
                 CreateRecordClass(
+                    recordSchema.Namespace,
                     recordSchema.Name,
                     recordSchema.Count,
                     avro,

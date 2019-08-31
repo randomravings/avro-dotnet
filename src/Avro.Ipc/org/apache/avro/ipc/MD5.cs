@@ -8,6 +8,7 @@ using System.Collections.Generic;
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
+    [AvroNamedType("org.apache.avro.ipc", "MD5")]
     public class MD5 : IAvroFixed
     {
         public static readonly FixedSchema _SCHEMA = AvroParser.ReadSchema<FixedSchema>("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");

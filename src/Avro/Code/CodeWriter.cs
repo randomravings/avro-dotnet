@@ -15,10 +15,9 @@ namespace Avro.Code
             _fileSystem = fileSystem;
         }
 
-        public void WriteProject(string rootDirectory, CodeGen codeGen)
+        public void WriteProject(string rootDirectory, CodeGen codeGen, string projectName = null)
         {
             var directoryInfo = _fileSystem.Directory.CreateDirectory(rootDirectory);
-            var projectFile = Path.Combine(directoryInfo.FullName, $"{directoryInfo.Name}.csproj");
 
             foreach (var item in codeGen.Code)
             {
@@ -31,16 +30,23 @@ namespace Avro.Code
                     streamWriter.Write(item.Value);
             }
 
-            using (var stringWriter = new StreamWriter(_fileSystem.File.Open(projectFile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite)))
+            if (!string.IsNullOrEmpty(projectName))
             {
-                stringWriter.WriteLine($"<Project Sdk=\"Microsoft.NET.Sdk\">");
-                stringWriter.WriteLine($"  <PropertyGroup>");
-                stringWriter.WriteLine($"    <TargetFramework>netcoreapp2.2</TargetFramework>");
-                stringWriter.WriteLine($"  </PropertyGroup>");
-                stringWriter.WriteLine($"  <ItemGroup>");
-                stringWriter.WriteLine($"    <PackageReference Include=\"Avro\" Version=\"1.0.0\" />");
-                stringWriter.WriteLine($"  </ItemGroup>");
-                stringWriter.WriteLine($"</Project>");
+                var assmbly = typeof(CodeWriter).Assembly;
+                var referenceName = assmbly.GetName().Name;
+                var referenceVersion = assmbly.GetName().Version.ToString();
+                var projectFile = Path.Combine(directoryInfo.FullName, $"{projectName}.csproj");
+                using (var stringWriter = new StreamWriter(_fileSystem.File.Open(projectFile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite)))
+                {
+                    stringWriter.WriteLine($"<Project Sdk=\"Microsoft.NET.Sdk\">");
+                    stringWriter.WriteLine($"  <PropertyGroup>");
+                    stringWriter.WriteLine($"    <TargetFramework>netcoreapp2.2</TargetFramework>");
+                    stringWriter.WriteLine($"  </PropertyGroup>");
+                    stringWriter.WriteLine($"  <ItemGroup>");
+                    stringWriter.WriteLine($"    <PackageReference Include=\"{referenceName}\" Version=\"{referenceVersion}\" />");
+                    stringWriter.WriteLine($"  </ItemGroup>");
+                    stringWriter.WriteLine($"</Project>");
+                }
             }
         }
     }

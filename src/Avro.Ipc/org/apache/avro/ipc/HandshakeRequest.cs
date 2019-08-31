@@ -8,12 +8,14 @@ using System.Collections.Generic;
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
+    [AvroNamedType("org.apache.avro.ipc", "HandshakeRequest")]
     public class HandshakeRequest : IAvroRecord
     {
         public static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}");
         public RecordSchema Schema => _SCHEMA;
         public int FieldCount => 4;
         /// <summary></summary>
+        [AvroField("clientHash")]
         public MD5 clientHash
         {
             get;
@@ -21,6 +23,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
+        [AvroField("clientProtocol")]
         public string clientProtocol
         {
             get;
@@ -28,6 +31,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
+        [AvroField("serverHash")]
         public MD5 serverHash
         {
             get;
@@ -35,6 +39,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
+        [AvroField("meta")]
         public IDictionary<string, byte[]> meta
         {
             get;

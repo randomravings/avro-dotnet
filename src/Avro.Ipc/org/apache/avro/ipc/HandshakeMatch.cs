@@ -8,6 +8,7 @@ using System.Collections.Generic;
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
+    [AvroNamedType("org.apache.avro.ipc", "HandshakeMatch")]
     public enum HandshakeMatch
     {
         BOTH,

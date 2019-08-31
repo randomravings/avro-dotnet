@@ -19,7 +19,7 @@ namespace Avro.Code
 {
     public partial class CodeGen
     {
-        internal static EnumDeclarationSyntax CreateEnum(string name, IEnumerable<string> symbols, string doc, IEnumerable<string> aliases)
+        internal static MemberDeclarationSyntax CreateEnum(string ns, string name, IEnumerable<string> symbols, string doc, IEnumerable<string> aliases)
         {
             var enumSymbols =
                 symbols.Select(
@@ -35,6 +35,38 @@ namespace Avro.Code
 
             var enumDeclaration =
                 EnumDeclaration(name)
+                .WithAttributeLists(
+                    SingletonList(
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(nameof(AvroNamedType))
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SeparatedList<AttributeArgumentSyntax>(
+                                            new SyntaxNodeOrToken[]{
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(ns ?? string.Empty)
+                                                    )
+                                                ),
+                                                Token(SyntaxKind.CommaToken),
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(name)
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddMembers(
                     enumSymbols.ToArray()
@@ -46,13 +78,45 @@ namespace Avro.Code
                     CreateSummaryToken(doc, aliases.ToArray())
                 );
 
-            return enumDeclaration;
+            return QualifyMember(enumDeclaration, ns);
         }
 
-        internal static ClassDeclarationSyntax CreateRecordClass(string name, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
+        internal static ClassDeclarationSyntax CreateRecordClass(string ns, string name, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
+                .WithAttributeLists(
+                    SingletonList(
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(nameof(AvroNamedType))
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SeparatedList<AttributeArgumentSyntax>(
+                                            new SyntaxNodeOrToken[]{
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(ns ?? string.Empty)
+                                                    )
+                                                ),
+                                                Token(SyntaxKind.CommaToken),
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(name)
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
@@ -164,10 +228,42 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateErrorClass(string name, string errorMessage, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
+        internal static ClassDeclarationSyntax CreateErrorClass(string ns, string name, string errorMessage, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
+                .WithAttributeLists(
+                    SingletonList(
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(nameof(AvroNamedType))
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SeparatedList<AttributeArgumentSyntax>(
+                                            new SyntaxNodeOrToken[]{
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(ns ?? string.Empty)
+                                                    )
+                                                ),
+                                                Token(SyntaxKind.CommaToken),
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(name)
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
@@ -387,10 +483,42 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateFixedClass(string name, string avro, int size, IEnumerable<string> aliases)
+        internal static ClassDeclarationSyntax CreateFixedClass(string ns, string name, string avro, int size, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
+                .WithAttributeLists(
+                    SingletonList(
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(nameof(AvroNamedType))
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SeparatedList<AttributeArgumentSyntax>(
+                                            new SyntaxNodeOrToken[]{
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(ns ?? string.Empty)
+                                                    )
+                                                ),
+                                                Token(SyntaxKind.CommaToken),
+                                                AttributeArgument(
+                                                    LiteralExpression(
+                                                        SyntaxKind.StringLiteralExpression,
+                                                        Literal(name)
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
                 .AddModifiers(Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(
                     SimpleBaseType(
@@ -1134,6 +1262,29 @@ namespace Avro.Code
                 PropertyDeclaration(
                     ParseTypeName(systemType),
                     field.Name
+                )
+                .WithAttributeLists(
+                    SingletonList(
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(nameof(AvroField))
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SingletonSeparatedList(
+                                            AttributeArgument(
+                                                LiteralExpression(
+                                                    SyntaxKind.StringLiteralExpression,
+                                                    Literal(field.Name)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
                 )
                 .AddModifiers(
                     Token(SyntaxKind.PublicKeyword)
