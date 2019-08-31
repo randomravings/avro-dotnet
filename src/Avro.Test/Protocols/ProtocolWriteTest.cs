@@ -120,10 +120,10 @@ namespace Avro.Test.Protocols
                 yield return new object[] {
                     protocol04,
                     @"{""protocol"":""Test.Namespace.ProtocolName"",""types"":" +
-                    @"[{""name"":""TestRecord01"",""type"":""record"",""fields"":[]}," +
-                        @"{""name"":""TestRecord02"",""type"":""record"",""fields"":[]}," +
-                        @"{""name"":""TestError01"",""type"":""error"",""fields"":[]}," +
-                        @"{""name"":""TestError02"",""type"":""error"",""fields"":[]}" +
+                    @"[{""name"":""Test.Namespace.TestRecord01"",""type"":""record"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestRecord02"",""type"":""record"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestError01"",""type"":""error"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestError02"",""type"":""error"",""fields"":[]}" +
                     @"]}",
 
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"", ""types"": " +
@@ -134,10 +134,10 @@ namespace Avro.Test.Protocols
                     @"] }",
 
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"", ""types"": " +
-                    @"[{ ""type"": ""record"", ""name"": ""TestRecord01"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""record"", ""name"": ""TestRecord02"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""error"", ""name"": ""TestError01"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""error"", ""name"": ""TestError02"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] " +
+                    @"[{ ""type"": ""record"", ""name"": ""TestRecord01"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""record"", ""name"": ""TestRecord02"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""error"", ""name"": ""TestError01"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""error"", ""name"": ""TestError02"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] " +
                     @"}]," +
                     @" ""messages"": {} }"
                 };
@@ -155,14 +155,14 @@ namespace Avro.Test.Protocols
                 protocol05.AddType(errord02);
 
                 var message01 = new MessageSchema("M01") { Doc = "Test Doc 01" };
-                message01.AddParameter(new ParameterSchema("p01", record01.FullName));
-                message01.AddParameter(new ParameterSchema("p02", record02.FullName));
+                message01.AddParameter(new ParameterSchema("p01", record01));
+                message01.AddParameter(new ParameterSchema("p02", record02));
                 message01.AddError(errord01);
                 message01.AddError(errord02);
                 message01.Response = new DoubleSchema();
 
                 var message02 = new MessageSchema("M02");
-                message02.AddParameter(new ParameterSchema("p01", record01.FullName));
+                message02.AddParameter(new ParameterSchema("p01", record01));
                 message02.AddError(errord01);
                 message02.Oneway = true;
 
@@ -172,20 +172,20 @@ namespace Avro.Test.Protocols
                 yield return new object[] {
                     protocol05,
                     @"{""protocol"":""Test.Namespace.ProtocolName"",""types"":" +
-                    @"[{""name"":""TestRecord01"",""type"":""record"",""fields"":[]}," +
-                        @"{""name"":""TestRecord02"",""type"":""record"",""fields"":[]}," +
-                        @"{""name"":""TestError01"",""type"":""error"",""fields"":[]}," +
-                        @"{""name"":""TestError02"",""type"":""error"",""fields"":[]}" +
+                    @"[{""name"":""Test.Namespace.TestRecord01"",""type"":""record"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestRecord02"",""type"":""record"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestError01"",""type"":""error"",""fields"":[]}," +
+                        @"{""name"":""Test.Namespace.TestError02"",""type"":""error"",""fields"":[]}" +
                     @"]," +
                     @"""messages"":{" +
                     @"""M01"":{" +
-                        @"""request"":[{""name"":""p01"",""type"":""TestRecord01""},{""name"":""p02"",""type"":""TestRecord02""}]," +
+                        @"""request"":[{""name"":""p01"",""type"":""Test.Namespace.TestRecord01""},{""name"":""p02"",""type"":""Test.Namespace.TestRecord02""}]," +
                         @"""response"":""double""," +
-                        @"""errors"":[""TestError01"",""TestError02""]" +
+                        @"""errors"":[""Test.Namespace.TestError01"",""Test.Namespace.TestError02""]" +
                     @"}," +
                     @"""M02"":{" +
-                        @"""request"":[{""name"":""p01"",""type"":""TestRecord01""}]," +
-                        @"""errors"":[""TestError01""]," +
+                        @"""request"":[{""name"":""p01"",""type"":""Test.Namespace.TestRecord01""}]," +
+                        @"""errors"":[""Test.Namespace.TestError01""]," +
                         @"""one-way"":true" +
                     @"}}}",
 
@@ -209,24 +209,24 @@ namespace Avro.Test.Protocols
                     @"}} }",
 
                     @"{ ""namespace"": ""Test.Namespace"", ""protocol"": ""ProtocolName"", ""doc"": ""Test Documentation"", ""types"": " +
-                    @"[{ ""type"": ""record"", ""name"": ""TestRecord01"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""record"", ""name"": ""TestRecord02"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""error"", ""name"": ""TestError01"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
-                        @"{ ""type"": ""error"", ""name"": ""TestError02"", ""namespace"": """", ""doc"": """", ""aliases"": [], ""fields"": [] }" +
+                    @"[{ ""type"": ""record"", ""name"": ""TestRecord01"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""record"", ""name"": ""TestRecord02"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""error"", ""name"": ""TestError01"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }, " +
+                        @"{ ""type"": ""error"", ""name"": ""TestError02"", ""namespace"": ""Test.Namespace"", ""doc"": """", ""aliases"": [], ""fields"": [] }" +
                     @"], " +
                     @"""messages"": {" +
                     @"""M01"": {" +
                         @"""doc"": ""Test Doc 01"", " +
-                        @"""request"": [{ ""name"": ""p01"", ""type"": ""TestRecord01"" }, { ""name"": ""p02"", ""type"": ""TestRecord02"" }], " +
+                        @"""request"": [{ ""name"": ""p01"", ""type"": ""Test.Namespace.TestRecord01"" }, { ""name"": ""p02"", ""type"": ""Test.Namespace.TestRecord02"" }], " +
                         @"""response"": { ""type"": ""double"" }, " +
-                        @"""errors"": [""TestError01"", ""TestError02""], " +
+                        @"""errors"": [""Test.Namespace.TestError01"", ""Test.Namespace.TestError02""], " +
                         @"""one-way"": false" +
                     @"}, " +
                     @"""M02"": {" +
                         @"""doc"": """", " +
-                        @"""request"": [{ ""name"": ""p01"", ""type"": ""TestRecord01"" }], " +
+                        @"""request"": [{ ""name"": ""p01"", ""type"": ""Test.Namespace.TestRecord01"" }], " +
                         @"""response"": null, " +
-                        @"""errors"": [""TestError01""], " +
+                        @"""errors"": [""Test.Namespace.TestError01""], " +
                         @"""one-way"": true" +
                     @"}} }"
                 };

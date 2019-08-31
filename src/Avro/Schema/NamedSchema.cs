@@ -33,10 +33,10 @@ namespace Avro.Schema
             Aliases = new List<string>();
         }
 
-        public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
-        public string Namespace { get { return _nameSpace; } set { NameValidator.ValidateNamespace(value); _nameSpace = value; } }
+        public virtual string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
+        public virtual string Namespace { get { return _nameSpace; } set { NameValidator.ValidateNamespace(value); _nameSpace = value; } }
         public string FullName => string.IsNullOrEmpty(Namespace) ? Name : $"{Namespace}.{Name}";
-        public IList<string> Aliases { get { return _aliases; } set { if (value != null) NameValidator.ValidateNames(value); _aliases = value; } }
+        public virtual IList<string> Aliases { get { return _aliases; } set { if (value != null) NameValidator.ValidateNames(value); _aliases = value; } }
 
         public override string ToString() => FullName;
 

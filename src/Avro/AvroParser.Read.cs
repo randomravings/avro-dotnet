@@ -506,7 +506,7 @@ namespace Avro
                 type = QualifyName(type, enclosingNamespace);
                 if (!types.TryGetValue(type, out var request))
                     throw new AvroParseException($"Unknown request parameter type: '{type}'.");
-                requests.Add(new ParameterSchema(name, request.FullName));
+                requests.Add(new ParameterSchema(name, request));
             }
             return requests;
         }

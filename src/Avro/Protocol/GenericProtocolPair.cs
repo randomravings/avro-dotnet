@@ -69,13 +69,13 @@ namespace Avro.Protocol
             {
                 var localRequestParameters =
                     from p in messagePair.LocalMessage.RequestParameters
-                    join t in local.Types on p.Type equals t.FullName
+                    join t in local.Types on p.Type.FullName equals t.FullName
                     select new RecordSchema.Field(p.Name, t)
                 ;
 
                 var remoteRequestParameters =
                     from p in messagePair.RemoteMessage.RequestParameters
-                    join t in remote.Types on p.Type equals t.FullName
+                    join t in remote.Types on p.Type.FullName equals t.FullName
                     select new RecordSchema.Field(p.Name, t)
                 ;
 

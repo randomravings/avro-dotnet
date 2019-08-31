@@ -59,31 +59,29 @@ namespace Avro.Code
 
         #region Public members
 
-        public void AddSchemas(IEnumerable<AvroSchema> schemas, string parentNamespace = null)
+        public void AddSchemas(IEnumerable<AvroSchema> schemas)
         {
             foreach (var schema in schemas)
-                AddSchema(schema, parentNamespace);
+                AddSchema(schema);
         }
 
-        public void AddSchema(AvroSchema schema, string parentNamespace = null)
+        public void AddSchema(AvroSchema schema)
         {
             if (schema is UnionSchema)
-                AddSchemas(schema as UnionSchema, parentNamespace);
+                AddSchemas(schema as UnionSchema);
 
             if (schema is NamedSchema)
             {
                 var namedSchema = schema as NamedSchema;
                 var schemaName = namedSchema.FullName;
-                if (string.IsNullOrEmpty(namedSchema.Namespace) && !string.IsNullOrEmpty(parentNamespace))
-                    schemaName = $"{parentNamespace}.{schemaName}";
                 if (!_code.ContainsKey(namedSchema.FullName))
-                    _code.Add(schemaName, CreateCode(namedSchema));
+                    _code.Add(schemaName, CreateCode(namedSchema, _nsMap));
 
                 if (schema is RecordSchema)
                 {
                     var recordSchema = schema as RecordSchema;
                     foreach (var fieldSchema in recordSchema)
-                        AddSchema(fieldSchema.Type, namedSchema.Namespace);
+                        AddSchema(fieldSchema.Type);
                 }
             }
         }
@@ -92,7 +90,7 @@ namespace Avro.Code
         {
             var memberDeclarationSyntax = CreateCode(protocol);
             _code.Add(protocol.FullName, memberDeclarationSyntax);
-            AddSchemas(protocol.Types, protocol.Namespace);
+            AddSchemas(protocol.Types);
         }
 
         public void WriteCode(TextWriter textWriter)
@@ -109,19 +107,25 @@ namespace Avro.Code
 
         #region Private static members
 
-        private static MemberDeclarationSyntax CreateCode(NamedSchema schema)
+        private static MemberDeclarationSyntax CreateCode(NamedSchema schema, IDictionary<string, string> nsMap)
         {
             var schemaTypeName = schema.GetType().Name;
+
+            var ns = schema.Namespace;
+            var trn = nsMap.OrderByDescending(r => r.Key).FirstOrDefault(r => ns != null && ns.StartsWith(r.Key));
+            if (!string.IsNullOrEmpty(trn.Key))
+                ns = $"{trn.Value}{ns.Substring(trn.Key.Length)}";
+
             switch (schemaTypeName)
             {
                 case nameof(FixedSchema):
-                    return CreateFixedCode(schema as FixedSchema);
+                    return CreateFixedCode(schema as FixedSchema, ns);
                 case nameof(EnumSchema):
-                    return CreateEnumCode(schema as EnumSchema);
+                    return CreateEnumCode(schema as EnumSchema, ns);
                 case nameof(RecordSchema):
-                    return CreateRecordCode(schema as RecordSchema, false);
+                    return CreateRecordCode(schema as RecordSchema, ns, false);
                 case nameof(ErrorSchema):
-                    return CreateRecordCode(schema as RecordSchema, true);
+                    return CreateRecordCode(schema as RecordSchema, ns, true);
                 default:
                     throw new CodeGenException($"Unsupported Schema: {schemaTypeName}");
             }
@@ -145,12 +149,12 @@ namespace Avro.Code
                 );
         }
 
-        private static MemberDeclarationSyntax CreateFixedCode(FixedSchema fixedSchema)
+        private static MemberDeclarationSyntax CreateFixedCode(FixedSchema fixedSchema, string ns)
         {
             var avro = fixedSchema.ToAvroCanonical();
             var classDeclaration =
                 CreateFixedClass(
-                    fixedSchema.Namespace,
+                    ns,
                     fixedSchema.Name,
                     avro,
                     fixedSchema.Size,
@@ -164,11 +168,11 @@ namespace Avro.Code
                 );
         }
 
-        private static MemberDeclarationSyntax CreateEnumCode(EnumSchema enumSchema)
+        private static MemberDeclarationSyntax CreateEnumCode(EnumSchema enumSchema, string ns)
         {
             var enumDeclaration =
                 CreateEnum(
-                    enumSchema.Namespace,
+                    ns,
                     enumSchema.Name,
                     enumSchema.Symbols,
                     enumSchema.Doc,
@@ -178,13 +182,13 @@ namespace Avro.Code
             return enumDeclaration;
         }
 
-        private static MemberDeclarationSyntax CreateRecordCode(RecordSchema recordSchema, bool isError)
+        private static MemberDeclarationSyntax CreateRecordCode(RecordSchema recordSchema, string ns, bool isError)
         {
             var avro = recordSchema.ToAvroCanonical();
             var classDeclaration =
                 isError ?
                 CreateErrorClass(
-                    recordSchema.Namespace,
+                    ns,
                     recordSchema.Name,
                     recordSchema.FullName,
                     recordSchema.Count,
@@ -193,7 +197,7 @@ namespace Avro.Code
                     recordSchema.Aliases
                 ) :
                 CreateRecordClass(
-                    recordSchema.Namespace,
+                    ns,
                     recordSchema.Name,
                     recordSchema.Count,
                     avro,

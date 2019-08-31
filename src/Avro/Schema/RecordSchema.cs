@@ -9,30 +9,20 @@ namespace Avro.Schema
 {
     public class RecordSchema : ComplexSchema, IEnumerable<RecordSchema.Field>
     {
-        private readonly IList<Field> _fields;
+        private readonly IList<Field> _fields = new List<Field>();
 
         public RecordSchema()
-            : base()
-        {
-            _fields = new List<Field>();
-        }
+            : base() { }
 
         public RecordSchema(string name)
-            : base(name)
-        {
-            _fields = new List<Field>();
-        }
+            : base(name) { }
 
         public RecordSchema(string name, string ns)
-            : base(name, ns)
-        {
-            _fields = new List<Field>();
-        }
+            : base(name, ns) { }
 
         public RecordSchema(string name, IEnumerable<Field> fields)
             : base(name)
         {
-            _fields = new List<Field>();
             foreach (var field in fields)
                 Add(field);
         }
@@ -40,7 +30,6 @@ namespace Avro.Schema
         public RecordSchema(string name, string ns, IEnumerable<Field> fields)
             : base(name, ns)
         {
-            _fields = new List<Field>();
             foreach (var field in fields)
                 Add(field);
         }
@@ -53,6 +42,8 @@ namespace Avro.Schema
                 throw new AvroParseException("Null or unnamed fields are not supported.");
             if (Contains(field.Name))
                 throw new AvroParseException($"Record already contains field with name: '{field.Name}'.");
+            if (field.Type is NamedSchema && string.IsNullOrEmpty((field.Type as NamedSchema).Namespace))
+                (field.Type as NamedSchema).Namespace = Namespace;
             _fields.Add(field);
         }
 
@@ -67,6 +58,34 @@ namespace Avro.Schema
             if (field != null)
                 return _fields.Remove(field);
             return false;
+        }
+
+        public override string Namespace
+        {
+            get
+            {
+                return base.Namespace;
+            }
+            set
+            {
+                if (base.Namespace == value)
+                    return;
+
+                var old = base.Namespace;
+                base.Namespace = value;
+
+                var namedTypes =
+                    _fields.Where(r => r.Type is NamedSchema)
+                        .Select(t => t.Type as NamedSchema)
+                        .Where(r => r.Namespace == old || r.Namespace != null && r.Namespace.StartsWith(old))
+                    ;
+
+                foreach (var namedType in namedTypes)
+                    if (string.IsNullOrEmpty(namedType.Namespace) || namedType.Namespace == old)
+                        namedType.Namespace = value;
+                    else
+                        namedType.Namespace = $"{value}{namedType.Namespace.Remove(0, old.Length)}";
+            }
         }
 
         public IEnumerator<Field> GetEnumerator() => _fields.GetEnumerator();
@@ -106,7 +125,7 @@ namespace Avro.Schema
             public AvroSchema Type { get; set; }
 
             public string Order { get; set; }
-            public JToken  Default { get { return _default; } set { DefaultValidator.ValidateJson(Type, value); _default = value; } }
+            public JToken Default { get { return _default; } set { DefaultValidator.ValidateJson(Type, value); _default = value; } }
             public string Doc { get; set; }
             public IList<string> Aliases { get { return _aliases; } set { NameValidator.ValidateNames(value); _aliases = value; } }
 
