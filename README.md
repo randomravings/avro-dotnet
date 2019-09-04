@@ -48,15 +48,17 @@ The implementatin is leaning towards a more procedural style for modularity.
 ### AvroGen extended
 
 The AvroGen tool for code bindings is being extended to add more options in order to enhance user experience:
-* Mimic dotnet CLI syntax.
+* Add folder and style options to CLI syntax.
 * Option to read single file or files from a folder filtered by extension.
 * Option to create dotnet core project.
 * Options that dictate code binding style (not currently implemented).
 
 ## Features to be implemented
 
-* JSON serde
-* Code generation for protocol
-* Bring-Your-Own logical type
-* Attributes on Properties to be used for resolution allowing for mangling and selected casing on code generated fields.
-* Block Reader enabling parallel reads of Object Containers.
+- [x] JSON serde
+- [ ] Code generation for protocol
+- [ ] Bring-Your-Own logical type
+- [ ] Attributes on Properties to be used for resolution allowing for mangling and selected casing on code generated fields.
+- [ ] Block Reader enabling parallel reads of Object Containers.
+- [ ] Mangling for reserved words where appropriate.
+- [ ] SchemaBuilder API.
