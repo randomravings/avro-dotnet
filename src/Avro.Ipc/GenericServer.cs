@@ -1,7 +1,6 @@
 ﻿using Avro.IO;
 using Avro.Ipc.IO;
 using Avro.Protocol;
-using Avro.Protocol.Schema;
 using Avro.Types;
 using org.apache.avro.ipc;
 using System.IO;

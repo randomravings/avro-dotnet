@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Avro.Ipc.Http
@@ -9,8 +7,10 @@ namespace Avro.Ipc.Http
     {
         public static async Task<ITranceiver> ConnectAsync(string url)
         {
-            var localUrl = url.EndsWith('/') ? url : $"{url}/";
-            return new HttpTranceiver(new Uri(localUrl));
+            return await Task<ITranceiver>.Factory.StartNew(() => {
+                var localUrl = url.EndsWith('/') ? url : $"{url}/";
+                return new HttpTranceiver(new Uri(localUrl));
+            });
         }
     }
 }

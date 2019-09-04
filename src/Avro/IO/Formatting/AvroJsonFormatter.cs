@@ -12,7 +12,7 @@ namespace Avro.IO.Formatting
         public delegate int Reader(JsonTextReader r, bool q, out string v);
         public delegate int Writer(JsonTextWriter w, bool q, string v);
 
-        internal static Reader[] GetReadActions(AvroSchema schema)
+        public static Reader[] GetReadActions(AvroSchema schema)
         {
             var actions = new List<Expression<Reader>>();
 
@@ -48,7 +48,7 @@ namespace Avro.IO.Formatting
             return actions.Select(r => r.Compile() as Reader).ToArray();
         }
 
-        internal static Writer[] GetWriteActions(AvroSchema schema)
+        public static Writer[] GetWriteActions(AvroSchema schema)
         {
             var actions = new List<Expression<Writer>>();
 

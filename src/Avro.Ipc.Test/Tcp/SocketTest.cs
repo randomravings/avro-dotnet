@@ -45,7 +45,7 @@ namespace Avro.Ipc.Test.Tcp
             {
                 var tranceiver = new LocalTranceiver();
                 var serverTask = Task.Factory.StartNew(() => RunLocalServer(HELLO_PROTOCOL, tranceiver, cancellationTokenSource.Token));
-                var client = ConnectLocalClient(HELLO_PROTOCOL, tranceiver, cancellationTokenSource.Token).Result;
+                var client = ConnectLocalClient(HELLO_PROTOCOL, tranceiver, cancellationTokenSource.Token);
                 var responseRecord = RunGenericClient(client, cancellationTokenSource.Token).Result;
                 cancellationTokenSource.Cancel();
                 Task.WaitAll(serverTask);
@@ -82,7 +82,7 @@ namespace Avro.Ipc.Test.Tcp
             }
         }
 
-        private async Task<GenericClient> ConnectLocalClient(AvroProtocol protocol, LocalTranceiver tranceiver, CancellationToken token)
+        private GenericClient ConnectLocalClient(AvroProtocol protocol, LocalTranceiver tranceiver, CancellationToken token)
         {
             return new GenericClient(protocol, tranceiver);
         }

@@ -12,6 +12,5 @@ namespace Avro.Ipc.Http
                 httpListener.Prefixes.Add(uriPrefix);
             return new HttpTranceiver(httpListener);
         }
-
     }
 }
