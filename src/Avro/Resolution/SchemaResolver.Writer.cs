@@ -341,49 +341,72 @@ namespace Avro.Resolution
                     break;
 
                 case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsInterface || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
-                    var localType = type;
                     var nullIndex = 0;
                     if (!r[nullIndex].GetType().Equals(typeof(NullSchema)))
                         nullIndex = 1;
                     var localValueExpression = valueExpression;
                     if (Nullable.GetUnderlyingType(type) != null)
                     {
-                        localType = Nullable.GetUnderlyingType(type);
                         localValueExpression =
                             Expression.MakeMemberAccess(
                                 localValueExpression,
                                 type.GetProperty("Value")
                             );
                     }
-                    ResolveWriter(origin, localType, r[(nullIndex + 1) % 2], streamParameter, localValueExpression, null, out var writeNotNullExpression);
-                    writeExpression =
-                        Expression.IfThenElse
-                        (
-                            Expression.Equal(
-                                valueExpression,
-                                Expression.Constant(null, type)
-                            ),
-                            Expression.Call(
-                                streamParameter,
-                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
-                                Expression.Constant(
-                                    (long)nullIndex,
-                                    typeof(long)
-                                )
-                            ),
-                            Expression.Block(
-                                typeof(void),
-                                Expression.Call(
-                                    streamParameter,
-                                    typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
-                                    Expression.Constant(
-                                        (long)(nullIndex + 1) % 2,
-                                        typeof(long)
-                                    )
-                                ),
-                                writeNotNullExpression
-                            )
-                        );
+
+                    var valueType = Nullable.GetUnderlyingType(type) ?? type;
+                    var nullableValueMethod =
+                        valueType.IsClass || valueType.IsInterface ?
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject)).MakeGenericMethod(valueType) :
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)).MakeGenericMethod(valueType)
+                    ;
+
+                    ResolveWriter(origin, valueType, r[(nullIndex + 1) % 2], streamParameter, localValueExpression, null, out var writeNotNullExpression);
+
+                    writeExpression = Expression.Call(
+                        streamParameter,
+                        nullableValueMethod,
+                        CastOrExpression(valueExpression, valueParameterCast),
+                        Expression.Lambda(
+                            writeNotNullExpression,
+                            streamParameter,
+                            Expression.Parameter(valueType, "v")
+                        ),
+                        Expression.Constant(
+                            (long)nullIndex,
+                            typeof(long)
+                        )
+                    );
+
+
+                    //writeExpression =
+                    //    Expression.IfThenElse
+                    //    (
+                    //        Expression.Equal(
+                    //            valueExpression,
+                    //            Expression.Constant(null, type)
+                    //        ),
+                    //        Expression.Call(
+                    //            streamParameter,
+                    //            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                    //            Expression.Constant(
+                    //                (long)nullIndex,
+                    //                typeof(long)
+                    //            )
+                    //        ),
+                    //        Expression.Block(
+                    //            typeof(void),
+                    //            Expression.Call(
+                    //                streamParameter,
+                    //                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                    //                Expression.Constant(
+                    //                    (long)(nullIndex + 1) % 2,
+                    //                    typeof(long)
+                    //                )
+                    //            ),
+                    //            writeNotNullExpression
+                    //        )
+                    //    );
                     break;
 
                 case UnionSchema r when type.Equals(typeof(object)) && r.Count > 0:

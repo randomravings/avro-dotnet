@@ -10,7 +10,6 @@ namespace Avro.IO
         bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array);
         bool ReadBoolean();
         byte[] ReadBytes();
-        byte[] ReadBytes(byte[] bytes);
         DateTime ReadDate();
         decimal ReadDecimal(int scale);
         decimal ReadDecimal(int scale, int len);

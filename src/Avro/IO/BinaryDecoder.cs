@@ -78,13 +78,6 @@ namespace Avro.IO
             return Constants.UNIX_EPOCH.AddDays(days);
         }
 
-        public byte[] ReadBytes(byte[] bytes)
-        {
-            var len = ReadLong();
-            _stream.Read(bytes, 0, (int)len);
-            return bytes;
-        }
-
         public decimal ReadDecimal(int scale)
         {
             var bytes = ReadBytes();

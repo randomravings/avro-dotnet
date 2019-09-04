@@ -4,227 +4,248 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Avro.IO
 {
     public class JsonDecoder : IAvroDecoder
     {
         private readonly TextReader _stream;
-        private readonly AvroSchema _schema;
-        private JsonTextReader _reader;
-        private readonly IList<JsonItemDescriptor> _headings;
-
+        private readonly JsonTextReader _reader;
+        private readonly string _delimiter;
+        private readonly AvroJsonFormatter.Reader[] _actions;
         private int _index = 0;
 
         public JsonDecoder(TextReader stream, AvroSchema schema, string delimiter = null)
         {
             _stream = stream;
-            _schema = schema;
-            _reader = new JsonTextReader(_stream);
-            _headings = new List<JsonItemDescriptor>();
-            JsonItemDescriptor.AddHeading(_schema, _headings);
-
-            _reader.SupportMultipleContent = true;
-        }
-
-        private void ReadStart()
-        {
-            if (_index >= _headings.Count)
-            {
-                while (_reader.Read() && _reader.Depth > 0) ;
-                _index = 0;
-            }
+            _reader = new JsonTextReader(_stream) { SupportMultipleContent = true };
+            _delimiter = delimiter;
+            _actions = AvroJsonFormatter.GetReadActions(schema);
 
             _reader.Read();
-            switch (_reader.TokenType)
-            {
-                case JsonToken.None:
-                case JsonToken.StartObject:
-                case JsonToken.StartArray:
-                    ReadStart();
-                    break;
-
-                case JsonToken.PropertyName:
-                    var item = _headings[_index++];
-                    if (item.PropertyName != _reader.Value.ToString())
-                        throw new IOException($"Expected property: '{item.PropertyName}', was: '{_reader.Value}'");
-                    _reader.Read();
-                    if (item.IsRecord)
-                        ReadStart();
-                    break;
-            }
         }
 
         public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
         {
-            ReadStart();
+            var end = Advance(false, out _);
             var loop = _index;
             var items = new List<T>();
-            // Seek First Object or End of Array.
-            while (_reader.Read() && (_reader.TokenType == JsonToken.StartObject && _reader.TokenType == JsonToken.EndArray));
             while (_reader.TokenType != JsonToken.EndArray)
             {
                 _index = loop;
                 items.Add(itemsReader.Invoke(this));
-                _reader.Read(); // End Object;
-                _reader.Read(); // Start Object or End Array;
             }
-            _index = _headings[loop].Limit + 1;
+            _index = end;
+            Advance(false, out _);
             return items;
         }
 
         public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array)
         {
-            throw new NotImplementedException();
+            array = ReadArray(itemsReader);
+            return false;
         }
 
         public bool ReadBoolean()
         {
-            ReadStart();
-            return bool.Parse(_reader.Value.ToString());
+            Advance(false, out var value);
+            return bool.Parse(value);
         }
 
         public byte[] ReadBytes()
         {
-            throw new NotImplementedException();
-        }
-
-        public byte[] ReadBytes(byte[] bytes)
-        {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r, 16)).ToArray();
         }
 
         public DateTime ReadDate()
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return DateTime.Parse(value);
         }
 
         public decimal ReadDecimal(int scale)
         {
-            throw new NotImplementedException();
+            Advance(false, out var value);
+            return decimal.Parse(value);
         }
 
         public decimal ReadDecimal(int scale, int len)
         {
-            throw new NotImplementedException();
+            Advance(false, out var value);
+            return decimal.Parse(value);
         }
 
         public double ReadDouble()
         {
-            throw new NotImplementedException();
+            Advance(false, out var value);
+            return double.Parse(value);
         }
 
         public AvroDuration ReadDuration()
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            var bytes = value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
+
+            var mm =
+                (uint)(bytes[0] & 0xFF) << 24 |
+                (uint)(bytes[1] & 0xFF) << 16 |
+                (uint)(bytes[2] & 0xFF) << 8 |
+                (uint)(bytes[3] & 0xFF)
+            ;
+
+            var dd =
+                (uint)(bytes[4] & 0xFF) << 24 |
+                (uint)(bytes[5] & 0xFF) << 16 |
+                (uint)(bytes[6] & 0xFF) << 8 |
+                (uint)(bytes[7] & 0xFF)
+            ;
+
+            var ms =
+                (uint)(bytes[8] & 0xFF) << 24 |
+                (uint)(bytes[9] & 0xFF) << 16 |
+                (uint)(bytes[10] & 0xFF) << 8 |
+                (uint)(bytes[11] & 0xFF)
+            ;
+
+            return new AvroDuration(mm, dd, ms);
         }
 
         public byte[] ReadFixed(byte[] bytes)
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
         }
 
         public byte[] ReadFixed(int len)
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
         }
 
         public float ReadFloat()
         {
-            throw new NotImplementedException();
+            Advance(false, out var value);
+            return float.Parse(value);
         }
 
         public int ReadInt()
         {
-            ReadStart();
-            return Convert.ToInt32(_reader.Value);
+            Advance(false, out var value);
+            return int.Parse(value);
         }
 
         public long ReadLong()
         {
-            throw new NotImplementedException();
+            Advance(false, out var value);
+            return long.Parse(value);
         }
 
         public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
         {
-            ReadStart();
+            var end = Advance(false, out _);
             var loop = _index;
             var items = new Dictionary<string, T>();
-            // Seek First Object or End of Object.
-            while (_reader.Read() && (_reader.TokenType == JsonToken.StartObject && _reader.TokenType == JsonToken.EndObject));
-            while (_reader.TokenType != JsonToken.EndObject)
+            while (true)
             {
                 _index = loop;
-                var key = _reader.Value.ToString();
+                if (Advance(true, out var key) == 0)
+                    break;
                 var value = valuesReader.Invoke(this);
                 items.Add(key, value);
-                _reader.Read(); // End Object for Value
-                _reader.Read(); // PropertyName or End Object for Map
             }
-            _index = _headings[loop].Limit + 1;
+            _index = end;
+            Advance(false, out _);
             return items;
         }
 
         public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map)
         {
-            throw new NotImplementedException();
+            map = ReadMap(valuesReader);
+            return false;
         }
 
         public AvroNull ReadNull()
         {
-            ReadStart();
+            Advance(false, out _);
             return new AvroNull();
         }
 
         public T ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
         {
-            throw new NotImplementedException();
+            Advance(false, out var index);
+            if (index == nullIndex.ToString())
+            {
+                _index++;
+                return null;
+            }
+            else
+            {
+                return reader.Invoke(this);
+            }
         }
 
         public T? ReadNullableValue<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : struct
         {
-            throw new NotImplementedException();
+            Advance(false, out var index);
+            if (index == nullIndex.ToString())
+            {
+                _index++;
+                return null;
+            }
+            else
+            {
+                return reader.Invoke(this);
+            }
         }
 
         public string ReadString()
         {
-            ReadStart();
-            return Convert.ToString(_reader.Value);
+            Advance(true, out var value);
+            return value;
         }
 
         public TimeSpan ReadTimeMS()
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return TimeSpan.Parse(value);
         }
 
         public TimeSpan ReadTimeNS()
         {
-            throw new NotImplementedException();
-        }
-
-        public DateTime ReadTimestampMS()
-        {
-            throw new NotImplementedException();
-        }
-
-        public DateTime ReadTimestampNS()
-        {
-            throw new NotImplementedException();
-        }
-
-        public DateTime ReadTimestampUS()
-        {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return TimeSpan.Parse(value);
         }
 
         public TimeSpan ReadTimeUS()
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return TimeSpan.Parse(value);
+        }
+
+        public DateTime ReadTimestampMS()
+        {
+            Advance(true, out var value);
+            return DateTime.Parse(value);
+        }
+
+        public DateTime ReadTimestampNS()
+        {
+            Advance(true, out var value);
+            return DateTime.Parse(value);
+        }
+
+        public DateTime ReadTimestampUS()
+        {
+            Advance(true, out var value);
+            return DateTime.Parse(value);
         }
 
         public Guid ReadUuid()
         {
-            throw new NotImplementedException();
+            Advance(true, out var value);
+            return Guid.Parse(value);
         }
 
         public void SkipArray(Action<IAvroDecoder> itemsSkipper)
@@ -343,5 +364,13 @@ namespace Avro.IO
         }
 
         public void Dispose() { }
+
+        private int Advance(bool quote, out string value)
+        {
+            if (_index >= _actions.Length)
+                _index = 0;
+
+            return _actions[_index++].Invoke(_reader, quote, out value);
+        }
     }
 }

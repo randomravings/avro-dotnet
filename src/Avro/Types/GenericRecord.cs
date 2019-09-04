@@ -1,9 +1,11 @@
 using Avro.Schema;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
 
 namespace Avro.Types
 {
@@ -135,7 +137,56 @@ namespace Avro.Types
 
         public override string ToString()
         {
-            return string.Join("|", _values.Select(r => r?.ToString() ?? "<null>"));
+            var sb = new StringBuilder();
+            sb.Append('{');
+            var i = 0;
+            foreach (var value in _values)
+            {
+                if (i++ > 0)
+                    sb.Append("|");
+                if (value == null)
+                {
+                    sb.Append("#null#");
+                }
+                else if (value.GetType().Equals(typeof(string)))
+                {
+                    sb.Append(value);
+                }
+                else if(typeof(byte[]).IsAssignableFrom(value.GetType()))
+                {
+                    sb.Append(string.Join(" ", (value as byte[]).Select(r => r.ToString("X2"))));
+                }
+                else if (typeof(IDictionary).IsAssignableFrom(value.GetType()))
+                {
+                    int x = 0;
+                    var dictEnum = (value as IDictionary).GetEnumerator();
+                    while (dictEnum.MoveNext())
+                    {
+                        if (x++ > 0)
+                            sb.Append(",");
+                        sb.Append($"<{dictEnum.Key?.ToString() ?? "#null#"}:{dictEnum.Value?.ToString() ?? "#null#"}>");
+                    }
+                }
+                else if (typeof(IEnumerable).IsAssignableFrom(value.GetType()))
+                {
+                    int x = 0;
+                    var arrEnum = (value as IEnumerable).GetEnumerator();
+                    sb.Append("[");
+                    while (arrEnum.MoveNext())
+                    {
+                        if (x++ > 0)
+                            sb.Append(",");
+                        sb.Append(arrEnum.Current?.ToString() ?? "#null#");
+                    }
+                    sb.Append("]");
+                }
+                else
+                {
+                    sb.Append(value.ToString());
+                }
+            }
+            sb.Append('}');
+            return sb.ToString();
         }
 
         private static Func<object> GetDefaultInitialization(AvroSchema schema, JToken value)

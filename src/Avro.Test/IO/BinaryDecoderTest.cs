@@ -244,9 +244,6 @@ namespace Avro.Test.IO
                 Assert.AreEqual(expectedLength, stream.Position, "Decode offset error");
                 Assert.AreEqual(expectedValue, decode);
 
-                decode = new byte[decode.Length];
-                stream.Seek(0, SeekOrigin.Begin);
-                decoder.ReadBytes(decode);
                 Assert.AreEqual(expectedLength, stream.Position, "Decode offset error");
                 Assert.AreEqual(expectedValue, decode);
 
