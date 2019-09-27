@@ -11,10 +11,12 @@ namespace Avro.IO
     public sealed class BinaryDecoder : IAvroDecoder
     {
         private readonly Stream _stream;
+        private readonly bool _leaveOpen;
 
-        public BinaryDecoder(Stream stream)
+        public BinaryDecoder(Stream stream, bool leaveOpen = true)
         {
             _stream = stream;
+            _leaveOpen = leaveOpen;
         }
 
         public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
@@ -237,7 +239,7 @@ namespace Avro.IO
 
         public AvroNull ReadNull()
         {
-            return new AvroNull();
+            return AvroNull.Value;
         }
 
         public T ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
@@ -302,6 +304,234 @@ namespace Avro.IO
         {
             var s = ReadString();
             return Guid.Parse(s);
+        }
+
+        public AvroUnion<T1, T2> ReadUnion<T1, T2>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2>(reader2.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 1);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3> ReadUnion<T1, T2, T3>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3>(reader3.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 2);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4> ReadUnion<T1, T2, T3, T4>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4>(reader4.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 3);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4, T5> ReadUnion<T1, T2, T3, T4, T5>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4,
+            Func<IAvroDecoder, T5> reader5
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4, T5>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4, T5>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4, T5>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4, T5>(reader4.Invoke(this));
+                case 4:
+                    return new AvroUnion<T1, T2, T3, T4, T5>(reader4.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 4);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4, T5, T6> ReadUnion<T1, T2, T3, T4, T5, T6>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4,
+            Func<IAvroDecoder, T5> reader5,
+            Func<IAvroDecoder, T6> reader6
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader4.Invoke(this));
+                case 4:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader4.Invoke(this));
+                case 5:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader5.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 5);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4, T5, T6, T7> ReadUnion<T1, T2, T3, T4, T5, T6, T7>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4,
+            Func<IAvroDecoder, T5> reader5,
+            Func<IAvroDecoder, T6> reader6,
+            Func<IAvroDecoder, T7> reader7
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader4.Invoke(this));
+                case 4:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader4.Invoke(this));
+                case 5:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader5.Invoke(this));
+                case 6:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader6.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 6);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8> ReadUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4,
+            Func<IAvroDecoder, T5> reader5,
+            Func<IAvroDecoder, T6> reader6,
+            Func<IAvroDecoder, T7> reader7,
+            Func<IAvroDecoder, T8> reader8
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader4.Invoke(this));
+                case 4:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader4.Invoke(this));
+                case 5:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader5.Invoke(this));
+                case 6:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader6.Invoke(this));
+                case 7:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader7.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 7);
+                    throw ex;
+            }
+        }
+
+        public AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9> ReadUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+            Func<IAvroDecoder, T1> reader1,
+            Func<IAvroDecoder, T2> reader2,
+            Func<IAvroDecoder, T3> reader3,
+            Func<IAvroDecoder, T4> reader4,
+            Func<IAvroDecoder, T5> reader5,
+            Func<IAvroDecoder, T6> reader6,
+            Func<IAvroDecoder, T7> reader7,
+            Func<IAvroDecoder, T8> reader8,
+            Func<IAvroDecoder, T9> reader9
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader1.Invoke(this));
+                case 1:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader2.Invoke(this));
+                case 2:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader3.Invoke(this));
+                case 3:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader4.Invoke(this));
+                case 4:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader4.Invoke(this));
+                case 5:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader5.Invoke(this));
+                case 6:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader6.Invoke(this));
+                case 7:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader7.Invoke(this));
+                case 8:
+                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader8.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 8);
+                    throw ex;
+            }
         }
 
         public void SkipArray(Action<IAvroDecoder> itemsSkipper)
@@ -454,6 +684,287 @@ namespace Avro.IO
             SkipString();
         }
 
-        public void Dispose() { }
+        public void SkipUnion<T1, T2>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 1);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 2);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 3);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4, T5>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4,
+            Action<IAvroDecoder> skipper5
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                case 4:
+                    skipper5.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 4);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4, T5, T6>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4,
+            Action<IAvroDecoder> skipper5,
+            Action<IAvroDecoder> skipper6
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                case 4:
+                    skipper5.Invoke(this);
+                    break;
+                case 5:
+                    skipper6.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 5);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4,
+            Action<IAvroDecoder> skipper5,
+            Action<IAvroDecoder> skipper6,
+            Action<IAvroDecoder> skipper7
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                case 4:
+                    skipper5.Invoke(this);
+                    break;
+                case 5:
+                    skipper6.Invoke(this);
+                    break;
+                case 6:
+                    skipper7.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 6);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4,
+            Action<IAvroDecoder> skipper5,
+            Action<IAvroDecoder> skipper6,
+            Action<IAvroDecoder> skipper7,
+            Action<IAvroDecoder> skipper8
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                case 4:
+                    skipper5.Invoke(this);
+                    break;
+                case 5:
+                    skipper6.Invoke(this);
+                    break;
+                case 6:
+                    skipper7.Invoke(this);
+                    break;
+                case 7:
+                    skipper8.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 7);
+                    throw ex;
+            }
+        }
+
+        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+            Action<IAvroDecoder> skipper1,
+            Action<IAvroDecoder> skipper2,
+            Action<IAvroDecoder> skipper3,
+            Action<IAvroDecoder> skipper4,
+            Action<IAvroDecoder> skipper5,
+            Action<IAvroDecoder> skipper6,
+            Action<IAvroDecoder> skipper7,
+            Action<IAvroDecoder> skipper8,
+            Action<IAvroDecoder> skipper9
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                case 1:
+                    skipper2.Invoke(this);
+                    break;
+                case 2:
+                    skipper3.Invoke(this);
+                    break;
+                case 3:
+                    skipper4.Invoke(this);
+                    break;
+                case 4:
+                    skipper5.Invoke(this);
+                    break;
+                case 5:
+                    skipper6.Invoke(this);
+                    break;
+                case 6:
+                    skipper7.Invoke(this);
+                    break;
+                case 7:
+                    skipper8.Invoke(this);
+                    break;
+                case 8:
+                    skipper8.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 8);
+                    throw ex;
+            }
+        }
+
+        private static IndexOutOfRangeException UnionIndexException(long index, long range)
+        {
+            return new IndexOutOfRangeException($"Union Index out of range: '{index}'. Valid range [{0}:{range}]");
+        }
+
+        public void Dispose()
+        {
+            if (!_leaveOpen && _stream != null)
+                _stream.Dispose();
+        }
     }
 }

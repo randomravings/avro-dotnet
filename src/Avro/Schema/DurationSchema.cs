@@ -1,6 +1,10 @@
+using Avro.Serialization;
+using Avro.Types;
+
 namespace Avro.Schema
 {
-    public class DurationSchema : LogicalSchema
+    [SerializationType(typeof(AvroDuration))]
+    public sealed class DurationSchema : LogicalSchema
     {
         public DurationSchema()
             : this(new FixedSchema("duration", null, 12)) { }

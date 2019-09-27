@@ -1,7 +1,9 @@
 ﻿namespace Avro.Types
 {
-    public struct AvroNull
+    public sealed class AvroNull
     {
-        public static readonly AvroNull Value;
+        private AvroNull() { }
+        public const AvroNull Value = null;
+        public const object ObjectValue = null;
     }
 }

@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class NullSchema : AvroSchema
+    [SerializationType(typeof(NullSchema))]
+    public sealed class NullSchema : AvroSchema
     {
         public override string ToString() => "null";
     }

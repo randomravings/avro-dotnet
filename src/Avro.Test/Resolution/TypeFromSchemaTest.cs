@@ -12,7 +12,7 @@ namespace Avro.Test.IO
     [TestFixture]
     public class TypeFromSchemaTest
     {
-        [TestCase(typeof(object), typeof(NullSchema))]
+        [TestCase(typeof(AvroNull), typeof(NullSchema))]
         [TestCase(typeof(int), typeof(IntSchema))]
         [TestCase(typeof(long), typeof(LongSchema))]
         [TestCase(typeof(float), typeof(FloatSchema))]

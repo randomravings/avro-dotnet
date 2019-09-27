@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+using Avro.Serialization;
+using System;
 
 namespace Avro.Schema
 {
-    public class UuidSchema : LogicalSchema
+    [SerializationType(typeof(Guid))]
+    public sealed class UuidSchema : LogicalSchema
     {
         public UuidSchema()
             : this(new StringSchema()) { }

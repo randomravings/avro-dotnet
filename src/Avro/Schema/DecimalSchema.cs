@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class DecimalSchema : LogicalSchema
+    [SerializationType(typeof(decimal))]
+    public sealed class DecimalSchema : LogicalSchema
     {
         public DecimalSchema()
             : this(new BytesSchema(), 15, 2) { }

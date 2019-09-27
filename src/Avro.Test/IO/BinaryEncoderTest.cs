@@ -18,7 +18,7 @@ namespace Avro.Test.IO
             using (var stream = new MemoryStream())
             using (var encoder = new BinaryEncoder(stream))
             {
-                encoder.WriteNull();
+                encoder.WriteNull(AvroNull.Value);
                 Assert.AreEqual(expectedLength, stream.Position, "Encode offset error");
                 Assert.AreEqual(expectedValue, stream.GetBuffer().AsSpan(0, expectedLength).ToArray());
             }

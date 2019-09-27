@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+using Avro.Serialization;
+using System;
 
 namespace Avro.Schema
 {
-    public class DateSchema : LogicalSchema
+    [SerializationType(typeof(DateTime))]
+    public sealed class DateSchema : LogicalSchema
     {
         public DateSchema()
             : base(new IntSchema(), "date") { }

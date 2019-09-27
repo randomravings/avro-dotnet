@@ -1,8 +1,10 @@
+using Avro.Serialization;
 using System.Collections.Generic;
 
 namespace Avro.Schema
 {
-    public class MapSchema : AvroSchema
+    [SerializationType(typeof(IDictionary<,>), ReservedGenericArguments = new [] { typeof(string) })]
+    public sealed class MapSchema : AvroSchema
     {
         public MapSchema(AvroSchema values)
         {

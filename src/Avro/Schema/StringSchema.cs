@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
+    [SerializationType(typeof(string), CompatibleTypes = new [] { typeof(byte[]) })]
     public class StringSchema : AvroSchema
     {
-        public override string ToString() => "string";
+        public sealed override string ToString() => "string";
     }
 }

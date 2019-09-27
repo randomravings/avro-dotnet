@@ -1,3 +1,5 @@
+using Avro.Serialization;
+using Avro.Types;
 using Avro.Utils;
 using Newtonsoft.Json.Linq;
 using System;
@@ -7,6 +9,7 @@ using System.Linq;
 
 namespace Avro.Schema
 {
+    [SerializationType(typeof(GenericRecord), CompatibleTypes = new [] { typeof(IAvroRecord) })]
     public class RecordSchema : ComplexSchema, IEnumerable<RecordSchema.Field>
     {
         private readonly IList<Field> _fields = new List<Field>();

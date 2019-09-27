@@ -26,7 +26,7 @@ namespace Avro.Resolution
             switch (schema)
             {
                 case NullSchema r:
-                    return typeof(object);
+                    return typeof(AvroNull);
                 case BooleanSchema r:
                     return typeof(bool);
                 case IntSchema r:

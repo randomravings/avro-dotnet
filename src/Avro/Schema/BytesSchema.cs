@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class BytesSchema : AvroSchema
+    [SerializationType(typeof(byte[]), CompatibleTypes = new [] { typeof(string) })]
+    public sealed class BytesSchema : AvroSchema
     {
         public override string ToString() => "bytes";
     }

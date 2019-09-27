@@ -1,9 +1,10 @@
+using Avro.Serialization;
+using Avro.Types;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Avro.Schema
 {
+    [SerializationType(typeof(GenericError), CompatibleTypes = new [] { typeof(IAvroError) })]
     public class ErrorSchema : RecordSchema
     {
         public ErrorSchema()

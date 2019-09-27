@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class IntSchema : AvroSchema
+    [SerializationType(typeof(int))]
+    public sealed class IntSchema : AvroSchema
     {
         public override string ToString() => "int";
     }

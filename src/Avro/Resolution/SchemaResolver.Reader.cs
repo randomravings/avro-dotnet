@@ -14,36 +14,24 @@ namespace Avro.Resolution
         public static Tuple<Func<IAvroDecoder, T>, Action<IAvroDecoder>> ResolveReader<T>(AvroSchema readerSchema, AvroSchema writerSchema)
         {
             var type = typeof(T);
-            var readFunction = typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), type);
-            var skipAction = typeof(Action<>).MakeGenericType(typeof(IAvroDecoder));
-            var streamParameter = Expression.Parameter(typeof(IAvroDecoder), "s");
             var assembly = type.Assembly;
+            var streamParameter = Expression.Parameter(typeof(IAvroDecoder), "s");
             if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
                 assembly = null;
             var expressions = ResolveReader(assembly, type, readerSchema, writerSchema, streamParameter);
             if (expressions == null)
                 throw new AvroException($"Unable to resolve reader: '{readerSchema}' using writer: '{writerSchema}' for type: '{type}'");
 
-            var readLambdaExpression =
-                Expression.Lambda(
-                    readFunction,
+            return Tuple.Create(
+                Expression.Lambda<Func<IAvroDecoder, T>>(
                     expressions.Item1,
                     streamParameter
-                )
-                .Compile() as Func<IAvroDecoder, T>;
-
-            var skipLambdaExpression =
-                Expression.Lambda(
-                    skipAction,
+                ).Compile(),
+                Expression.Lambda<Action<IAvroDecoder>>(
                     expressions.Item2,
                     streamParameter
-                )
-                .Compile() as Action<IAvroDecoder>;
-
-            return new Tuple<Func<IAvroDecoder, T>, Action<IAvroDecoder>>(
-                readLambdaExpression,
-                skipLambdaExpression
-            );
+                ).Compile()
+             );
         }
 
         private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, AvroSchema readerSchema, AvroSchema writerSchema, ParameterExpression streamParameter)
@@ -853,7 +841,7 @@ namespace Avro.Resolution
         {
             var readExression = default(Expression);
 
-            if(typeof(GenericFixed).IsAssignableFrom(fixedType) || fixedType.Equals(typeof(object)))
+            if (typeof(GenericFixed).IsAssignableFrom(fixedType) || fixedType.Equals(typeof(object)))
             {
                 readExression =
                     Expression.Block(

@@ -19,7 +19,7 @@ namespace Avro.Test.IO
             using (var encoder = new BinaryEncoder(stream))
             using (var decoder = new BinaryDecoder(stream))
             {
-                encoder.WriteNull();
+                encoder.WriteNull(AvroNull.Value);
                 stream.Seek(0, SeekOrigin.Begin);
                 var actual = decoder.ReadNull();
                 Assert.AreEqual(AvroNull.Value, actual);

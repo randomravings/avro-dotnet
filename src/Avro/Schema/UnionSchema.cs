@@ -1,3 +1,5 @@
+using Avro.Serialization;
+using Avro.Types;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -5,20 +7,26 @@ using System.Linq;
 
 namespace Avro.Schema
 {
-    public class UnionSchema : AvroSchema, IEnumerable<AvroSchema>
+    [SerializationType(null, CompatibleTypes = new Type[]{
+        typeof(AvroUnion<>),
+        typeof(AvroUnion<,>),
+        typeof(AvroUnion<,,>),
+        typeof(AvroUnion<,,,>),
+        typeof(AvroUnion<,,,,>),
+        typeof(AvroUnion<,,,,,>),
+        typeof(AvroUnion<,,,,,,>),
+        typeof(AvroUnion<,,,,,,,>),
+        typeof(AvroUnion<,,,,,,,,>)
+    })]
+    public sealed class UnionSchema : AvroSchema, IEnumerable<AvroSchema>
     {
         private readonly IList<AvroSchema> _types;
 
-        public UnionSchema()
+        public UnionSchema(params AvroSchema[] additionalSchemas)
         {
             _types = new List<AvroSchema>();
-        }
-
-        public UnionSchema(params AvroSchema[] schemas)
-            : this()
-        {
-            if (schemas != null)
-                foreach (var schema in schemas)
+            if(additionalSchemas != null)
+                foreach (var schema in additionalSchemas)
                     Add(schema);
         }
 

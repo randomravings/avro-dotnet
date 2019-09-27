@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class FloatSchema : AvroSchema
+    [SerializationType(typeof(float))]
+    public sealed class FloatSchema : AvroSchema
     {
         public override string ToString() => "float";
     }

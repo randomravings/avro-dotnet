@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class DoubleSchema : AvroSchema
+    [SerializationType(typeof(double))]
+    public sealed class DoubleSchema : AvroSchema
     {
         public override string ToString() => "double";
     }

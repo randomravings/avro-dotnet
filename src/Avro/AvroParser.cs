@@ -9,7 +9,7 @@ namespace Avro
     {
         public static AvroProtocol ReadProtocol(string text) => ReadProtocol(text, out _);
 
-        public static AvroProtocol ReadProtocol(string text, out IEnumerable<AvroSchema> namedSchemas)
+        public static AvroProtocol ReadProtocol(string text, out IEnumerable<NamedSchema> namedSchemas)
         {
             var namedTypes = new Dictionary<string, NamedSchema>();
             var jString = JSonEncodeString(text);
@@ -24,7 +24,7 @@ namespace Avro
 
         public static AvroSchema ReadSchema(string text) => ReadSchema(text, out _);
 
-        public static AvroSchema ReadSchema(string text, out IEnumerable<AvroSchema> namedSchemas)
+        public static AvroSchema ReadSchema(string text, out IEnumerable<NamedSchema> namedSchemas)
         {
             var namedTypes = new Dictionary<string, NamedSchema>();
             var jString = JSonEncodeString(text);

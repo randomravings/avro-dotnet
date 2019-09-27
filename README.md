@@ -35,7 +35,7 @@ To avoid excessive type casting or boxing and unboxing of values the resolution 
 
 ### Roslyn replacing CodeDom
 
-CodeDom is increasingly being replaced by Rolslyn for code generation and this implementation also falls into that category. 
+CodeDom is increasingly being replaced by Rolslyn for code generation and this implementation also falls into that category.
 
 ### Async/Await for IPC
 
@@ -44,6 +44,10 @@ Calls to underlying transport in the Ipc project are propagating async/await pat
 ### Procedural Code style
 
 The implementatin is leaning towards a more procedural style for modularity.
+
+### Writer schema resolution
+
+Not an official Apache Avro feature, but to be able to evolve schema writers but retain target schema should be possible.
 
 ### AvroGen extended
 

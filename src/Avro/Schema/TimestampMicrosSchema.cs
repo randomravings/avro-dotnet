@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+using Avro.Serialization;
+using System;
 
 namespace Avro.Schema
 {
-    public class TimestampMicrosSchema : LogicalSchema
+    [SerializationType(typeof(DateTime))]
+    public sealed class TimestampMicrosSchema : LogicalSchema
     {
         public TimestampMicrosSchema()
             : this(new LongSchema()) { }

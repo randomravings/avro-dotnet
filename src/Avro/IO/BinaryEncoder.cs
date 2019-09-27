@@ -11,15 +11,12 @@ namespace Avro.IO
     public class BinaryEncoder : IAvroEncoder
     {
         private readonly Stream _stream;
+        private readonly bool _leaveOpen;
 
-        public BinaryEncoder()
-        {
-            _stream = new MemoryStream();
-        }
-
-        public BinaryEncoder(Stream stream)
+        public BinaryEncoder(Stream stream, bool leaveOpen = true)
         {
             _stream = stream;
+            _leaveOpen = leaveOpen;
         }
 
         public void WriteBoolean(bool value)
@@ -204,7 +201,7 @@ namespace Avro.IO
                 return;
             }
 
-            var localEncoder = new BinaryEncoder();
+            var localEncoder = new BinaryEncoder(new MemoryStream());
             localEncoder.WriteLong(items.Count);
             foreach (var item in items)
                 itemsWriter.Invoke(localEncoder, item);
@@ -235,7 +232,7 @@ namespace Avro.IO
                 return;
             }
 
-            var localEncoder = new BinaryEncoder();
+            var localEncoder = new BinaryEncoder(new MemoryStream());
             localEncoder.WriteLong(keyValues.Count);
             foreach (var keyValue in keyValues)
             {
@@ -247,7 +244,7 @@ namespace Avro.IO
             localEncoder._stream.CopyTo(_stream);
         }
 
-        public void WriteNull() { }
+        public void WriteNull(AvroNull value) { }
 
         public void WriteNullableObject<T>(T value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : class
         {
@@ -275,6 +272,258 @@ namespace Avro.IO
             }
         }
 
-        public void Dispose() { }
+        public void WriteUnion<T1, T2>(
+            AvroUnion<T1, T2> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3>(
+            AvroUnion<T1, T2, T3> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4>(
+            AvroUnion<T1, T2, T3, T4> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4, T5>(
+            AvroUnion<T1, T2, T3, T4, T5> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4,
+            Action<IAvroEncoder, T5> valueWriter5
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+                case 4:
+                    valueWriter5.Invoke(this, value.GetT5());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4, T5, T6>(
+            AvroUnion<T1, T2, T3, T4, T5, T6> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4,
+            Action<IAvroEncoder, T5> valueWriter5,
+            Action<IAvroEncoder, T6> valueWriter6
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+                case 4:
+                    valueWriter5.Invoke(this, value.GetT5());
+                    break;
+                case 5:
+                    valueWriter6.Invoke(this, value.GetT6());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4, T5, T6, T7>(
+            AvroUnion<T1, T2, T3, T4, T5, T6, T7> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4,
+            Action<IAvroEncoder, T5> valueWriter5,
+            Action<IAvroEncoder, T6> valueWriter6,
+            Action<IAvroEncoder, T7> valueWriter7
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+                case 4:
+                    valueWriter5.Invoke(this, value.GetT5());
+                    break;
+                case 5:
+                    valueWriter6.Invoke(this, value.GetT6());
+                    break;
+                case 6:
+                    valueWriter7.Invoke(this, value.GetT7());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
+            AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4,
+            Action<IAvroEncoder, T5> valueWriter5,
+            Action<IAvroEncoder, T6> valueWriter6,
+            Action<IAvroEncoder, T7> valueWriter7,
+            Action<IAvroEncoder, T8> valueWriter8
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+                case 4:
+                    valueWriter5.Invoke(this, value.GetT5());
+                    break;
+                case 5:
+                    valueWriter6.Invoke(this, value.GetT6());
+                    break;
+                case 6:
+                    valueWriter7.Invoke(this, value.GetT7());
+                    break;
+                case 7:
+                    valueWriter8.Invoke(this, value.GetT8());
+                    break;
+            }
+        }
+
+        public void WriteUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+            AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9> value,
+            Action<IAvroEncoder, T1> valueWriter1,
+            Action<IAvroEncoder, T2> valueWriter2,
+            Action<IAvroEncoder, T3> valueWriter3,
+            Action<IAvroEncoder, T4> valueWriter4,
+            Action<IAvroEncoder, T5> valueWriter5,
+            Action<IAvroEncoder, T6> valueWriter6,
+            Action<IAvroEncoder, T7> valueWriter7,
+            Action<IAvroEncoder, T8> valueWriter8,
+            Action<IAvroEncoder, T9> valueWriter9
+        )
+        {
+            switch (value.Index)
+            {
+                case 0:
+                    valueWriter1.Invoke(this, value.GetT1());
+                    break;
+                case 1:
+                    valueWriter2.Invoke(this, value.GetT2());
+                    break;
+                case 2:
+                    valueWriter3.Invoke(this, value.GetT3());
+                    break;
+                case 3:
+                    valueWriter4.Invoke(this, value.GetT4());
+                    break;
+                case 4:
+                    valueWriter5.Invoke(this, value.GetT5());
+                    break;
+                case 5:
+                    valueWriter6.Invoke(this, value.GetT6());
+                    break;
+                case 6:
+                    valueWriter7.Invoke(this, value.GetT7());
+                    break;
+                case 7:
+                    valueWriter8.Invoke(this, value.GetT8());
+                    break;
+                case 8:
+                    valueWriter9.Invoke(this, value.GetT9());
+                    break;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (!_leaveOpen && _stream != null)
+                _stream.Dispose();
+        }
     }
 }

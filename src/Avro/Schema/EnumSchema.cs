@@ -1,9 +1,13 @@
+using Avro.Serialization;
+using Avro.Types;
 using Avro.Utils;
+using System;
 using System.Collections.Generic;
 
 namespace Avro.Schema
 {
-    public class EnumSchema : ComplexSchema
+    [SerializationType(typeof(GenericEnum), CompatibleTypes = new [] { typeof(Enum) })]
+    public sealed class EnumSchema : ComplexSchema
     {
         private IList<string> _symbols;
 

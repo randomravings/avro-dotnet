@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+using Avro.Serialization;
+using System;
 
 namespace Avro.Schema
 {
-    public class TimeMicrosSchema : LogicalSchema
+    [SerializationType(typeof(TimeSpan))]
+    public sealed class TimeMicrosSchema : LogicalSchema
     {
         public TimeMicrosSchema()
             : this(new LongSchema()) { }

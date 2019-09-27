@@ -1,6 +1,10 @@
+using Avro.Serialization;
+using Avro.Types;
+
 namespace Avro.Schema
 {
-    public class FixedSchema : NamedSchema
+    [SerializationType(typeof(GenericFixed), CompatibleTypes = new[] { typeof(IAvroFixed) })]
+    public sealed class FixedSchema : NamedSchema
     {
         private int _size = 0;
 

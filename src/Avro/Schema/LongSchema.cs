@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using Avro.Serialization;
 
 namespace Avro.Schema
 {
-    public class LongSchema : AvroSchema
+    [SerializationType(typeof(long))]
+    public sealed class LongSchema : AvroSchema
     {
         public override string ToString() => "long";
     }

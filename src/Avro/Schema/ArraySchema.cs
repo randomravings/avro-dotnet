@@ -1,6 +1,10 @@
+using Avro.Serialization;
+using System.Collections.Generic;
+
 namespace Avro.Schema
 {
-    public class ArraySchema : AvroSchema
+    [SerializationType(typeof(IList<>))]
+    public sealed class ArraySchema : AvroSchema
     {
         public ArraySchema(AvroSchema items)
         {

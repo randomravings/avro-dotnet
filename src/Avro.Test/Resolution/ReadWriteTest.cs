@@ -69,7 +69,7 @@ namespace Avro.Test.IO
     }
 
     [TestFixture(null, TypeArgs = new Type[] { typeof(int?), typeof(NullSchema) })]
-    [TestFixture(null, TypeArgs = new Type[] { typeof(object), typeof(NullSchema) })]
+    [TestFixture(null, TypeArgs = new Type[] { typeof(AvroNull), typeof(NullSchema) })]
     [TestFixture(true, TypeArgs = new Type[] { typeof(bool), typeof(BooleanSchema) })]
     [TestFixture(false, TypeArgs = new Type[] { typeof(bool), typeof(BooleanSchema) })]
     [TestFixture(0, TypeArgs = new Type[] { typeof(int), typeof(IntSchema) })]

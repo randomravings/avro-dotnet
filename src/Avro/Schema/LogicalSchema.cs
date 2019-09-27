@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-
 namespace Avro.Schema
 {
-    public class LogicalSchema : AvroSchema
+    public  class LogicalSchema : AvroSchema
     {
         public LogicalSchema(AvroSchema type, string logicalType)
         {

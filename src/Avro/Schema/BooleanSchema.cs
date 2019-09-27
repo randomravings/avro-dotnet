@@ -1,6 +1,9 @@
+using Avro.Serialization;
+
 namespace Avro.Schema
 {
-    public class BooleanSchema : AvroSchema
+    [SerializationType(typeof(bool))]
+    public sealed class BooleanSchema : AvroSchema
     {
         public override string ToString() => "boolean";
     }
