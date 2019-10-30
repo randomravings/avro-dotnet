@@ -1,6 +1,5 @@
 using Avro.Schema;
 using System;
-using System.Collections.Generic;
 
 namespace Avro.Types
 {
@@ -11,21 +10,12 @@ namespace Avro.Types
         {
             Exception = exception;
         }
-
-        public GenericError(AvroException exception, ErrorSchema schema, IReadOnlyDictionary<string, int> index, ValueTuple<int, Func<object>>[] defaultInitializers)
-            : base(schema, index, defaultInitializers)
-        {
-            Exception = exception;
-        }
-
         public GenericError(AvroException exception, GenericRecord record)
             : base(record, true)
         {
             Exception = exception;
         }
-
         public AvroException Exception { get; private set; }
-
         public bool Equals(GenericError other)
         {
             return

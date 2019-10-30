@@ -1,6 +1,6 @@
 ﻿namespace Avro.Ipc.Utils
 {
-    public class MessageFramingUtil
+    public static class MessageFramingUtil
     {
         public static void EncodeLength(int length, byte[] array, int offset)
         {

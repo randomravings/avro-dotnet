@@ -8,14 +8,14 @@ namespace Avro.Ipc.Http
 {
     public class HttpTranceiver : ITranceiver
     {
-        private readonly System.Net.HttpListener _httpListener;
-        private HttpListenerContext _context;
+        private readonly HttpListener _httpListener;
+        private HttpListenerContext? _context;
         private readonly Uri _remoteUri;
         public HttpTranceiver(Uri remoteUrl)
         {
             _remoteUri = remoteUrl;
         }
-        public HttpTranceiver(System.Net.HttpListener httpListener)
+        public HttpTranceiver(HttpListener httpListener)
         {
             _httpListener = httpListener;
             _httpListener.Start();
@@ -27,7 +27,6 @@ namespace Avro.Ipc.Http
 
         public void Close()
         {
-            _context = null;
             _httpListener?.Close();
         }
 

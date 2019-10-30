@@ -1,4 +1,5 @@
 ﻿using Avro.IO;
+using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
 using Avro.Utils;
@@ -48,8 +49,8 @@ namespace Avro.Protocol
             LocalHash = local.MD5;
             RemoteHash = remote.MD5;
 
-            var requestReaders = new Dictionary<string, IAvroReader<IAvroRecord>>();
-            var requestWriters = new Dictionary<string, IAvroWriter<IAvroRecord>>();
+            var requestReaders = new Dictionary<string, IAvroReader<GenericRecord>>();
+            var requestWriters = new Dictionary<string, IAvroWriter<GenericRecord>>();
             var responseReaders = new Dictionary<string, IAvroReader<object>>();
             var responseWriters = new Dictionary<string, IAvroWriter<object>>();
             var errorReaders = new Dictionary<string, IAvroReader<object>>();
@@ -58,47 +59,43 @@ namespace Avro.Protocol
             var messagePairs =
                 from lm in local.Messages
                 join rm in remote.Messages on lm.Name equals rm.Name
-                select new
-                {
-                    MessageName = lm.Name,
-                    LocalMessage = lm,
-                    RemoteMessage = rm
-                };
+                select (lm.Name, lm, rm)
+            ;
 
-            foreach (var messagePair in messagePairs)
+            foreach ((var messageName, var localMessage, var remoteMessage) in messagePairs)
             {
                 var localRequestParameters =
-                    from p in messagePair.LocalMessage.RequestParameters
+                    from p in localMessage.RequestParameters
                     join t in local.Types on p.Type.FullName equals t.FullName
-                    select new RecordSchema.Field(p.Name, t)
+                    select new RecordFieldSchema(p.Name, t)
                 ;
 
                 var remoteRequestParameters =
-                    from p in messagePair.RemoteMessage.RequestParameters
+                    from p in remoteMessage.RequestParameters
                     join t in remote.Types on p.Type.FullName equals t.FullName
-                    select new RecordSchema.Field(p.Name, t)
+                    select new RecordFieldSchema(p.Name, t)
                 ;
 
-                var localRequest = new RecordSchema($"{local.FullName}.messages.{messagePair.MessageName}", localRequestParameters);
-                var remoteRequest = new RecordSchema($"{remote.FullName}.messages.{messagePair.MessageName}", remoteRequestParameters);
+                var localRequest = new RecordSchema($"{local.FullName}.messages.{messageName}", localRequestParameters);
+                var remoteRequest = new RecordSchema($"{remote.FullName}.messages.{messageName}", remoteRequestParameters);
 
-                var requestReader = new DatumReader<IAvroRecord>(localRequest, remoteRequest);
-                var requestWriter = new DatumWriter<IAvroRecord>(localRequest);
+                var requestReader = new DatumReader<GenericRecord>(localRequest, remoteRequest);
+                var requestWriter = new DatumWriter<GenericRecord>(localRequest);
 
-                requestReaders.Add(messagePair.MessageName, requestReader);
-                requestWriters.Add(messagePair.MessageName, requestWriter);
+                requestReaders.Add(messageName, requestReader);
+                requestWriters.Add(messageName, requestWriter);
 
-                var responseReader = new DatumReader<object>(messagePair.LocalMessage.Response, messagePair.RemoteMessage.Response);
-                var responseWriter = new DatumWriter<object>(messagePair.LocalMessage.Response);
+                var responseReader = new DatumReader<object>(localMessage.Response, remoteMessage.Response);
+                var responseWriter = new DatumWriter<object>(localMessage.Response);
 
-                responseReaders.Add(messagePair.MessageName, responseReader);
-                responseWriters.Add(messagePair.MessageName, responseWriter);
+                responseReaders.Add(messageName, responseReader);
+                responseWriters.Add(messageName, responseWriter);
 
-                var errorReader = new DatumReader<object>(messagePair.LocalMessage.Error, messagePair.RemoteMessage.Error);
-                var errorWriter = new DatumWriter<object>(messagePair.LocalMessage.Error);
+                var errorReader = new DatumReader<object>(localMessage.Error, remoteMessage.Error);
+                var errorWriter = new DatumWriter<object>(localMessage.Error);
 
-                errorReaders.Add(messagePair.MessageName, errorReader);
-                errorWriters.Add(messagePair.MessageName, errorWriter);
+                errorReaders.Add(messageName, errorReader);
+                errorWriters.Add(messageName, errorWriter);
             }
 
             RequestReaders = requestReaders;
@@ -111,8 +108,8 @@ namespace Avro.Protocol
 
         public byte[] LocalHash { get; private set; }
         public byte[] RemoteHash { get; private set; }
-        public IReadOnlyDictionary<string, IAvroReader<IAvroRecord>> RequestReaders { get; private set; }
-        public IReadOnlyDictionary<string, IAvroWriter<IAvroRecord>> RequestWriters { get; private set; }
+        public IReadOnlyDictionary<string, IAvroReader<GenericRecord>> RequestReaders { get; private set; }
+        public IReadOnlyDictionary<string, IAvroWriter<GenericRecord>> RequestWriters { get; private set; }
         public Dictionary<string, IAvroReader<object>> ResponseReaders { get; private set; }
         public Dictionary<string, IAvroWriter<object>> ResponseWriters { get; private set; }
         public Dictionary<string, IAvroReader<object>> ErrorReaders { get; private set; }

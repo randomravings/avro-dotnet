@@ -1,5 +1,3 @@
-using Avro.Serialization;
-using Avro.Types;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,68 +5,63 @@ using System.Linq;
 
 namespace Avro.Schema
 {
-    [SerializationType(null, CompatibleTypes = new Type[]{
-        typeof(AvroUnion<>),
-        typeof(AvroUnion<,>),
-        typeof(AvroUnion<,,>),
-        typeof(AvroUnion<,,,>),
-        typeof(AvroUnion<,,,,>),
-        typeof(AvroUnion<,,,,,>),
-        typeof(AvroUnion<,,,,,,>),
-        typeof(AvroUnion<,,,,,,,>),
-        typeof(AvroUnion<,,,,,,,,>)
-    })]
-    public sealed class UnionSchema : AvroSchema, IEnumerable<AvroSchema>
+    public sealed class UnionSchema : AvroSchema, IList<AvroSchema>
     {
-        private readonly IList<AvroSchema> _types;
+        private readonly IList<AvroSchema> _schemas;
 
         public UnionSchema(params AvroSchema[] additionalSchemas)
         {
-            _types = new List<AvroSchema>();
-            if(additionalSchemas != null)
+            _schemas = new List<AvroSchema>();
+            if (additionalSchemas != null)
                 foreach (var schema in additionalSchemas)
                     Add(schema);
         }
 
-        private void ValidateType(AvroSchema item)
-        {
-            switch (item)
-            {
-                case UnionSchema s:
-                    throw new AvroParseException($"Unions within unions is not supported.");
-                case ArraySchema s when _types.FirstOrDefault(r => r.GetType().Equals(s.GetType())) != null:
-                    throw new AvroParseException($"Union already contains an array schema.");
-                case MapSchema s when _types.FirstOrDefault(r => r.GetType().Equals(s.GetType())) != null:
-                    throw new AvroParseException($"Union already contains a map schema.");
-                case NamedSchema s when _types.Contains(item):
-                    throw new AvroParseException($"Unions already contains a schema with name: {s.FullName}.");
-                default:
-                    if (_types.Contains(item))
-                        throw new AvroParseException($"Unions already contains a schema of: {item.ToString()}.");
-                    break;
-            }
-        }
-
-        public void Add(AvroSchema item)
-        {
-            ValidateType(item);
-            _types.Add(item);
-        }
+        public int NullIndex => _schemas.IndexOf(new NullSchema());
 
         public override string ToString() => "union";
 
         public override void AddTag(string key, object value) => throw new NotSupportedException("Unions do not support tags");
+
         public override void AddTags(IEnumerable<KeyValuePair<string, object>> tags) => throw new NotSupportedException("Unions do not support tags");
+
         public override void RemoveTag(string key) => throw new NotSupportedException("Unions do not support tags");
 
-        public IEnumerator<AvroSchema> GetEnumerator() => _types.GetEnumerator();
+        public IEnumerator<AvroSchema> GetEnumerator() => _schemas.GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator() => _types.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => _schemas.GetEnumerator();
 
-        public int Count => _types.Count;
+        public int Count => _schemas.Count;
 
-        public void Clear() => _types.Clear();
+        public bool IsReadOnly => throw new NotImplementedException();
 
-        public AvroSchema this[int index] { get { return _types[index]; } }
+        public AvroSchema this[int index] { get => _schemas[index]; set => _schemas[index] = CheckSchema(value); }
+
+        public void Add(AvroSchema item) => _schemas.Add(CheckSchema(item));
+
+        public void Clear() => _schemas.Clear();
+
+        public int IndexOf(AvroSchema item) => _schemas.IndexOf(item);
+
+        public void Insert(int index, AvroSchema item) => _schemas.Insert(index, item);
+
+        public void RemoveAt(int index) => _schemas.RemoveAt(index);
+
+        public bool Contains(AvroSchema item) => _schemas.Any(r => r.Equals(item));
+
+        public void CopyTo(AvroSchema[] array, int arrayIndex) => _schemas.CopyTo(array, arrayIndex);
+
+        public bool Remove(AvroSchema item) => _schemas.Remove(item);
+
+        private AvroSchema CheckSchema(AvroSchema item) =>
+            item switch
+            {
+                UnionSchema s => throw new AvroParseException($"Unions within unions is not supported."),
+                ArraySchema s when _schemas.Any(r => r is ArraySchema) => throw new AvroParseException($"Union already contains an array schema."),
+                MapSchema s when _schemas.Any(r => r is MapSchema) => throw new AvroParseException($"Union already contains a map schema."),
+                NamedSchema s when _schemas.Any(r => r.Equals(s)) => throw new AvroParseException($"Unions already contains a schema with name: {s.Name}."),
+                AvroSchema s when _schemas.Any(r => r.Equals(s)) => throw new AvroParseException($"Unions already contains a schema of: {item.ToString()}."),
+                _ => item
+            };
     }
 }

@@ -7,6 +7,8 @@ namespace Avro.Utils
 {
     public static class JsonUtil
     {
+        public static JToken EmptyDefault { get; private set; } = JToken.Parse("{}");
+
         public static void AssertKeys(JToken jToken, ISet<string> keys, ISet<string> optionalKeys, out IDictionary<string, object> additionalTags)
         {
             additionalTags = new Dictionary<string, object>();
@@ -16,7 +18,7 @@ namespace Avro.Utils
             if (keys.Count == 0)
                 throw new ArgumentException("keys", "keys must contain one or more items.");
 
-            var tokenKeys = (jToken as JObject).Properties().Select(r => r.Name);
+            var tokenKeys = ((JObject)jToken).Properties().Select(r => r.Name);
 
             var missingKeys = keys.Except(tokenKeys);
             if (missingKeys.Count() > 0)
@@ -33,14 +35,14 @@ namespace Avro.Utils
 
         public static void AssertValue(JToken jToken, string key, string expectedVaue)
         {
-            var value = GetToken(jToken, key, true, JTokenType.String).ToString();
+            var value = GetValue<string>(jToken, key);
             if (!Equals(value, expectedVaue))
                 throw new ArgumentException($"Expected value for '{key}': '{expectedVaue}' - was '{value}'.");
         }
 
         public static void AssertValues(JToken jToken, string key, params string[] expectedVaues)
         {
-            var value = GetToken(jToken, key, true, JTokenType.String).ToString();
+            var value = GetValue<string>(jToken, key);
             foreach (var expectedVaue in expectedVaues)
                 if (Equals(value, expectedVaue))
                     return;
@@ -62,14 +64,21 @@ namespace Avro.Utils
             return true;
         }
 
+        //public static (bool, T) TryGetValue<T>(JToken jToken, string key)
+        //    => GetToken(jToken, key, false) switch
+        //    {
+        //        null => (false, default),
+        //        var t => (true, t.Value<T>())
+        //    };
+
         public static IDictionary<string, JToken> GetKeyValues(JToken jToken)
         {
             if (jToken.Type != JTokenType.Object)
                 throw new ArgumentException("jToken", "jToken cannot be null and must be a JSON Object.");
-            return (jToken as JObject).ToObject<IDictionary<string, JToken>>();
+            return ((JObject)jToken).ToObject<IDictionary<string, JToken>>();
         }
 
-        public static JToken GetToken(JToken jToken, string key, bool required, JTokenType? expectedType = null)
+        public static JToken? GetToken(JToken jToken, string key, bool required, JTokenType? expectedType = null)
         {
             if (jToken.Type != JTokenType.Object)
                 throw new ArgumentException("jToken", "jToken cannot be null and must be a JSON Object.");

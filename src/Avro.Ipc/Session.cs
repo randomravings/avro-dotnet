@@ -29,6 +29,7 @@ namespace Avro.Ipc
         protected Session(AvroProtocol protocol, ITranceiver tranceiver)
         {
             Protocol = protocol;
+            RemoteProtocol = protocol;
             _tranceiver = tranceiver;
         }
 

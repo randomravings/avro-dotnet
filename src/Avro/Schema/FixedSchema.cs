@@ -1,10 +1,8 @@
-using Avro.Serialization;
-using Avro.Types;
+using System;
 
 namespace Avro.Schema
 {
-    [SerializationType(typeof(GenericFixed), CompatibleTypes = new[] { typeof(IAvroFixed) })]
-    public sealed class FixedSchema : NamedSchema
+    public sealed class FixedSchema : NamedSchema, IEquatable<FixedSchema>
     {
         private int _size = 0;
 
@@ -23,20 +21,19 @@ namespace Avro.Schema
             Size = size;
         }
 
-        public int Size { get { return _size; } set { ValidateSize(value); _size = value; } }
+        public int Size { get { return _size; } set { _size = ValidateSize(value); } }
 
-        public override bool Equals(AvroSchema other)
-        {
-            return base.Equals(other) &&
-                (other is FixedSchema) &&
-                (other as FixedSchema).Size == Size
-            ;
-        }
+        public override bool Equals(object obj) => base.Equals(obj) && Equals((FixedSchema)obj);
 
-        private static void ValidateSize(int size)
-        {
-            if (size < 0)
-                throw new AvroParseException("Size for fixed type must zero or a positive number");
-        }
+        public bool Equals(FixedSchema other) => base.Equals(other) && Size == other.Size;
+
+        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Size);
+
+        private static int ValidateSize(int size) =>
+            size switch
+            {
+                var s when s < 0 => throw new AvroParseException("Size for fixed type must zero or a positive number"),
+                _ => size
+            };
     }
 }

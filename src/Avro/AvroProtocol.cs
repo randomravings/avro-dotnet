@@ -11,30 +11,30 @@ namespace Avro
 {
     public class AvroProtocol : AvroMeta, IEquatable<AvroProtocol>
     {
-        private static readonly MD5 HASH = System.Security.Cryptography.MD5.Create();
-        private string _name;
-        private string _namespace;
+        private static readonly MD5 HASH_FUNCTION = System.Security.Cryptography.MD5.Create();
+        private string _name = string.Empty;
+        private string _namespace = string.Empty;
         private readonly List<NamedSchema> _types = new List<NamedSchema>();
         private readonly List<MessageSchema> _messages = new List<MessageSchema>();
 
         public AvroProtocol()
-            : this(null, null) { }
+            : this(string.Empty, string.Empty) { }
 
         public AvroProtocol(string name)
-            : this(name, null) { }
+            : this(name, string.Empty) { }
 
         public AvroProtocol(string name, string ns)
             : base()
         {
             var items = name?.Split('.') ?? new string[0];
-            if (items.Length > 1 && ns == null)
+            if (items.Length > 1 && ns == string.Empty)
             {
                 Name = items.Last();
                 Namespace = string.Join(".", items.Take(items.Length - 1));
             }
             else
             {
-                if (name != null)
+                if (!string.IsNullOrEmpty(name))
                     Name = name;
                 Namespace = ns;
             }
@@ -69,8 +69,8 @@ namespace Avro
             }
         }
         public string FullName => string.IsNullOrEmpty(Namespace) ? Name : $"{Namespace}.{Name}";
-        public string Doc { get; set; }
-        public byte[] MD5 => HASH.ComputeHash(Encoding.UTF8.GetBytes(this.ToAvroCanonical()));
+        public string Doc { get; set; } = string.Empty;
+        public byte[] MD5 => HASH_FUNCTION.ComputeHash(Encoding.UTF8.GetBytes(this.ToAvroCanonical()));
 
         public IReadOnlyList<NamedSchema> Types => _types.AsReadOnly();
         public IReadOnlyList<MessageSchema> Messages => _messages.AsReadOnly();

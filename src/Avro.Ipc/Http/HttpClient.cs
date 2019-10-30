@@ -10,7 +10,7 @@ namespace Avro.Ipc.Http
             return await Task<ITranceiver>.Factory.StartNew(() => {
                 var localUrl = url.EndsWith('/') ? url : $"{url}/";
                 return new HttpTranceiver(new Uri(localUrl));
-            });
+            }).ConfigureAwait(false);
         }
     }
 }

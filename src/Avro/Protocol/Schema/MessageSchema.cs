@@ -8,8 +8,8 @@ namespace Avro.Protocol.Schema
 {
     public class MessageSchema : IEquatable<MessageSchema>
     {
-        private readonly List<ParameterSchema> _requestParameters;
-        private string _name;
+        private readonly List<ParameterSchema> _requestParameters = new List<ParameterSchema>();
+        private string _name = string.Empty;
 
         public MessageSchema(string name)
         {
@@ -20,11 +20,11 @@ namespace Avro.Protocol.Schema
 
         public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
 
-        public string Doc { get; set; }
+        public string Doc { get; set; } = string.Empty;
 
         public IReadOnlyList<ParameterSchema> RequestParameters => _requestParameters.AsReadOnly();
 
-        public AvroSchema Response { get; set; }
+        public AvroSchema Response { get; set; } = EmptySchema.Value;
 
         public UnionSchema Error { get; private set; }
 

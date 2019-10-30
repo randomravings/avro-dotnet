@@ -3,7 +3,9 @@
     public sealed class AvroNull
     {
         private AvroNull() { }
-        public const AvroNull Value = null;
-        public const object ObjectValue = null;
+        public static AvroNull Value { get; } = new AvroNull();
+        public override bool Equals(object obj) => obj != null && obj is AvroNull;
+        public override int GetHashCode() => base.GetHashCode();
+        public override string ToString() => nameof(AvroNull);
     }
 }

@@ -1,6 +1,6 @@
 namespace Avro.Schema
 {
-    public  class LogicalSchema : AvroSchema
+    public class LogicalSchema : AvroSchema
     {
         public LogicalSchema(AvroSchema type, string logicalType)
         {
@@ -8,7 +8,7 @@ namespace Avro.Schema
             LogicalType = logicalType;
         }
 
-        public AvroSchema Type { get; set; }
+        public AvroSchema Type { get; protected set; }
         public string LogicalType { get; protected set; }
         public override string ToString() => LogicalType;
     }

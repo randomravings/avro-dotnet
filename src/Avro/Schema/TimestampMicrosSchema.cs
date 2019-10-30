@@ -1,9 +1,5 @@
-using Avro.Serialization;
-using System;
-
 namespace Avro.Schema
 {
-    [SerializationType(typeof(DateTime))]
     public sealed class TimestampMicrosSchema : LogicalSchema
     {
         public TimestampMicrosSchema()

@@ -1,50 +1,47 @@
 using Avro.Utils;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Avro.Schema
 {
-    public abstract class NamedSchema : AvroSchema
+    public abstract class NamedSchema : AvroSchema, IEquatable<NamedSchema>
     {
-        private string _name;
-        private string _nameSpace;
-        private IList<string> _aliases;
+        private string _name = string.Empty;
+        private string _nameSpace = string.Empty;
+        private IList<string> _aliases = new List<string>();
 
         public NamedSchema()
-            : this(null, null) { }
+            : this(string.Empty, string.Empty) { }
 
         public NamedSchema(string name)
-            : this(name, null) { }
+            : this(name, string.Empty) { }
 
         public NamedSchema(string name, string ns)
         {
-            var items = name?.Split('.') ?? new string[0];
-            if (items.Length > 1 && ns == null)
+            var items = name.Split('.');
+            if (items.Length > 1)
             {
-                Name = items.Last();
-                Namespace = string.Join(".", items.Take(items.Length - 1));
+                Name = items[^1];
+                Namespace = string.Join(".", items[0..^1]);
             }
             else
             {
-                if(name != null)
-                    Name = name;
+                Name = name;
                 Namespace = ns;
             }
-            Aliases = new List<string>();
         }
 
         public virtual string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
         public virtual string Namespace { get { return _nameSpace; } set { NameValidator.ValidateNamespace(value); _nameSpace = value; } }
         public string FullName => string.IsNullOrEmpty(Namespace) ? Name : $"{Namespace}.{Name}";
-        public virtual IList<string> Aliases { get { return _aliases; } set { if (value != null) NameValidator.ValidateNames(value); _aliases = value; } }
+        public virtual IList<string> Aliases { get { return _aliases; } set { NameValidator.ValidateNames(value); _aliases = value; } }
 
-        public override string ToString() => FullName;
+        public override string ToString() => Name;
 
-        public override bool Equals(AvroSchema other)
-        {
-            return (other is NamedSchema) &&
-                (other as NamedSchema).FullName == FullName
-            ;
-        }
+        public override bool Equals(object obj) => base.Equals(obj) && Equals((NamedSchema)obj);
+
+        public bool Equals(NamedSchema other) => base.Equals(other) && Name == other.Name;
+
+        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Name);
     }
 }

@@ -20,7 +20,7 @@ namespace org.apache.avro.ipc
         {
             get;
             set;
-        }
+        } = new MD5();
 
         /// <summary></summary>
         [AvroField("clientProtocol")]
@@ -28,7 +28,7 @@ namespace org.apache.avro.ipc
         {
             get;
             set;
-        }
+        } = string.Empty;
 
         /// <summary></summary>
         [AvroField("serverHash")]
@@ -36,7 +36,7 @@ namespace org.apache.avro.ipc
         {
             get;
             set;
-        }
+        } = new MD5();
 
         /// <summary></summary>
         [AvroField("meta")]
@@ -44,42 +44,34 @@ namespace org.apache.avro.ipc
         {
             get;
             set;
-        }
+        } = new Dictionary<string, byte[]>();
 
-        public object this[int i]
+        public object? this[int i]
         {
-            get
+            get => i switch
             {
-                switch (i)
-                {
-                    case 0:
-                        return clientHash;
-                    case 1:
-                        return clientProtocol;
-                    case 2:
-                        return serverHash;
-                    case 3:
-                        return meta;
-                    default:
-                        throw new IndexOutOfRangeException("Expected range: [0:3].");
-                }
-            }
+                0 => clientHash,
+                1 => clientProtocol,
+                2 => serverHash,
+                3 => meta,
+                _ => throw new IndexOutOfRangeException("Expected range: [0:3]."),
+            };
 
             set
             {
                 switch (i)
                 {
                     case 0:
-                        clientHash = (MD5)value;
+                        clientHash = (MD5)(value ?? new MD5());
                         break;
                     case 1:
-                        clientProtocol = (string)value;
+                        clientProtocol = (string)(value ?? string.Empty);
                         break;
                     case 2:
-                        serverHash = (MD5)value;
+                        serverHash = (MD5)(value ?? new MD5());
                         break;
                     case 3:
-                        meta = (IDictionary<string, byte[]>)value;
+                        meta = (IDictionary<string, byte[]>)(value ?? new Dictionary<string, byte[]>());
                         break;
                     default:
                         throw new IndexOutOfRangeException("Expected range: [0:3].");

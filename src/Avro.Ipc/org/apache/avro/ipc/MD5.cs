@@ -13,25 +13,25 @@ namespace org.apache.avro.ipc
     {
         public static readonly FixedSchema _SCHEMA = AvroParser.ReadSchema<FixedSchema>("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");
         public const int _SIZE = 16;
-        private readonly byte[] _value;
         public MD5()
         {
-            _value = new byte[_SIZE];
+            Value = new byte[_SIZE];
         }
 
         public MD5(byte[] value)
         {
             if (value.Length != _SIZE)
                 throw new ArgumentException($"Array must be of size: {_SIZE}");
-            _value = value;
+            Value = value;
         }
 
         public FixedSchema Schema => _SCHEMA;
         public int Size => _SIZE;
+        public byte[] Value { get; private set; }
         public byte this[int i]
         {
-            get => _value[i];
-            set => _value[i] = value;
+            get => Value[i];
+            set => Value[i] = value;
         }
 
         public bool Equals(IAvroFixed other)
@@ -46,12 +46,12 @@ namespace org.apache.avro.ipc
 
         public IEnumerator<byte> GetEnumerator()
         {
-            foreach (var b in _value)
+            foreach (var b in Value)
                 yield return b;
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public static implicit operator MD5(byte[] value) => new MD5(value);
-        public static implicit operator byte[](MD5 value) => value._value;
+        public static implicit operator byte[](MD5 value) => value.Value;
     }
 }

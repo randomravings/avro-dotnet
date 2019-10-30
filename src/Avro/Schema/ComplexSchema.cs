@@ -11,6 +11,6 @@ namespace Avro.Schema
         public ComplexSchema(string name, string ns)
             : base(name, ns) { }
 
-        public string Doc { get; set; }
+        public string Doc { get; set; } = string.Empty;
     }
 }

@@ -7,22 +7,29 @@ namespace Avro.IO
     public interface IAvroEncoder : IDisposable
     {
         void WriteArray<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter);
+        void WriteArrayStart();
         void WriteArrayBlock<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter);
+        void WriteArrayEnd();
         void WriteBoolean(bool value);
         void WriteBytes(byte[] value);
         void WriteDate(DateTime value);
         void WriteDecimal(decimal value, int scale);
         void WriteDecimal(decimal value, int scale, int len);
         void WriteDouble(double value);
+        void WriteEnum<T>(T value) where T : struct, Enum;
+        void WriteEnum(IAvroEnum value);
         void WriteDuration(AvroDuration value);
+        void WriteFixed<T>(T value) where T : notnull, IAvroFixed;
         void WriteFixed(byte[] value);
         void WriteFloat(float value);
         void WriteInt(int value);
         void WriteLong(long value);
         void WriteMap<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter);
+        void WriteMapStart();
         void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter);
+        void WriteMapEnd();
         void WriteNull(AvroNull value);
-        void WriteNullableObject<T>(T value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : class;
+        void WriteNullableObject<T>(T? value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : class;
         void WriteNullableValue<T>(T? value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : struct;
         void WriteString(string value);
         void WriteTimeMS(TimeSpan value);
@@ -32,24 +39,41 @@ namespace Avro.IO
         void WriteTimestampUS(DateTime value);
         void WriteTimeUS(TimeSpan value);
         void WriteUuid(Guid value);
+        void WriteUnion<T1>(
+            AvroUnion<T1> value,
+            Action<IAvroEncoder, T1> valueWriter1
+        )
+            where T1 : notnull;
         void WriteUnion<T1, T2>(
             AvroUnion<T1, T2> value,
             Action<IAvroEncoder, T1> valueWriter1,
             Action<IAvroEncoder, T2> valueWriter2
-        );
+        )
+            where T1 : notnull
+            where T2 : notnull
+        ;
         void WriteUnion<T1, T2, T3>(
             AvroUnion<T1, T2, T3> value,
             Action<IAvroEncoder, T1> valueWriter1,
             Action<IAvroEncoder, T2> valueWriter2,
             Action<IAvroEncoder, T3> valueWriter3
-        );
+        )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
+        ;
         void WriteUnion<T1, T2, T3, T4>(
             AvroUnion<T1, T2, T3, T4> value,
             Action<IAvroEncoder, T1> valueWriter1,
             Action<IAvroEncoder, T2> valueWriter2,
             Action<IAvroEncoder, T3> valueWriter3,
             Action<IAvroEncoder, T4> valueWriter4
-        );
+        )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
+            where T4 : notnull
+        ;
         void WriteUnion<T1, T2, T3, T4, T5>(
             AvroUnion<T1, T2, T3, T4, T5> value,
             Action<IAvroEncoder, T1> valueWriter1,
@@ -57,48 +81,12 @@ namespace Avro.IO
             Action<IAvroEncoder, T3> valueWriter3,
             Action<IAvroEncoder, T4> valueWriter4,
             Action<IAvroEncoder, T5> valueWriter5
-        );
-        void WriteUnion<T1, T2, T3, T4, T5, T6>(
-            AvroUnion<T1, T2, T3, T4, T5, T6> value,
-            Action<IAvroEncoder, T1> valueWriter1,
-            Action<IAvroEncoder, T2> valueWriter2,
-            Action<IAvroEncoder, T3> valueWriter3,
-            Action<IAvroEncoder, T4> valueWriter4,
-            Action<IAvroEncoder, T5> valueWriter5,
-            Action<IAvroEncoder, T6> valueWriter6
-        );
-        void WriteUnion<T1, T2, T3, T4, T5, T6, T7>(
-            AvroUnion<T1, T2, T3, T4, T5, T6, T7> value,
-            Action<IAvroEncoder, T1> valueWriter1,
-            Action<IAvroEncoder, T2> valueWriter2,
-            Action<IAvroEncoder, T3> valueWriter3,
-            Action<IAvroEncoder, T4> valueWriter4,
-            Action<IAvroEncoder, T5> valueWriter5,
-            Action<IAvroEncoder, T6> valueWriter6,
-            Action<IAvroEncoder, T7> valueWriter7
-        );
-        void WriteUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
-            AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8> value,
-            Action<IAvroEncoder, T1> valueWriter1,
-            Action<IAvroEncoder, T2> valueWriter2,
-            Action<IAvroEncoder, T3> valueWriter3,
-            Action<IAvroEncoder, T4> valueWriter4,
-            Action<IAvroEncoder, T5> valueWriter5,
-            Action<IAvroEncoder, T6> valueWriter6,
-            Action<IAvroEncoder, T7> valueWriter7,
-            Action<IAvroEncoder, T8> valueWriter8
-        );
-        void WriteUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
-            AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9> value,
-            Action<IAvroEncoder, T1> valueWriter1,
-            Action<IAvroEncoder, T2> valueWriter2,
-            Action<IAvroEncoder, T3> valueWriter3,
-            Action<IAvroEncoder, T4> valueWriter4,
-            Action<IAvroEncoder, T5> valueWriter5,
-            Action<IAvroEncoder, T6> valueWriter6,
-            Action<IAvroEncoder, T7> valueWriter7,
-            Action<IAvroEncoder, T8> valueWriter8,
-            Action<IAvroEncoder, T9> valueWriter9
-        );
+        )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
+            where T4 : notnull
+            where T5 : notnull
+        ;
     }
 }

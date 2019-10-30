@@ -1,9 +1,8 @@
-using Avro.Serialization;
+using System;
 
 namespace Avro.Schema
 {
-    [SerializationType(typeof(decimal))]
-    public sealed class DecimalSchema : LogicalSchema
+    public sealed class DecimalSchema : LogicalSchema, IEquatable<DecimalSchema>
     {
         public DecimalSchema()
             : this(new BytesSchema(), 15, 2) { }
@@ -30,18 +29,10 @@ namespace Avro.Schema
         public int Precision { get; set; }
         public int Scale { get; set; }
 
-        public override string ToString()
-        {
-            return  $"{base.ToString()}({Precision},{Scale})";
-        }
+        public override bool Equals(object obj) => base.Equals(obj) && Equals((DecimalSchema)obj);
 
-        public override bool Equals(AvroSchema obj)
-        {
-            return base.Equals(obj) &&
-                (obj is DecimalSchema) &&
-                (obj as DecimalSchema).Precision == Precision &&
-                (obj as DecimalSchema).Scale == Scale
-            ;
-        }
+        public bool Equals(DecimalSchema other) => other != null && Precision == other.Precision && Scale == other.Scale;
+
+        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Precision, Scale);
     }
 }

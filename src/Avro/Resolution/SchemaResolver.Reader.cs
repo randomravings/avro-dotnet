@@ -1,6 +1,7 @@
 using Avro.IO;
 using Avro.Schema;
 using Avro.Types;
+using Avro.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,921 +12,696 @@ namespace Avro.Resolution
 {
     public static partial class SchemaResolver
     {
-        public static Tuple<Func<IAvroDecoder, T>, Action<IAvroDecoder>> ResolveReader<T>(AvroSchema readerSchema, AvroSchema writerSchema)
+        public static (Func<IAvroDecoder, T>, Action<IAvroDecoder>) ResolveReader<T>(AvroSchema targetSchema) => ResolveReader<T>(targetSchema, targetSchema);
+
+        public static (Func<IAvroDecoder, T>, Action<IAvroDecoder>) ResolveReader<T>(AvroSchema targetSchema, AvroSchema sourceSchema)
         {
             var type = typeof(T);
-            var assembly = type.Assembly;
-            var streamParameter = Expression.Parameter(typeof(IAvroDecoder), "s");
-            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
-                assembly = null;
-            var expressions = ResolveReader(assembly, type, readerSchema, writerSchema, streamParameter);
-            if (expressions == null)
-                throw new AvroException($"Unable to resolve reader: '{readerSchema}' using writer: '{writerSchema}' for type: '{type}'");
+            var assemblies = new[]
+            {
+                type.Assembly,
+                Assembly.GetCallingAssembly(),
+                Assembly.GetExecutingAssembly(),
+                Assembly.GetEntryAssembly(),
+            }
+            .GroupBy(r => r.FullName)
+            .Select(g => g.First())
+            .ToArray();
 
-            return Tuple.Create(
+            var stream = Expression.Parameter(typeof(IAvroDecoder));
+            var value = Expression.Parameter(type);
+            (var read, var skip) = ResolveDecoder(assemblies, targetSchema, sourceSchema, stream, value);
+            if (read == null)
+                throw new AvroException($"Unable to resolve reader: '{targetSchema}' using writer: '{sourceSchema}' for type: '{type}'");
+
+            return (
                 Expression.Lambda<Func<IAvroDecoder, T>>(
-                    expressions.Item1,
-                    streamParameter
+                    read.CanReduce ? read.Reduce() : read,
+                    stream
                 ).Compile(),
                 Expression.Lambda<Action<IAvroDecoder>>(
-                    expressions.Item2,
-                    streamParameter
+                    skip,
+                    stream
                 ).Compile()
              );
         }
 
-        private static Tuple<Expression, Expression> ResolveReader(Assembly origin, Type type, AvroSchema readerSchema, AvroSchema writerSchema, ParameterExpression streamParameter)
-        {
-            var expressions = default(Tuple<Expression, Expression>);
-
-            switch (readerSchema)
+        private static (Expression, Expression) ResolveDecoder(Assembly[] assemblies, AvroSchema targetSchema, AvroSchema sourceSchema, ParameterExpression stream, ParameterExpression value) =>
+            (targetSchema, sourceSchema) switch
             {
-                case NullSchema r when writerSchema is NullSchema && (type.IsInterface || type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null)):
-                    expressions = ResolveNull(streamParameter, type);
-                    break;
-                case BooleanSchema r when writerSchema is BooleanSchema && type.Equals(typeof(bool)):
-                    expressions = ResolveBoolean(streamParameter);
-                    break;
-                case IntSchema r when writerSchema is IntSchema && type.Equals(typeof(int)):
-                    expressions = ResolveInt(streamParameter);
-                    break;
-                case LongSchema r when writerSchema is LongSchema && type.Equals(typeof(long)):
-                    expressions = ResolveLong(streamParameter);
-                    break;
-                case LongSchema r when writerSchema is IntSchema && type.Equals(typeof(long)):
-                    expressions = ResolveLongFromInt(streamParameter);
-                    break;
-                case FloatSchema r when writerSchema is FloatSchema && type.Equals(typeof(float)):
-                    expressions = ResolveFloat(streamParameter);
-                    break;
-                case FloatSchema r when writerSchema is LongSchema && type.Equals(typeof(float)):
-                    expressions = ResolveFloatFromLong(streamParameter);
-                    break;
-                case FloatSchema r when writerSchema is IntSchema && type.Equals(typeof(float)):
-                    expressions = ResolveFloatFromInt(streamParameter);
-                    break;
-                case DoubleSchema r when writerSchema is DoubleSchema && type.Equals(typeof(double)):
-                    expressions = ResolveDouble(streamParameter);
-                    break;
-                case DoubleSchema r when writerSchema is FloatSchema && type.Equals(typeof(double)):
-                    expressions = ResolveDoubleFromFloat(streamParameter);
-                    break;
-                case DoubleSchema r when writerSchema is LongSchema && type.Equals(typeof(double)):
-                    expressions = ResolveDoubleFromLong(streamParameter);
-                    break;
-                case DoubleSchema r when writerSchema is IntSchema && type.Equals(typeof(double)):
-                    expressions = ResolveDoubleFromInt(streamParameter);
-                    break;
-                case BytesSchema r when writerSchema is BytesSchema && type.Equals(typeof(byte[])):
-                    expressions = ResolveBytes(streamParameter);
-                    break;
-                case BytesSchema r when writerSchema is StringSchema && type.Equals(typeof(byte[])):
-                    expressions = ResolveBytes(streamParameter);
-                    break;
-                case StringSchema r when writerSchema is StringSchema && type.Equals(typeof(string)):
-                    expressions = ResolveString(streamParameter);
-                    break;
-                case StringSchema r when writerSchema is BytesSchema && type.Equals(typeof(string)):
-                    expressions = ResolveString(streamParameter);
-                    break;
-                case UuidSchema r when writerSchema is UuidSchema && type.Equals(typeof(Guid)):
-                    expressions = ResolveUuid(streamParameter);
-                    break;
-                case DateSchema r when writerSchema is DateSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveDate(streamParameter);
-                    break;
-                case TimeMillisSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeMs(streamParameter);
-                    break;
-                case TimeMicrosSchema r when writerSchema is TimeMicrosSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeUs(streamParameter);
-                    break;
-                case TimeMicrosSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeUsFromMs(streamParameter);
-                    break;
-                case TimeNanosSchema r when writerSchema is TimeNanosSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeNs(streamParameter);
-                    break;
-                case TimeNanosSchema r when writerSchema is TimeMicrosSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeNsFromUs(streamParameter);
-                    break;
-                case TimeNanosSchema r when writerSchema is TimeMillisSchema && type.Equals(typeof(TimeSpan)):
-                    expressions = ResolveTimeNsFromMs(streamParameter);
-                    break;
-                case TimestampMillisSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampMs(streamParameter);
-                    break;
-                case TimestampMicrosSchema r when writerSchema is TimestampMicrosSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampUs(streamParameter);
-                    break;
-                case TimestampMicrosSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampUsFromMs(streamParameter);
-                    break;
-                case TimestampNanosSchema r when writerSchema is TimestampNanosSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampNs(streamParameter);
-                    break;
-                case TimestampNanosSchema r when writerSchema is TimestampMicrosSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampNsFromUs(streamParameter);
-                    break;
-                case TimestampNanosSchema r when writerSchema is TimestampMillisSchema && type.Equals(typeof(DateTime)):
-                    expressions = ResolveTimestampNsFromMs(streamParameter);
-                    break;
-                case DurationSchema r when writerSchema is DurationSchema && type.Equals(typeof(AvroDuration)):
-                    expressions = ResolveDuration(streamParameter);
-                    break;
-                case DecimalSchema r when r.Equals(writerSchema) && (writerSchema as DecimalSchema).Type is BytesSchema:
-                    expressions = ResolveDecimal(streamParameter, r.Scale);
-                    break;
-                case DecimalSchema r when r.Equals(writerSchema) && (writerSchema as DecimalSchema).Type is FixedSchema:
-                    var decimalWriter = writerSchema as DecimalSchema;
-                    var decimalLength = (decimalWriter.Type as FixedSchema).Size;
-                    expressions = ResolveDecimalFixed(streamParameter, r.Scale, decimalLength);
-                    break;
-                case ArraySchema r when writerSchema is ArraySchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>):
-                    expressions = ResolveArray(streamParameter, type.GenericTypeArguments.Last(), origin, r.Items, (writerSchema as ArraySchema).Items);
-                    break;
-                case MapSchema r when writerSchema is MapSchema && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>):
-                    expressions = ResolveMap(streamParameter, type.GenericTypeArguments.Last(), origin, r.Values, (writerSchema as MapSchema).Values);
-                    break;
+                (NullSchema _, NullSchema _) => CreateNullDecoder(stream, value),
+                (BooleanSchema _, BooleanSchema _) => CreateBooleanDecoder(stream, value),
+                (IntSchema _, IntSchema _) => CreateIntDecoder(stream, value),
+                (LongSchema _, LongSchema _) => CreateLongDecoder(stream, value),
+                (LongSchema _, IntSchema _) => CreateIntDecoder(stream, value),
+                (FloatSchema _, FloatSchema _) => CreateFloatDecoder(stream, value),
+                (FloatSchema _, LongSchema _) => CreateLongDecoder(stream, value),
+                (FloatSchema _, IntSchema _) => CreateIntDecoder(stream, value),
+                (DoubleSchema _, DoubleSchema _) => CreateDoubleDecoder(stream, value),
+                (DoubleSchema _, FloatSchema _) => CreateFloatDecoder(stream, value),
+                (DoubleSchema _, LongSchema _) => CreateLongDecoder(stream, value),
+                (DoubleSchema _, IntSchema _) => CreateIntDecoder(stream, value),
+                (BytesSchema _, BytesSchema _) => CreateBytesDecoder(stream, value),
+                (BytesSchema _, StringSchema _) => CreateBytesDecoder(stream, value),
+                (StringSchema _, StringSchema _) => CreateStringDecoder(stream, value),
+                (StringSchema _, BytesSchema _) => CreateStringDecoder(stream, value),
+                (UuidSchema _, UuidSchema _) => CreateUuidDecoder(stream, value),
+                (DateSchema _, DateSchema _) => CreateDateDecoder(stream, value),
+                (TimeMillisSchema _, TimeMillisSchema _) => CreateTimeMsDecoder(stream, value),
+                (TimeMicrosSchema _, TimeMicrosSchema _) => CreateTimeUsDecoder(stream, value),
+                (TimeMicrosSchema _, TimeMillisSchema _) => CreateTimeMsDecoder(stream, value),
+                (TimeNanosSchema _, TimeNanosSchema _) => CreateTimeNsDecoder(stream, value),
+                (TimeNanosSchema _, TimeMicrosSchema _) => CreateTimeUsDecoder(stream, value),
+                (TimeNanosSchema _, TimeMillisSchema _) => CreateTimeMsDecoder(stream, value),
+                (TimestampMillisSchema _, TimestampMillisSchema _) => CreateTimestampMsDecoder(stream, value),
+                (TimestampMicrosSchema _, TimestampMicrosSchema _) => CreateTimestampUsDecoder(stream, value),
+                (TimestampMicrosSchema _, TimestampMillisSchema _) => CreateTimestampMsDecoder(stream, value),
+                (TimestampNanosSchema _, TimestampNanosSchema _) => CreateTimestampNsDecoder(stream, value),
+                (TimestampNanosSchema _, TimestampMicrosSchema _) => CreateTimestampUsDecoder(stream, value),
+                (TimestampNanosSchema _, TimestampMillisSchema _) => CreateTimestampMsDecoder(stream, value),
+                (DurationSchema _, DurationSchema _) => CreateDurationDecoder(stream, value),
+                (DecimalSchema t, DecimalSchema s) => CreateDecimalDecoder(stream, value, t, s),
+                (ArraySchema t, ArraySchema s) => CreateArrayDecoder(stream, value, assemblies, t, s),
+                (MapSchema t, MapSchema s) => CreateMapDecoder(stream, value, assemblies, t, s),
+                (EnumSchema t, EnumSchema s) => CreateEnumDecoder(stream, value, t, s),
+                (FixedSchema t, FixedSchema s) => CreateFixedDecoder(stream, value, t, s),
+                (RecordSchema t, RecordSchema s) => CreateRecordDecoder(stream, value, assemblies, t, s),
+                (UnionSchema t, AvroSchema s) => CreateUnionFromAnyDecoder(stream, value, assemblies, t, s),
+                (AvroSchema t, UnionSchema s) => CreateAnyFromUnionDecoder(stream, value, assemblies, t, s),
+                (_, _) => default,
+            };
 
-                case EnumSchema r when writerSchema is EnumSchema && r.Equals(writerSchema) && (type.IsEnum || typeof(GenericEnum).IsAssignableFrom(type) || type.Equals(typeof(object))):
-                    expressions = ResolveEnum(streamParameter, r, type, r.Symbols, (writerSchema as EnumSchema).Symbols);
-                    break;
-                case FixedSchema r when writerSchema is FixedSchema && r.Equals(writerSchema) && (typeof(IAvroFixed).IsAssignableFrom(type) || type.Equals(typeof(object))):
-                    expressions = ResolveFixed(streamParameter, r, type, r.Size);
-                    break;
-                case RecordSchema r when writerSchema is RecordSchema && r.Equals(writerSchema) && (typeof(IAvroRecord).IsAssignableFrom(type) || type.Equals(typeof(object))):
-                    expressions = ResolveRecord(streamParameter, type, origin, r, (writerSchema as RecordSchema));
-                    break;
-
-                // Union: Reader and Writer are single Nullable Types
-                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsInterface || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
-                    var nullableReadSchema = r.FirstOrDefault(n => !n.GetType().Equals(typeof(NullSchema)));
-                    var nullableType = Nullable.GetUnderlyingType(type) ?? type;
-                    switch (writerSchema)
-                    {
-                        // Writer is Null Type
-                        case NullSchema s:
-                            expressions = ResolveNull(streamParameter, type);
-                            break;
-                        // Writer is a Union with two types one being Null Type
-                        case UnionSchema s when s.Count == 2 && s.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
-                            var nullableWriterSchema = s.FirstOrDefault(n => !n.GetType().Equals(typeof(NullSchema)));
-                            var nullIndex = 0L;
-                            if (!s[(int)nullIndex].GetType().Equals(typeof(NullSchema)))
-                                nullIndex = 1L;
-                            expressions = ResolveNullable(streamParameter, type, origin, nullableReadSchema, nullableWriterSchema, nullIndex);
-                            break;
-                        // Writer is an arbitrary Union
-                        case UnionSchema s:
-                            expressions = ResolveNullableFromUnion(streamParameter, nullableType, origin, nullableReadSchema, s);
-                            break;
-                        // Writer is not a Union nor a Null Type
-                        default:
-                            expressions = ResolveReader(origin, nullableType, nullableReadSchema, writerSchema, streamParameter);
-                            if (nullableType.IsValueType)
-                            {
-                                expressions = new Tuple<Expression, Expression>(
-                                    Expression.Convert(
-                                        expressions.Item1,
-                                        type
-                                    ),
-                                    expressions.Item2
-                                );
-                            }
-                            break;
-                    }
-                    break;
-
-                // Union: Reader is a Union but writer is not
-                case UnionSchema r when type.Equals(typeof(object)) && !(writerSchema is UnionSchema):
-                    var nonUnionToUnionIndex = FindMatch(writerSchema, r.ToArray(), out var nonUnionToUnionMatch);
-                    var writeType = GetTypeFromSchema(nonUnionToUnionMatch, origin);
-                    if (nonUnionToUnionIndex >= 0)
-                    {
-                        expressions = ResolveReader(origin, writeType, nonUnionToUnionMatch, writerSchema, streamParameter);
-                        if (expressions != null)
-                            expressions = new Tuple<Expression, Expression>(
-                                Expression.Convert(
-                                    expressions.Item1,
-                                    type
-                                ),
-                                expressions.Item2
-                            );
-                    }
-                    break;
-
-                // Union: Reader is a Union and Writer is a Union
-                case UnionSchema r when type.Equals(typeof(object)) && writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    expressions = ResolveUnion(streamParameter, type, origin, r, (writerSchema as UnionSchema));
-                    break;
-
-                // Union Type to Single Type
-                case AvroSchema r when writerSchema is UnionSchema && (writerSchema as UnionSchema).Count > 0:
-                    expressions = ResolveUnionToAny(streamParameter, type, origin, r, (writerSchema as UnionSchema));
-                    break;
-            }
-
-            return expressions;
-        }
-
-
-        private static Tuple<Expression, Expression> ResolveNull(ParameterExpression streamParameter, Type type)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Block(
-                    type,
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNull))
-                    ),
-                    Expression.Constant(
-                        null,
-                        type
-                    )
-                ),
+        private static (Expression, Expression) CreateNullDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                value.Type switch
+                {
+                    var t when typeof(AvroNull).Equals(t) =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNull))
+                        ),
+                    var t when typeof(AvroUnion).IsAssignableFrom(t) && t.GetGenericArguments().Any(r => r.GetType().Equals(typeof(AvroNull))) =>
+                        Expression.New(
+                            t.GetConstructor(new[] { typeof(AvroNull) }),
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNull))
+                            )
+                        ),
+                    var t when Nullable.GetUnderlyingType(value.Type) != null || t.IsClass || t.IsInterface =>
+                        Expression.Block(
+                            value.Type,
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNull))
+                            ),
+                            Expression.Default(t)
+                        ),
+                    var t => throw new ArgumentException($"Unsupported null type: '{t.Name}'")
+                },
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipNull))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveBoolean(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
+        private static (Expression, Expression) CreateBooleanDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
                         typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadBoolean))
                     ),
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipBoolean))
-                    )
-                );
-        }
-        private static Tuple<Expression, Expression> ResolveInt(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
+                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipBoolean))
+                )
+            );
+
+        private static (Expression, Expression) CreateIntDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
+                    ),
+                    value.Type
+                ),
+                Expression.Call(
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveLong(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+        private static (Expression, Expression) CreateLongDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipLong))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveLongFromInt(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
+        private static (Expression, Expression) CreateFloatDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
                     Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFloat))
                     ),
-                    typeof(long)
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveFloat(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFloat))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipFloat))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveFloatFromLong(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                    ),
-                    typeof(float)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipLong))
-                )
-            );
-        }
-        private static Tuple<Expression, Expression> ResolveFloatFromInt(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
-                    ),
-                    typeof(float)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
-                )
-            );
-        }
 
-        private static Tuple<Expression, Expression> ResolveDouble(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDouble))
+        private static (Expression, Expression) CreateDoubleDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDouble))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDouble))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveDoubleFromFloat(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFloat))
-                    ),
-                    typeof(double)
-                ),
+
+        private static (Expression, Expression) CreateBytesDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                value.Type switch
+                {
+                    var t when t.Equals(typeof(string)) => 
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadString))
+                        ),
+                    _ =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadBytes))
+                        )
+                },
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipFloat))
-                )
-            );
-        }
-        private static Tuple<Expression, Expression> ResolveDoubleFromLong(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                    ),
-                    typeof(double)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipLong))
-                )
-            );
-        }
-        private static Tuple<Expression, Expression> ResolveDoubleFromInt(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Convert(
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
-                    ),
-                    typeof(double)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
-                )
-            );
-        }
-        private static Tuple<Expression, Expression> ResolveBytes(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadBytes), Type.EmptyTypes)
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipBytes)),
                     null
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveString(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
+        private static (Expression, Expression) CreateStringDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                value.Type switch
+                {
+                    var t when t.Equals(typeof(byte[])) =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadBytes))
+                        ),
+                    _ =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadString))
+                        )
+                },
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadString))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipString))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveUuid(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadUuid))
+        private static (Expression, Expression) CreateUuidDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadUuid))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipUuid))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveDate(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDate))
+
+        private static (Expression, Expression) CreateDateDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDate))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDate))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveTimeMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeMS))
+
+        private static (Expression, Expression) CreateTimeMsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeMS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeMS))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveTimeUs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeUS))
+
+        private static (Expression, Expression) CreateTimeUsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeUS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeUS))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveTimeUsFromMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeMS))
+        private static (Expression, Expression) CreateTimeNsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeNS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeMS))
-                )
-            );
-        }
-        private static Tuple<Expression, Expression> ResolveTimeNs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeNS))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeNS))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveTimeNsFromUs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeUS))
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeUS))
-                )
-            );
-        }
 
-        private static Tuple<Expression, Expression> ResolveTimeNsFromMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimeMS))
+        private static (Expression, Expression) CreateTimestampMsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampMS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimeMS))
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveTimestampMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampMS))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampMS))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveTimestampUs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampUS))
+        private static (Expression, Expression) CreateTimestampUsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampUS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampUS))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveTimestampUsFromMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampMS))
+        private static (Expression, Expression) CreateTimestampNsDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampNS))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampMS))
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveTimestampNs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampNS))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampNS))
                 )
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveTimestampNsFromUs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampUS))
+        private static (Expression, Expression) CreateDurationDecoder(ParameterExpression stream, ParameterExpression value) =>
+            (
+                CastOrExpression(
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDuration))
+                    ),
+                    value.Type
                 ),
                 Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampUS))
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveTimestampNsFromMs(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadTimestampMS))
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipTimestampMS))
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveDuration(ParameterExpression streamParameter)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDuration))
-                ),
-                Expression.Call(
-                    streamParameter,
+                    stream,
                     typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDuration))
                 )
             );
-        }
-        private static Tuple<Expression, Expression> ResolveDecimal(ParameterExpression streamParameter, int scale)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDecimal), new Type[] { typeof(int) }),
-                    Expression.Constant(scale)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDecimal), new Type[] { })
-                )
-            );
-        }
 
-        private static Tuple<Expression, Expression> ResolveDecimalFixed(ParameterExpression streamParameter, int scale, int size)
-        {
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDecimal), new Type[] { typeof(int), typeof(int) }),
-                    Expression.Constant(scale),
-                    Expression.Constant(size)
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDecimal), new Type[] { typeof(int) }),
-                    Expression.Constant(size)
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveArray(ParameterExpression streamParameter, Type arrayItemType, Assembly origin, AvroSchema readerItems, AvroSchema writerItems)
-        {
-            var arrayItemReadFunction = typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), arrayItemType);
-            var arrayItemSkipAction = typeof(Action<>).MakeGenericType(typeof(IAvroDecoder));
-
-            var arrayItemExpressions = ResolveReader(origin, arrayItemType, readerItems, writerItems, streamParameter);
-
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadArray)).MakeGenericMethod(arrayItemType),
-                    Expression.Lambda(
-                        arrayItemReadFunction,
-                        arrayItemExpressions.Item1,
-                        streamParameter
-                    )
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipArray)),
-                    Expression.Lambda(
-                        arrayItemSkipAction,
-                        arrayItemExpressions.Item2,
-                        streamParameter
-                    )
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveMap(ParameterExpression streamParameter, Type mapValueType, Assembly origin, AvroSchema readerValues, AvroSchema writerValues)
-        {
-            var mapValueReadFunction = typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), mapValueType);
-            var mapValueSkipAction = typeof(Action<>).MakeGenericType(typeof(IAvroDecoder));
-
-            var mapValuesExpressions = ResolveReader(origin, mapValueType, readerValues, writerValues, streamParameter);
-
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadMap)).MakeGenericMethod(mapValueType),
-                    Expression.Lambda(
-                        mapValueReadFunction,
-                        mapValuesExpressions.Item1,
-                        streamParameter
-                    )
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipMap)),
-                    Expression.Lambda(
-                        mapValueSkipAction,
-                        mapValuesExpressions.Item2,
-                        streamParameter
-                    )
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveEnum(ParameterExpression streamParameter, EnumSchema readerSchema, Type enumType, IEnumerable<string> readerSymbols, IEnumerable<string> writerSymbols)
-        {
-            var errorSymbols = writerSymbols.Except(readerSymbols).ToHashSet();
-            var switchCases = new SwitchCase[writerSymbols.Count()];
-
-            var enumIndex =
-                Expression.Variable(
-                    typeof(int),
-                    "enumIndex"
-                );
-            var enumValue =
-                Expression.Variable(
-                    enumType,
-                    "enumValue"
-                );
-
-            for (int i = 0; i < writerSymbols.Count(); i++)
+        private static (Expression, Expression) CreateDecimalDecoder(ParameterExpression stream, ParameterExpression value, DecimalSchema targetSchema, DecimalSchema sourceSchema) =>
+            (targetSchema.Equals(sourceSchema), sourceSchema.Type) switch
             {
-                if (typeof(GenericEnum).IsAssignableFrom(enumType) || enumType.Equals(typeof(object)))
-                {
-                    switchCases[i] =
-                        Expression.SwitchCase(
-                            Expression.Assign(
-                                enumValue,
-                                Expression.New(
-                                    typeof(GenericEnum).GetConstructor(new Type[] { typeof(EnumSchema), typeof(int) }),
-                                    Expression.Constant(
-                                        readerSchema,
-                                        typeof(EnumSchema)
-                                    ),
-                                    Expression.Constant(
-                                        i,
-                                        typeof(int)
-                                    )
-                                )
-                            ),
-                            Expression.Constant(
-                                i,
-                                typeof(int)
-                            )
-                        )
-                    ;
-                }
-                else
-                {
-                    switchCases[i] =
-                        Expression.SwitchCase(
-                            Expression.Assign(
-                                enumValue,
-                                Expression.Constant(
-                                    Enum.Parse(enumType, writerSymbols.ElementAt(i)),
-                                    enumType
-                                )
-                            ),
-                            Expression.Constant(
-                                i,
-                                typeof(int)
-                            )
-                        )
-                    ;
-                }
-            }
+                (true, BytesSchema s) =>
+                (
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDecimal), new Type[] { typeof(int) }),
+                        Expression.Constant(targetSchema.Scale)
+                    ),
+                    Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDecimal), new Type[] { })
+                    )
+                ),
+                (true, FixedSchema s) =>
+                (
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadDecimal), new Type[] { typeof(int), typeof(int) }),
+                        Expression.Constant(targetSchema.Scale),
+                        Expression.Constant(s.Size)
+                    ),
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipDecimal), new Type[] { typeof(int) }),
+                        Expression.Constant(s.Size)
+                    )
+                ),
+                _ => default
+            };
 
-            return new Tuple<Expression, Expression>(
-                Expression.Block(
-                    enumType,
-                    new List<ParameterExpression>()
-                    {
-                        enumIndex,
-                        enumValue
-                    },
-                    Expression.Assign(
-                        enumIndex,
-                        Expression.Call(
-                            streamParameter,
-                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
+        private static (Expression, Expression) CreateArrayDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ArraySchema targetSchema, ArraySchema sourceSchema) =>
+            ResolveDecoder(assemblies, targetSchema.Items, sourceSchema.Items, stream, Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            {
+                (Expression read, Expression skip) =>
+                (
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadArray)).MakeGenericMethod(value.Type.GetGenericArguments().Last()),
+                        Expression.Lambda(
+                            typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), value.Type.GetGenericArguments().Last()),
+                            read,
+                            stream
                         )
                     ),
-                    Expression.Switch(
-                        typeof(void),
-                        enumIndex,
-                        Expression.Throw(
-                            Expression.Constant(
-                                new IndexOutOfRangeException()
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipArray)),
+                        Expression.Lambda(
+                            typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
+                            skip,
+                            stream
+                        )
+                    )
+                ),
+                _ => default
+            };
+
+        private static (Expression, Expression) CreateMapDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, MapSchema targetSchema, MapSchema sourceSchema) =>
+            ResolveDecoder(assemblies, targetSchema.Values, sourceSchema.Values, stream, Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            {
+                (Expression read, Expression skip) =>
+                (
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadMap)).MakeGenericMethod(value.Type.GetGenericArguments().Last()),
+                        Expression.Lambda(
+                            typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), value.Type.GetGenericArguments().Last()),
+                            read,
+                            stream
+                        )
+                    ),
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipMap)),
+                        Expression.Lambda(
+                            typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
+                            skip,
+                            stream
+                        )
+                    )
+                ),
+                _ => default
+            };
+
+        private static (Expression, Expression) CreateEnumDecoder(ParameterExpression stream, ParameterExpression value, EnumSchema targetSchema, EnumSchema sourceSchema) =>
+            (targetSchema.Equals(sourceSchema), targetSchema.SequenceEqual(sourceSchema)) switch
+            {
+                (true, true) => GetEnumReader(stream, value, targetSchema),
+                (true, false) =>
+                (
+                    GetEnumMappedReader(
+                        stream,
+                        value,
+                        Expression.Variable(typeof(int)),
+                        targetSchema,
+                        sourceSchema
+                    ),
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
+                    )
+                ),
+                _ => default
+            };
+
+        private static (Expression, Expression) GetEnumReader(ParameterExpression stream, ParameterExpression value, EnumSchema targetSchema) =>
+            value.Type switch
+            {
+                { IsEnum: true } =>
+                    (
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder)
+                            .GetMethods()
+                            .First(
+                                r => r.Name == nameof(IAvroDecoder.ReadEnum) &&
+                                     r.GetGenericArguments().Length == 1 &&
+                                     r.GetGenericArguments()[0]
+                                        .GetGenericParameterConstraints()
+                                        .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
+                            ).MakeGenericMethod(value.Type)
+                        ),
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipEnum))
+                        )
+                    ),
+                { IsClass: true } => value.Type.GetConstructor(new[] { typeof(EnumSchema) }) switch
+                {
+                    null => throw new ArgumentException($"{nameof(IAvroEnum)} implementation missing single argument '${nameof(EnumSchema)}' constructor."),
+                    var c => (
+                        Expression.Block(
+                            value.Type,
+                            new[] { value },
+                            Expression.Assign(
+                                value,
+                                Expression.New(
+                                    c,
+                                    Expression.Constant(targetSchema)
+                                )
+                            ),
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroDecoder)
+                                .GetMethods()
+                                .First(
+                                    r => r.Name == nameof(IAvroDecoder.ReadEnum) &&
+                                         r.GetGenericArguments().Length == 1 &&
+                                         r.GetGenericArguments()[0]
+                                            .GetGenericParameterConstraints()
+                                            .Any(c => c.Equals(typeof(IAvroEnum)))
+                                ).MakeGenericMethod(value.Type),
+                                value
                             )
                         ),
-                        null,
-                        switchCases
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipEnum))
+                        )
                     ),
-                    enumValue
+
+                },
+                _ => throw new Exception()
+            };
+
+        private static BlockExpression GetEnumMappedReader(ParameterExpression stream, ParameterExpression value, ParameterExpression indexParameter, EnumSchema targetSchema, EnumSchema sourceSchema) =>
+            Expression.Block(
+                value.Type,
+                new List<ParameterExpression>()
+                {
+                    indexParameter,
+                    value
+                },
+                Expression.Assign(
+                    indexParameter,
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadInt))
+                    )
                 ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipInt))
-                )
+                Expression.Switch(
+                    typeof(void),
+                    indexParameter,
+                    Expression.Throw(
+                        Expression.Constant(new IndexOutOfRangeException())
+                    ),
+                    null,
+                    sourceSchema.Select(
+                        (r, i) => GetEnumSwitchCase(
+                            value,
+                            i,
+                            targetSchema,
+                            sourceSchema
+                        )
+                    )
+                    .Where(r => r != default)
+                ),
+                value
             );
-        }
 
-        private static Tuple<Expression, Expression> ResolveFixed(ParameterExpression streamParameter, FixedSchema fixedSchema, Type fixedType, int size)
-        {
-            var readExression = default(Expression);
 
-            if (typeof(GenericFixed).IsAssignableFrom(fixedType) || fixedType.Equals(typeof(object)))
+        private static SwitchCase? GetEnumSwitchCase(ParameterExpression value, int i, EnumSchema targetSchema, EnumSchema sourceSchema) =>
+            targetSchema.TryGetValue(sourceSchema[i], out var index) switch
             {
-                readExression =
-                    Expression.Block(
-                        Expression.New(
-                            typeof(GenericFixed).GetConstructor(
-                                new Type[] {
-                                    typeof(FixedSchema),
-                                    typeof(byte[])
-                                }
-                            ),
-                            Expression.Constant(
-                                fixedSchema,
+                true =>
+                    Expression.SwitchCase(
+                        Expression.Assign(
+                            value,
+                            (value.Type.IsEnum) switch
+                            {
+                                true =>
+                                    Expression.Constant(
+                                        Enum.Parse(value.Type, sourceSchema[index]),
+                                        value.Type
+                                    ),
+                                _ =>
+                                    Expression.New(
+                                        typeof(GenericEnum).GetConstructor(new Type[] { typeof(EnumSchema), typeof(int) }),
+                                        Expression.Constant(targetSchema),
+                                        Expression.Constant(index)
+                                    )
+                            }
+                        ),
+                        Expression.Constant(i)
+                    ),
+                _ => default
+            };
+
+        private static (Expression, Expression) CreateFixedDecoder(ParameterExpression stream, ParameterExpression value, FixedSchema targetSchema, FixedSchema sourceSchema) =>
+            (targetSchema.Equals(sourceSchema), typeof(IAvroFixed).IsAssignableFrom(value.Type)) switch
+            {
+                (true, true) =>
+                    (
+                        GetFixedReader(stream, Expression.Variable(value.Type), targetSchema),
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipFixed), new[] { typeof(int) }),
+                            Expression.Constant(targetSchema.Size, typeof(int))
+                        )
+                    ),
+                _ => default
+            };
+
+        private static Expression GetFixedReader(ParameterExpression stream, ParameterExpression value, FixedSchema targetSchema) =>
+            Expression.Block(
+                value.Type,
+                new[] { value },
+                Expression.Assign(
+                    value,
+                    GetFixedInitializer(
+                        value,
+                        targetSchema
+                    )
+                ),
+                value.Type switch
+                {
+                    var t when typeof(IAvroFixed).IsAssignableFrom(t) =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder)
+                            .GetMethods()
+                            .First(
+                                r => r.Name == nameof(IAvroDecoder.ReadFixed) &&
+                                     r.GetGenericArguments().Length == 1 &&
+                                     r.GetGenericArguments()[0]
+                                        .GetGenericParameterConstraints()
+                                        .Any(c => c.Equals(typeof(IAvroFixed)))
+                            ).MakeGenericMethod(t),
+                            value
+                        ),
+                    var t when t.Equals(typeof(byte[])) =>
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFixed), new[] { typeof(byte[]) }),
+                            value
+                        ),
+                    _ => default
+                }
+            );
+
+        private static Expression GetFixedInitializer(ParameterExpression value, FixedSchema targetSchema) =>
+            value.Type switch
+            {
+                var t when t.Equals(typeof(GenericFixed)) =>
+                    Expression.New(
+                        value.Type.GetConstructor(
+                            new Type[] {
                                 typeof(FixedSchema)
-                            ),
-                            Expression.Call(
-                                streamParameter,
-                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFixed), new[] { typeof(int) }),
-                                Expression.Constant(
-                                    size,
-                                    typeof(int)
-                                )
-                            )
+                            }
+                        ),
+                        Expression.Constant(
+                            targetSchema,
+                            typeof(FixedSchema)
                         )
-                    )
-                ;
-            }
-            else
-            {
-                readExression =
-                    Expression.Block(
-                        Expression.Convert(
-                            Expression.Call(
-                                streamParameter,
-                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadFixed), new[] { typeof(int) }),
-                                Expression.Constant(
-                                    size,
-                                    typeof(int)
-                                )
-                            ),
-                            fixedType
+                    ),
+                var t when t.Equals(typeof(byte[])) =>
+                    Expression.NewArrayBounds(
+                        t,
+                        Expression.Constant(
+                            targetSchema.Size
                         )
-                    )
-                ;
-            }
+                    ),
+                _ =>
+                    Expression.New(
+                        value.Type.GetConstructor(Type.EmptyTypes)
+                    ),
+            };
 
-
-            var skipExpression =
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipFixed), new[] { typeof(int) }),
-                    Expression.Constant(size, typeof(int))
-                )
-            ;
-
-            return new Tuple<Expression, Expression>(
-                readExression,
-                skipExpression
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveRecord(ParameterExpression streamParameter, Type recordType, Assembly origin, RecordSchema readerSchema, RecordSchema writerSchema)
-        {
-            var readerFields = readerSchema.ToArray();
-            var writerFields = writerSchema.ToArray();
-            var missingFieldMap = readerFields.Where(f => !writerFields.Any(w => w.Name == f.Name));
-            var missingDefaults = missingFieldMap.Where(f => f.Default == null);
-            if (missingDefaults.Count() > 0)
-                throw new AvroException($"Unmapped field without default: '{string.Join(", ", missingDefaults.Select(f => f.Name))}'");
-
-            var fieldReaders = new List<Expression>();
-            var fieldSkippers = new List<Expression>();
-
-            var recordParameter =
-                Expression.Variable(
-                    recordType,
-                    "record"
-                );
-
-            if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(IAvroRecord)) || recordType.Equals(typeof(object)))
+        private static IEnumerable<RecordFieldSchema> GetRecordUnmappedFields(RecordSchema targetSchema, RecordSchema sourceSchema) =>
+            targetSchema.Where(f => !sourceSchema.Any(w => w.Name == f.Name)) switch
             {
-                var modelRecord = new GenericRecord(readerSchema);
-                fieldReaders.Add(
+                var x when x.Count(f => f.Default.Equals(JsonUtil.EmptyDefault)) > 0 =>
+                    throw new AvroException($"Unmapped field without default: '{string.Join(", ", x.Select(f => f.Name))}'"),
+                var x => x
+            };
+
+        private static Expression GetRecordInitializer(ParameterExpression value, RecordSchema targetSchema) =>
+            value switch
+            {
+                var x when x.Type.Equals(typeof(GenericRecord)) =>
                     Expression.Assign(
-                        recordParameter,
+                        value,
                         Expression.New(
                             typeof(GenericRecord).GetConstructor(
                                 new Type[] {
@@ -934,7 +710,7 @@ namespace Avro.Resolution
                                 }
                             ),
                             Expression.Constant(
-                                modelRecord,
+                                new GenericRecord(targetSchema),
                                 typeof(GenericRecord)
                             ),
                             Expression.Constant(
@@ -942,390 +718,305 @@ namespace Avro.Resolution
                                 typeof(bool)
                             )
                         )
-                    )
-                );
-            }
-            else
-            {
-                fieldReaders.Add(
+                    ),
+                _ =>
                     Expression.Assign(
-                        recordParameter,
-                        Expression.New(recordType)
+                        value,
+                        Expression.New(value.Type)
                     )
-                );
-            }
+            };
 
-            for (int i = 0; i < writerFields.Length; i++)
-            {
-                var writerField = writerFields[i];
-                var readerField = readerFields.FirstOrDefault(f => f.Name == writerField.Name);
-                var fieldExpressions = default(Tuple<Expression, Expression>);
-
-                if (readerField == null)
+        private static IEnumerable<(Expression, Expression)> GetRecordFieldExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema) =>
+            sourceSchema.Select(
+                r => targetSchema.IndexOf(r.Name) switch
                 {
-                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(writerField.Type, origin), writerField.Type, writerField.Type, streamParameter);
-                    fieldReaders.Add(
-                        fieldExpressions.Item2
-                    );
-                    fieldSkippers.Add(
-                        fieldExpressions.Item2
-                    );
-                }
-                else
-                {
-                    fieldExpressions = ResolveReader(origin, GetTypeFromSchema(readerField.Type, origin), readerField.Type, writerField.Type, streamParameter);
-                    if (typeof(GenericRecord).IsAssignableFrom(recordType) || recordType.Equals(typeof(IAvroRecord)) || recordType.Equals(typeof(object)))
+                    -1 => ResolveDecoder(assemblies, r.Type, r.Type, stream, Expression.Variable(GetTypeFromSchema(r.Type, assemblies))) switch
                     {
-                        fieldReaders.Add(
-                            Expression.Assign(
-                                Expression.MakeIndex(
-                                    Expression.TypeAs(
-                                        recordParameter,
-                                        typeof(GenericRecord)
-                                    ),
-                                    typeof(GenericRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) }),
-                                    new Expression[] {
-                                        Expression.Constant(
-                                            i,
-                                            typeof(int)
-                                        )
-                                    }
-                                ),
-                                Expression.Convert(
-                                    fieldExpressions.Item1,
-                                    typeof(object)
-                                )
-                            )
-                        );
-                    }
-                    else
+                        (Expression read, Expression skip) => (skip, skip)
+                    },
+                    var i => ResolveDecoder(assemblies, targetSchema[i].Type, r.Type, stream, Expression.Variable(GetTypeFromSchema(targetSchema[i].Type, assemblies))) switch
                     {
-                        fieldReaders.Add(
-                            Expression.Assign(
-                                Expression.MakeMemberAccess
+                        (var read, var skip) => value.Type switch
+                        {
+                            var t when typeof(GenericRecord).IsAssignableFrom(t) =>
                                 (
-                                    recordParameter,
-                                    recordType.GetProperty(readerField.Name)
+                                    Expression.Assign(
+                                        Expression.MakeIndex(
+                                            value,
+                                            value.Type.GetProperty("Item", new[] { typeof(int) }),
+                                            new[] { Expression.Constant(i) }
+                                        ),
+                                        Expression.Convert(
+                                            read,
+                                            typeof(object)
+                                        )
+                                    ),
+                                    skip
                                 ),
-                                fieldExpressions.Item1
-                            )
-                        );
+                            var t =>
+                                (
+                                    Expression.Assign(
+                                        Expression.MakeMemberAccess(
+                                            value,
+                                            value.Type.GetProperty(targetSchema[i].Name)
+                                        ),
+                                        read
+                                    ),
+                                    skip
+                                )
+                        }
                     }
-                    fieldSkippers.Add(
-                        fieldExpressions.Item2
-                    );
                 }
-            }
-
-            // Append Record parameter in order to return it.
-            fieldReaders.Add(recordParameter);
-
-            return new Tuple<Expression, Expression>(
-                Expression.Block(
-                    recordType,
-                    new ParameterExpression[] { recordParameter },
-                    fieldReaders
-                ),
-                Expression.Block(
-                    fieldSkippers
-                )
             );
-        }
 
-
-        private static Tuple<Expression, Expression> ResolveNullable(ParameterExpression streamParameter, Type nullableType, Assembly origin, AvroSchema readSchema, AvroSchema writeSchema, long nullIndex)
-        {
-            var valueType = Nullable.GetUnderlyingType(nullableType) ?? nullableType;
-            var valueExpressions = ResolveReader(origin, valueType, readSchema, writeSchema, streamParameter);
-
-            var nullableValueMethod =
-                valueType.IsClass || valueType.IsInterface ?
-                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNullableObject)).MakeGenericMethod(valueType) :
-                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNullableValue)).MakeGenericMethod(valueType)
-            ;
-
-            return new Tuple<Expression, Expression>(
-                Expression.Call(
-                    streamParameter,
-                    nullableValueMethod,
-                    Expression.Lambda(
-                        typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), valueType),
-                        valueExpressions.Item1,
-                        streamParameter
-                    ),
-                    Expression.Constant(
-                        nullIndex,
-                        typeof(long)
-                    )
-                ),
-                Expression.Call(
-                    streamParameter,
-                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipNullable)),
-                    Expression.Lambda(
-                        typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
-                        valueExpressions.Item1,
-                        streamParameter
-                    ),
-                    Expression.Constant(
-                        nullIndex,
-                        typeof(long)
-                    )
-                )
-            );
-        }
-
-        private static Tuple<Expression, Expression> ResolveNullableFromUnion(ParameterExpression streamParameter, Type nullableType, Assembly origin, AvroSchema readSchema, IEnumerable<AvroSchema> writeSchemas)
-        {
-            var valueType = Nullable.GetUnderlyingType(nullableType) ?? nullableType;
-            var unionReadSwitchCases = new List<SwitchCase>();
-            var unionSkipSwitchCases = new List<SwitchCase>();
-            var unionTypeIndex =
-                Expression.Variable(
-                    typeof(long),
-                    "unionTypeIndex"
-                );
-            var unionTypeValue =
-                Expression.Variable(
-                    valueType,
-                    "unionTypeValue"
-                );
-
-            for (int i = 0; i < writeSchemas.Count(); i++)
+        private static (Expression, Expression) GetRecordExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema, IEnumerable<RecordFieldSchema> defaults) =>
+            GetRecordFieldExpressions(stream, value, assemblies, targetSchema, sourceSchema) switch
             {
-                var unionExpressions = default(Tuple<Expression, Expression>);
-
-                if (writeSchemas.ElementAt(i) is NullSchema)
-                    unionExpressions = ResolveNull(streamParameter, typeof(object));
-                else
-                    unionExpressions = ResolveReader(origin, valueType, readSchema, writeSchemas.ElementAt(i), streamParameter);
-
-                if (unionExpressions != null)
-                {
-                    unionExpressions = new Tuple<Expression, Expression>(
-                        Expression.Assign(
-                            unionTypeValue,
-                            Expression.Convert(
-                                unionExpressions.Item1,
-                                nullableType
-                            )
-                        ),
-                        unionExpressions.Item2
-                    );
-                }
-                else
-                {
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
-
-                    unionExpressions = new Tuple<Expression, Expression>(
-                        Expression.Throw(
-                            Expression.Constant(
-                                new InvalidCastException()
-                            )
-                        ) as Expression,
-                        unionExpressions.Item2
-                    );
-                }
-
-                unionReadSwitchCases.Add(
-                    Expression.SwitchCase(
-                        unionExpressions.Item1,
-                        Expression.Constant(
-                            (long)i,
-                            typeof(long)
-                        )
-                    )
-                );
-
-                unionSkipSwitchCases.Add(
-                    Expression.SwitchCase(
-                        unionExpressions.Item2,
-                        Expression.Constant(
-                            (long)i,
-                            typeof(long)
-                        )
-                    )
-                );
-            }
-
-            return new Tuple<Expression, Expression>(
-                Expression.Block(
-                    nullableType,
-                    new List<ParameterExpression>()
-                    {
-                        unionTypeIndex,
-                        unionTypeValue
-                    },
-                    Expression.Assign(
-                        unionTypeIndex,
-                        Expression.Call(
-                            streamParameter,
-                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                        )
+                var x =>
+                (
+                    Expression.Block(
+                        value.Type,
+                        new ParameterExpression[] { value },
+                        x.Select(r => r.Item1)
+                        .Prepend(GetRecordInitializer(value, targetSchema))
+                        .Append(value)
                     ),
-                    Expression.Switch(
-                        typeof(void),
-                        unionTypeIndex,
-                        Expression.Throw(
-                            Expression.Constant(
-                                new IndexOutOfRangeException()
-                            )
-                        ),
-                        null,
-                        unionReadSwitchCases
-                    ),
-                    unionTypeValue
-                ),
-                Expression.Block(
-                    typeof(void),
-                    new List<ParameterExpression>()
-                    {
-                        unionTypeIndex
-                    },
-                    Expression.Assign(
-                        unionTypeIndex,
-                        Expression.Call(
-                            streamParameter,
-                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                        )
-                    ),
-                    Expression.Switch(
-                        typeof(void),
-                        unionTypeIndex,
-                        Expression.Throw(
-                            Expression.Constant(
-                                new IndexOutOfRangeException()
-                            )
-                        ),
-                        null,
-                        unionSkipSwitchCases
+                    Expression.Block(
+                        x.Select(r => r.Item2)
                     )
                 )
-            );
-        }
+            };
 
-        private static Tuple<Expression, Expression> ResolveUnion(ParameterExpression streamParameter, Type type, Assembly origin, IEnumerable<AvroSchema> readSchemas, IEnumerable<AvroSchema> writeSchemas)
-        {
-            var unionReadSwitchCases = new SwitchCase[writeSchemas.Count()];
-            var unionSkipSwitchCases = new SwitchCase[writeSchemas.Count()];
-            var unionToUnionTypeIndex =
-                Expression.Variable(
-                    typeof(long),
-                    "unionTypeIndex"
-                );
-            var unionTypeValue =
-                Expression.Variable(
-                    typeof(object),
-                    "unionTypeValue"
-                );
-            for (int i = 0; i < writeSchemas.Count(); i++)
+        private static (Expression, Expression) CreateRecordDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema) =>
+            targetSchema.Equals(sourceSchema) switch
             {
-                var unionExpressions = default(Tuple<Expression, Expression>);
-                var unionToUnionIndex = FindMatch(writeSchemas.ElementAt(i), readSchemas.ToArray(), out var unionToUnionMatch);
-                if (unionToUnionIndex >= 0)
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(unionToUnionMatch, origin), unionToUnionMatch, writeSchemas.ElementAt(i), streamParameter);
+                true => GetRecordExpressions(stream, value, assemblies, targetSchema, sourceSchema, GetRecordUnmappedFields(targetSchema, sourceSchema)),
+                _ => throw new ArgumentException("Record Source and Target Schema mismatch")
+            };
 
-                if (unionExpressions != null)
+        private static (Expression, Expression) CreateUnionFromAnyDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema targetSchema, AvroSchema sourceSchema) =>
+            targetSchema switch
+            {
+                UnionSchema s when s.Count == 2 && s.NullIndex > -1 => GetNullableDecoder(stream, value, assemblies, targetSchema, sourceSchema),
+                _ => GetUnionDecoder(stream, value, assemblies, targetSchema, sourceSchema)
+            };
+
+        private static (Expression, Expression) GetUnionDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema targetSchema, AvroSchema sourceSchema) =>
+            sourceSchema switch
+            {
+                UnionSchema s => s.Select((r, i) => GetUnionDecodeSwitchCase(stream, value, assemblies, targetSchema, r, i)) switch
                 {
-                    unionExpressions = new Tuple<Expression, Expression>(
-                        Expression.Assign(
-                            unionTypeValue,
+                    var c =>
+                        (
+                            Expression.Block(
+                                value.Type,
+                                new[] { value },
+                                Expression.Switch(
+                                    typeof(void),
+                                    Expression.Call(
+                                        stream,
+                                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                                    ),
+                                    Expression.Throw(
+                                        Expression.Constant(new IndexOutOfRangeException())
+                                    ),
+                                    default,
+                                    c.Where(r => r.Item1 != default)
+                                    .Select(r => r.Item1)
+                                ),
+                                value
+                            ),
+                            Expression.Switch(
+                                Expression.Call(
+                                    stream,
+                                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                                ),
+                                c.Select(r => r.Item2).ToArray()
+                            )
+                        )
+                },
+                var s => FindMatch(s, targetSchema) switch
+                {
+                    (-1, _) => throw new Exception(),
+                    (var i, var t) => ResolveDecoder(assemblies, t, s, stream, Expression.Parameter(GetTypeFromSchema(t, assemblies))) switch
+                    {
+                        (Expression read, Expression skip) =>
+                        (
                             Expression.Convert(
-                                unionExpressions.Item1,
-                                type
+                                read,
+                                value.Type
+                            ),
+                            skip
+                        )
+                    }
+                }
+            };
+
+        private static (SwitchCase, SwitchCase) GetUnionDecodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema targetSchema, AvroSchema sourceSchema, long index) =>
+            FindMatch(sourceSchema, targetSchema) switch
+            {
+                (-1, _) => ResolveDecoder(assemblies, sourceSchema, sourceSchema, stream, Expression.Parameter(GetTypeFromSchema(sourceSchema, assemblies))) switch
+                {
+                    (_, var skip) =>
+                    (
+                        default,
+                        Expression.SwitchCase(
+                            skip,
+                            Expression.Constant(index)
+                        )
+                    )
+                },
+                (_, var s) => ResolveDecoder(assemblies, s, sourceSchema, stream, Expression.Parameter(GetTypeFromSchema(s, assemblies))) switch
+                {
+                    (Expression read, Expression skip) =>
+                    (
+                        Expression.SwitchCase(
+                            Expression.Assign(
+                                value,
+                                Expression.Convert(
+                                    read,
+                                    value.Type
+                                )
+                            ),
+                            Expression.Constant(index)
+                        ),
+                        Expression.SwitchCase(
+                            skip,
+                            Expression.Constant(index)
+                        )
+                    )
+                }
+            };
+
+        /// <summary>
+        /// Assumes target schema is a union with two schemas, one being null schema.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="value"></param>
+        /// <param name="assemblies"></param>
+        /// <param name="targetSchema"></param>
+        /// <param name="sourceSchema"></param>
+        /// <returns></returns>
+        private static (Expression, Expression) GetNullableDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema targetSchema, AvroSchema sourceSchema) =>
+            sourceSchema switch
+            {
+                NullSchema s => CreateNullDecoder(stream, value),
+                UnionSchema s when s.Count == 2 && s.NullIndex > -1 =>
+                    ResolveDecoder(assemblies, targetSchema[(targetSchema.NullIndex + 1) % 2], s[(s.NullIndex + 1) % 2], stream, Expression.Parameter(Nullable.GetUnderlyingType(value.Type) ?? value.Type)) switch
+                    {
+                        (Expression read, Expression skip) =>
+                        (
+                            Expression.Call(
+                                stream,
+                                Nullable.GetUnderlyingType(value.Type) == null ?
+                                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNullableObject)).MakeGenericMethod(value.Type) :
+                                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadNullableValue)).MakeGenericMethod(Nullable.GetUnderlyingType(value.Type)),
+                                Expression.Lambda(
+                                    read,
+                                    stream
+                                ),
+                                Expression.Constant((long)s.NullIndex)
+                            ),
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipNullable)),
+                                Expression.Lambda(
+                                    skip,
+                                    stream
+                                ),
+                                Expression.Constant((long)s.NullIndex)
+                            )
+                        )
+                    },
+                UnionSchema s => s.Select((r, i) => GetNullableDecodeSwitchCase(stream, value, assemblies, targetSchema, r, i)) switch
+                {
+                    var c =>
+                        (
+                            Expression.Block(
+                                value.Type,
+                                new[] { value },
+                                Expression.Switch(
+                                    typeof(void),
+                                    Expression.Call(
+                                        stream,
+                                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                                    ),
+                                    Expression.Throw(
+                                        Expression.Constant(new IndexOutOfRangeException())
+                                    ),
+                                    default,
+                                    c.Where(r => r.Item1 != default)
+                                    .Select(r => r.Item1)
+                                ),
+                                value
+                            ),
+                            Expression.Switch(
+                                Expression.Call(
+                                    stream,
+                                    typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                                ),
+                                c.Select(r => r.Item2).ToArray()
+                            )
+                        )
+                },
+                AvroSchema s => ResolveDecoder(assemblies, targetSchema[(targetSchema.NullIndex + 1) % 2], s, stream, value) switch
+                {
+                    (Expression read, Expression skip) =>
+                    (
+                        Expression.Block(
+                            value.Type,
+                            new[] { value },
+                            Expression.Assign(
+                                value,
+                                read
+                            ),
+                            value
+                        ),
+                        skip
+                    )
+                }
+            };
+
+        private static (SwitchCase, SwitchCase) GetNullableDecodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema targetSchema, AvroSchema sourceSchema, long index) =>
+            FindMatch(sourceSchema, targetSchema) switch
+            {
+                (-1, _) => ResolveDecoder(assemblies, sourceSchema, sourceSchema, stream, Expression.Parameter(GetTypeFromSchema(sourceSchema, assemblies))) switch
+                {
+                    (_, var skip) =>
+                    (
+                        default,
+                        Expression.SwitchCase(
+                            skip,
+                            Expression.Constant(
+                               index
+                            )
+                        )
+                    )
+                },
+                (_, var s) => ResolveDecoder(assemblies, s, sourceSchema, stream, value) switch
+                {
+                    (Expression read, Expression skip) =>
+                    (
+                        Expression.SwitchCase(
+                            Expression.Assign(
+                                value,
+                                read
+                            ),
+                            Expression.Constant(
+                                index
                             )
                         ),
-                        unionExpressions.Item2
-                    );
-                }
-                else
-                {
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
-
-                    unionExpressions = new Tuple<Expression, Expression>(
-                        Expression.Throw(
+                        Expression.SwitchCase(
+                            skip,
                             Expression.Constant(
-                                new InvalidCastException()
+                               index
                             )
-                        ) as Expression,
-                        unionExpressions.Item2
-                    );
+                        )
+                    )
                 }
+            };
 
-                unionReadSwitchCases[i] =
-                    Expression.SwitchCase(
-                        unionExpressions.Item1,
-                        Expression.Constant(
-                            (long)i,
-                            typeof(long)
-                        )
-                    );
-
-                unionSkipSwitchCases[i] =
-                    Expression.SwitchCase(
-                        unionExpressions.Item2,
-                        Expression.Constant(
-                            (long)i,
-                            typeof(long)
-                        )
-                    );
-            }
-
-            return new Tuple<Expression, Expression>(
-            Expression.Block(
-                type,
-                new List<ParameterExpression>()
-                {
-                        unionToUnionTypeIndex,
-                        unionTypeValue
-                },
-                Expression.Assign(
-                    unionToUnionTypeIndex,
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                    )
-                ),
-                Expression.Switch(
-                    typeof(void),
-                    unionToUnionTypeIndex,
-                    Expression.Throw(
-                        Expression.Constant(
-                            new IndexOutOfRangeException()
-                        )
-                    ),
-                    null,
-                    unionReadSwitchCases
-                ),
-                unionTypeValue
-            ),
-            Expression.Block(
-                new List<ParameterExpression>()
-                {
-                        unionToUnionTypeIndex
-                },
-                Expression.Assign(
-                    unionToUnionTypeIndex,
-                    Expression.Call(
-                        streamParameter,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                    )
-                ),
-                Expression.Switch(
-                    typeof(void),
-                    unionToUnionTypeIndex,
-                    Expression.Throw(
-                        Expression.Constant(
-                            new IndexOutOfRangeException()
-                        )
-                    ),
-                    null,
-                    unionSkipSwitchCases
-                )
-            )
-        );
-        }
-
-        private static Tuple<Expression, Expression> ResolveUnionToAny(ParameterExpression streamParameter, Type type, Assembly origin, AvroSchema readSchema, IEnumerable<AvroSchema> writeSchemas)
+        private static (Expression, Expression) CreateAnyFromUnionDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema readSchema, IEnumerable<AvroSchema> writeSchemas)
         {
             var unionToNonUnionReadCases = new SwitchCase[writeSchemas.Count()];
             var unionToNonUnionSkipCases = new SwitchCase[writeSchemas.Count()];
@@ -1334,24 +1025,19 @@ namespace Avro.Resolution
                     typeof(long),
                     "unionTypeIndex"
                 );
-            var unionToNonUnionTypeValue =
-                Expression.Variable(
-                    type,
-                    "unionTypeValue"
-                );
 
             for (int i = 0; i < writeSchemas.Count(); i++)
             {
-                var unionExpressions = ResolveReader(origin, type, readSchema, writeSchemas.ElementAt(i), streamParameter);
-                if (unionExpressions != null)
+                (var read, var skip) = ResolveDecoder(assemblies, readSchema, writeSchemas.ElementAt(i), stream, value);
+                if (read != null)
                 {
                     unionToNonUnionReadCases[i] =
                         Expression.SwitchCase(
                             Expression.Assign(
-                                unionToNonUnionTypeValue,
+                                value,
                                 Expression.Convert(
-                                    unionExpressions.Item1,
-                                    type
+                                    read,
+                                    value.Type
                                 )
                             ),
                             Expression.Constant(
@@ -1374,12 +1060,13 @@ namespace Avro.Resolution
                                 typeof(long)
                             )
                         );
-                    unionExpressions = ResolveReader(origin, GetTypeFromSchema(writeSchemas.ElementAt(i), origin), writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), streamParameter);
+                    var skipParameter = Expression.Variable(GetTypeFromSchema(writeSchemas.ElementAt(i), assemblies));
+                    (read, skip) = ResolveDecoder(assemblies, writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), stream, skipParameter);
                 }
 
                 unionToNonUnionSkipCases[i] =
                     Expression.SwitchCase(
-                        unionExpressions.Item2,
+                        skip,
                         Expression.Constant(
                             (long)i,
                             typeof(long)
@@ -1387,18 +1074,18 @@ namespace Avro.Resolution
                     );
             }
 
-            return new Tuple<Expression, Expression>(
+            return (
                 Expression.Block(
-                    type,
+                    value.Type,
                     new List<ParameterExpression>()
                     {
                         unionToNonUnionTypeIndex,
-                        unionToNonUnionTypeValue
+                        value
                     },
                     Expression.Assign(
                         unionToNonUnionTypeIndex,
                         Expression.Call(
-                            streamParameter,
+                            stream,
                             typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
                         )
                     ),
@@ -1413,7 +1100,7 @@ namespace Avro.Resolution
                         null,
                         unionToNonUnionReadCases
                     ),
-                    unionToNonUnionTypeValue
+                    value
                 ),
                 Expression.Block(
                     new List<ParameterExpression>()
@@ -1423,7 +1110,7 @@ namespace Avro.Resolution
                     Expression.Assign(
                         unionToNonUnionTypeIndex,
                         Expression.Call(
-                            streamParameter,
+                            stream,
                             typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
                         )
                     ),

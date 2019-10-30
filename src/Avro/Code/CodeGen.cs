@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyModel;
 using Avro.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -17,10 +18,10 @@ namespace Avro.Code
         private readonly IDictionary<string, MemberDeclarationSyntax> _code;
         private readonly IDictionary<string, string> _nsMap;
 
-        public CodeGen(IDictionary<string, string> nsMap = null)
+        public CodeGen(IDictionary<string, string> nsMap)
         {
             _code = new Dictionary<string, MemberDeclarationSyntax>();
-            _nsMap = nsMap ?? new Dictionary<string, string>();
+            _nsMap = nsMap;
         }
 
         public IDictionary<string, string> Code => _code.ToDictionary(k => k.Key, v => CreateCompileUnit(v.Value).NormalizeWhitespace().ToFullString());
@@ -44,7 +45,7 @@ namespace Avro.Code
             }
             else
             {
-                value = null;
+                value = string.Empty;
                 return false;
             }
         }
@@ -68,21 +69,17 @@ namespace Avro.Code
         public void AddSchema(AvroSchema schema)
         {
             if (schema is UnionSchema)
-                AddSchemas(schema as UnionSchema);
+                AddSchemas((UnionSchema)schema);
 
             if (schema is NamedSchema)
             {
-                var namedSchema = schema as NamedSchema;
-                var schemaName = namedSchema.FullName;
-                if (!_code.ContainsKey(namedSchema.FullName))
-                    _code.Add(schemaName, CreateCode(namedSchema, _nsMap));
+                var schemaName = ((NamedSchema)schema).FullName;
+                if (!_code.ContainsKey(((NamedSchema)schema).FullName))
+                    _code.Add(schemaName, CreateCode((NamedSchema)schema, _nsMap));
 
-                if (schema is RecordSchema)
-                {
-                    var recordSchema = schema as RecordSchema;
+                if (schema is RecordSchema recordSchema)
                     foreach (var fieldSchema in recordSchema)
                         AddSchema(fieldSchema.Type);
-                }
             }
         }
 
@@ -109,26 +106,22 @@ namespace Avro.Code
 
         private static MemberDeclarationSyntax CreateCode(NamedSchema schema, IDictionary<string, string> nsMap)
         {
-            var schemaTypeName = schema.GetType().Name;
-
             var ns = schema.Namespace;
-            var trn = nsMap.OrderByDescending(r => r.Key).FirstOrDefault(r => ns != null && ns.StartsWith(r.Key));
-            if (!string.IsNullOrEmpty(trn.Key))
-                ns = $"{trn.Value}{ns.Substring(trn.Key.Length)}";
+            var trn = nsMap.OrderByDescending(r => r.Key)
+                .Where(r => ns.StartsWith(r.Key))
+                .Select(r => ($"{r.Value}{ns.Substring(r.Key.Length)}"))
+                .DefaultIfEmpty(string.Empty)
+                .FirstOrDefault()
+            ;
 
-            switch (schemaTypeName)
+            return schema switch
             {
-                case nameof(FixedSchema):
-                    return CreateFixedCode(schema as FixedSchema, ns);
-                case nameof(EnumSchema):
-                    return CreateEnumCode(schema as EnumSchema, ns);
-                case nameof(RecordSchema):
-                    return CreateRecordCode(schema as RecordSchema, ns, false);
-                case nameof(ErrorSchema):
-                    return CreateRecordCode(schema as RecordSchema, ns, true);
-                default:
-                    throw new CodeGenException($"Unsupported Schema: {schemaTypeName}");
-            }
+                FixedSchema s => CreateFixedCode(s, ns),
+                EnumSchema s => CreateEnumCode(s, ns),
+                ErrorSchema s => CreateRecordCode(s, ns, true),
+                RecordSchema s => CreateRecordCode(s, ns, false),
+                _ => throw new CodeGenException($"Unsupported Schema: '{schema.ToString()}'"),
+            };
         }
 
         private static MemberDeclarationSyntax CreateCode(AvroProtocol protocol)
@@ -174,7 +167,7 @@ namespace Avro.Code
                 CreateEnum(
                     ns,
                     enumSchema.Name,
-                    enumSchema.Symbols,
+                    enumSchema.Keys,
                     enumSchema.Doc,
                     enumSchema.Aliases
                 );
@@ -266,7 +259,7 @@ namespace Avro.Code
 
         public static string GetCode(NamedSchema schema)
         {
-            var codeGen = new CodeGen();
+            var codeGen = new CodeGen(new Dictionary<string, string>());
             codeGen.AddSchema(schema);
             var codeBuilder = new StringBuilder();
             using (var codeWriter = new StringWriter(codeBuilder))

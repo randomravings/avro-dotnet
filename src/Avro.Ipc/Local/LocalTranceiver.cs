@@ -1,12 +1,14 @@
 ﻿using Avro.Ipc.IO;
+using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Avro.Ipc.Local
 {
-    public class LocalTranceiver : ITranceiver
+    public class LocalTranceiver : ITranceiver, IDisposable
     {
+        private bool _disposed = false;
         private readonly BlockingCollection<FrameStream> _server;
         private readonly BlockingCollection<FrameStream> _client;
 
@@ -27,7 +29,7 @@ namespace Avro.Ipc.Local
             return await Task<FrameStream>.Factory.StartNew(() =>
             {
                 return _server.Take(token);
-            }, token);
+            }, token).ConfigureAwait(false);
         }
 
         public async Task<int> SendAsync(FrameStream frames, CancellationToken token)
@@ -36,21 +38,39 @@ namespace Avro.Ipc.Local
             {
                 _client.Add(frames, token);
                 return (int)frames.Length;
-            }, token);
+            }, token).ConfigureAwait(false); ;
         }
-        
+
         public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             return await Task<FrameStream>.Factory.StartNew(() =>
             {
                 _server.Add(frames, token);
                 return _client.Take(token);
-            }, token);
+            }, token).ConfigureAwait(false); ;
         }
 
         public bool TestConnection()
         {
             return true;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+            if (disposing)
+            {
+                _server.Dispose();
+                _client.Dispose();
+            }
+            _disposed = true;
         }
     }
 }

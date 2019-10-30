@@ -6,13 +6,13 @@ namespace Avro.Ipc
 {
     public class GenericContext
     {
-        public IDictionary<string, byte[]> Metadata { get; set; }
-        public string MessageName { get; set; }
-        public GenericRecord RequestParameters { get; set; }
+        public IDictionary<string, byte[]> Metadata { get; set; } = new Dictionary<string, byte[]>();
+        public string MessageName { get; set; } = string.Empty;
+        public GenericRecord? RequestParameters { get; set; }
         public bool IsError { get; set; }
-        public object Response { get; set; }
-        public object Error { get; set; }
-        internal HandshakeRequest HandshakeRequest { get; set; }
-        internal HandshakeResponse HandshakeResponse { get; set; }
+        public object? Response { get; set; }
+        public object? Error { get; set; }
+        internal HandshakeRequest HandshakeRequest { get; set; } = new HandshakeRequest();
+        internal HandshakeResponse HandshakeResponse { get; set; } = new HandshakeResponse();
     }
 }

@@ -1,9 +1,5 @@
-using Avro.Serialization;
-using System;
-
 namespace Avro.Schema
 {
-    [SerializationType(typeof(TimeSpan))]
     public sealed class TimestampNanosSchema : LogicalSchema
     {
         public TimestampNanosSchema()

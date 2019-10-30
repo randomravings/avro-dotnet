@@ -1,4 +1,5 @@
 using Avro.Schema;
+using Avro.Utils;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
@@ -9,78 +10,94 @@ using System.Text;
 
 namespace Avro.Types
 {
-    public class GenericRecord : IEquatable<GenericRecord>, IAvroRecord
+    public class GenericRecord : IEquatable<IAvroRecord>, IAvroRecord
     {
-        private static readonly IReadOnlyDictionary<string, int> EMPTY_INDEX = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(0));
-        private static readonly ValueTuple<int, Func<object>>[] EMPTY_INITIALIZERS = new ValueTuple<int, Func<object>>[0];
+        private readonly object?[] _values;
 
-        private readonly object[] _values;
-
+        /// <summary>
+        /// Creates a new GenericRecord instance.
+        /// Name lookups and default expresion resolution will be evaluated.
+        /// </summary>
+        /// <param name="schema">RecordSchema representing the Avro defintition.</param>
         public GenericRecord(RecordSchema schema)
         {
             Schema = schema;
             Index = CreateIndex(schema);
             DefaultInitializers = CreateDefaultInitializers(schema);
-            _values = new object[Schema.Count];
-            InitializeDefauts();
+            _values = new object?[Schema.Count];
+            InitializeDefaults();
         }
 
-        public GenericRecord(RecordSchema schema, IReadOnlyDictionary<string, int> index, ValueTuple<int, Func<object>>[] defaultInitializers)
-        {
-            Schema = schema;
-            Index = index ?? EMPTY_INDEX;
-            DefaultInitializers = defaultInitializers ?? EMPTY_INITIALIZERS;
-            _values = new object[Schema.Count];
-            InitializeDefauts();
-        }
-
-        public GenericRecord(GenericRecord record, bool copy = false)
+        /// <summary>
+        /// Copy Constructor used to copy record structure such as Name index, defaults initialization functions.
+        /// This enables faster instantiation by avoiding resolving names to indexes and default expressions.
+        /// </summary>
+        /// <param name="record">Model record to copy.</param>
+        /// <param name="copyData">Indicates if the data should be copied as well. Note this will also disable default initiation.</param>
+        public GenericRecord(GenericRecord record, bool copyData = false)
         {
             Schema = record.Schema;
             Index = record.Index;
             DefaultInitializers = record.DefaultInitializers;
-            if (copy)
+            if (copyData)
             {
                 _values = record._values;
             }
             else
             {
                 _values = new object[record.Schema.Count];
-                InitializeDefauts();
+                InitializeDefaults();
             }
         }
 
-        private void InitializeDefauts()
+        private void InitializeDefaults()
         {
             foreach (var initializer in DefaultInitializers)
                 _values[initializer.Item1] = initializer.Item2.Invoke();
         }
 
-        public bool Equals(GenericRecord other)
+        public override bool Equals(object obj) => obj != null && obj is IAvroRecord && Equals((IAvroRecord)obj);
+
+        public bool Equals(IAvroRecord other)
         {
-            if (!Schema.Equals(other.Schema) || Schema.Count != other.Schema.Count)
+            if (!Schema.Equals(other.Schema) || !Schema.Select(r => r.Name).SequenceEqual(other.Schema.Select(r => r.Name)))
                 return false;
-            if (Index.Count > 0)
-            {
-                foreach (var key in Index.Keys)
-                    if (!CompareValues(this[key], other[key]))
-                        return false;
-            }
-            else
-            {
-                for (int i = 0; i < Schema.Count; i++)
-                    if (!CompareValues(this[i], other[i]))
-                        return false;
-            }
+            for (int i = 0; i < Schema.Count; i++)
+                if (!CompareValues(this[i], other[i]))
+                    return false;
             return true;
         }
 
-        private bool CompareValues(object a, object b)
+        private bool CompareValues(object? a, object? b)
         {
-            if (a == null ^ b == null)
-                return false;
-            if (a == null)
+            if (a == null && b == null)
                 return true;
+            if (a == null)
+                return false;
+            if (typeof(IDictionary).IsAssignableFrom(a.GetType()) && typeof(IDictionary).IsAssignableFrom(b.GetType()))
+            {
+                var x = ((IDictionary)a).GetEnumerator();
+                var y = ((IDictionary)b).GetEnumerator();
+                while (x.MoveNext() && y.MoveNext())
+                    if (!x.Key.Equals(y.Key) || !x.Value.Equals(y.Value))
+                        return false;
+                return !(x.MoveNext() ^ y.MoveNext());
+            }
+            if (typeof(IList).IsAssignableFrom(a.GetType()) && typeof(IList).IsAssignableFrom(b.GetType()))
+            {
+                var x = ((IList)a).GetEnumerator();
+                var y = ((IList)b).GetEnumerator();
+                while (x.MoveNext() && y.MoveNext())
+                    if (!x.Current.Equals(y.Current))
+                        return false;
+                return !(x.MoveNext() ^ y.MoveNext());
+            }
+            if (typeof(IAvroRecord).IsAssignableFrom(a.GetType()) && typeof(IAvroRecord).IsAssignableFrom(b.GetType()))
+            {
+                var x = (IAvroRecord)a;
+                var y = (IAvroRecord)b;
+                return x.Equals(y);
+            }
             return a.Equals(b);
         }
 
@@ -92,7 +109,7 @@ namespace Avro.Types
 
         public int FieldCount => _values.Length;
 
-        public object this[string name]
+        public object? this[string name]
         {
             get
             {
@@ -104,7 +121,7 @@ namespace Avro.Types
             }
         }
 
-        public object this[int index]
+        public object? this[int index]
         {
             get
             {
@@ -130,7 +147,7 @@ namespace Avro.Types
             var initializers = new List<ValueTuple<int, Func<object>>>();
             var fields = schema.ToArray();
             for (int i = 0; i < fields.Length; i++)
-                if (fields[i].Default != null)
+                if (!fields[i].Default.Equals(JsonUtil.EmptyDefault))
                     initializers.Add(new ValueTuple<int, Func<object>>(i, GetDefaultInitialization(fields[i].Type, fields[i].Default)));
             return initializers.AsReadOnly();
         }
@@ -146,20 +163,20 @@ namespace Avro.Types
                     sb.Append("|");
                 if (value == null)
                 {
-                    sb.Append("#null#");
+                    continue;
                 }
                 else if (value.GetType().Equals(typeof(string)))
                 {
                     sb.Append(value);
                 }
-                else if(typeof(byte[]).IsAssignableFrom(value.GetType()))
+                else if (typeof(byte[]).IsAssignableFrom(value.GetType()))
                 {
                     sb.Append(string.Join(" ", (value as byte[]).Select(r => r.ToString("X2"))));
                 }
                 else if (typeof(IDictionary).IsAssignableFrom(value.GetType()))
                 {
                     int x = 0;
-                    var dictEnum = (value as IDictionary).GetEnumerator();
+                    var dictEnum = ((IDictionary)value).GetEnumerator();
                     while (dictEnum.MoveNext())
                     {
                         if (x++ > 0)
@@ -170,7 +187,7 @@ namespace Avro.Types
                 else if (typeof(IEnumerable).IsAssignableFrom(value.GetType()))
                 {
                     int x = 0;
-                    var arrEnum = (value as IEnumerable).GetEnumerator();
+                    var arrEnum = ((IEnumerable)value).GetEnumerator();
                     sb.Append("[");
                     while (arrEnum.MoveNext())
                     {
@@ -191,86 +208,73 @@ namespace Avro.Types
 
         private static Func<object> GetDefaultInitialization(AvroSchema schema, JToken value)
         {
-            var defaultInit = default(Func<object>);
             switch (schema)
             {
                 case NullSchema _:
-                    defaultInit = () => null;
-                    break;
+                    return () => AvroNull.Value;
                 case BooleanSchema _:
                     var boolValue = bool.Parse(value.ToString().ToLower());
-                    defaultInit = () => boolValue;
-                    break;
+                    return () => boolValue;
                 case IntSchema _:
                     var intValue = int.Parse(value.ToString());
-                    defaultInit = () => intValue;
-                    break;
+                    return () => intValue;
                 case LongSchema _:
                     var longValue = long.Parse(value.ToString());
-                    defaultInit = () => long.Parse(value.ToString());
-                    break;
+                    return () => long.Parse(value.ToString());
                 case FloatSchema _:
                     var floatValue = float.Parse(value.ToString());
-                    defaultInit = () => floatValue;
-                    break;
+                    return () => floatValue;
                 case DoubleSchema _:
                     var doubleValue = double.Parse(value.ToString());
-                    defaultInit = () => doubleValue;
-                    break;
+                    return () => doubleValue;
                 case BytesSchema _:
                     var byteCodes = value.ToString().Split("\\u", StringSplitOptions.RemoveEmptyEntries);
                     var bytesValue = new byte[byteCodes.Length];
                     for (int i = 0; i < byteCodes.Length; i++)
                         bytesValue[i] = byte.Parse(byteCodes[i], System.Globalization.NumberStyles.HexNumber);
-                    defaultInit = () => bytesValue.Clone();
-                    break;
+                    return () => bytesValue.Clone();
                 case StringSchema _:
                     var stringValue = value.ToString().Trim('"');
-                    defaultInit = () => string.Copy(stringValue);
-                    break;
+                    return () => string.Copy(stringValue);
                 case ArraySchema a:
-                    var arrayItems = value as JArray;
+                    var arrayItems = (JArray)value;
                     var arrayItemsCount = arrayItems.Count;
                     var arrayItemInitializers = new Func<object>[arrayItemsCount];
                     for (int i = 0; i < arrayItemsCount; i++)
                         arrayItemInitializers[i] = GetDefaultInitialization(a.Items, arrayItems[i]);
-                    defaultInit = () =>
+                    return () =>
                     {
                         var array = new List<object>();
                         foreach (var arrayItemInitializer in arrayItemInitializers)
                             array.Add(arrayItemInitializer.Invoke());
                         return array;
                     };
-                    break;
                 case MapSchema m:
-                    var mapItems = (value as JObject).Properties().ToArray();
+                    var mapItems = ((JObject)value).Properties().ToArray();
                     var mapItemsCount = mapItems.Length;
                     var mapItemInitializers = new ValueTuple<string, Func<object>>[mapItemsCount];
                     for (int i = 0; i < mapItemsCount; i++)
                         mapItemInitializers[i] = new ValueTuple<string, Func<object>>(mapItems[i].Name, GetDefaultInitialization(m.Values, mapItems[i].Value));
-                    defaultInit = () =>
+                    return () =>
                     {
                         var map = new Dictionary<string, object>();
                         foreach (var mapItemInitializer in mapItemInitializers)
                             map.Add(mapItemInitializer.Item1, mapItemInitializer.Item2.Invoke());
                         return map;
                     };
-                    break;
                 case FixedSchema f:
                     var fixedCodes = value.ToString().Split("\\u", StringSplitOptions.RemoveEmptyEntries);
                     var fixedValue = new byte[fixedCodes.Length];
                     for (int i = 0; i < fixedCodes.Length; i++)
                         fixedValue[i] = byte.Parse(fixedCodes[i], System.Globalization.NumberStyles.HexNumber);
-                    defaultInit = () => new GenericFixed(f, fixedValue.Clone() as byte[]);
-                    break;
+                    return () => new GenericFixed(f, (byte[])fixedValue.Clone());
                 case EnumSchema e:
-                    defaultInit = () => new GenericEnum(e, value.ToString().Trim('"'));
-                    break;
+                    return () => new GenericEnum(e, value.ToString().Trim('"'));
                 case RecordSchema r:
                     var recordFields = r.ToList();
                     var defaultFields =
                         from f in recordFields
-                        join p in (value as JObject).Properties() on f.Name equals p.Name
+                        join p in ((JObject)value).Properties() on f.Name equals p.Name
                         select new
                         {
                             Field = f,
@@ -285,25 +289,22 @@ namespace Avro.Types
                             Initializer = GetDefaultInitialization(d.Field.Type, d.Value)
                         }
                     ;
-                    defaultInit = () =>
+                    return () =>
                     {
                         var record = new GenericRecord(r);
                         foreach (var fieldInitializer in defaultAssignment)
                             record[fieldInitializer.FieldIndex] = fieldInitializer.Initializer.Invoke();
                         return record;
                     };
-                    break;
                 case UnionSchema u:
-                    defaultInit = GetDefaultInitialization(u[0], value);
-                    break;
+                    return GetDefaultInitialization(u[0], value);
                 case UuidSchema _:
-                    defaultInit = () => new Guid(value.ToString().Trim('"'));
-                    break;
+                    return () => new Guid(value.ToString().Trim('"'));
                 case LogicalSchema l:
-                    defaultInit = GetDefaultInitialization(l.Type, value);
-                    break;
+                    return GetDefaultInitialization(l.Type, value);
+                default:
+                    return () => AvroNull.Value;
             }
-            return defaultInit;
         }
     }
 }

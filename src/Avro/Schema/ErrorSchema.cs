@@ -1,10 +1,7 @@
-using Avro.Serialization;
-using Avro.Types;
 using System.Collections.Generic;
 
 namespace Avro.Schema
 {
-    [SerializationType(typeof(GenericError), CompatibleTypes = new [] { typeof(IAvroError) })]
     public class ErrorSchema : RecordSchema
     {
         public ErrorSchema()
@@ -16,10 +13,10 @@ namespace Avro.Schema
         public ErrorSchema(string name, string ns)
             : base(name, ns) { }
 
-        public ErrorSchema(string name, IEnumerable<Field> fields)
+        public ErrorSchema(string name, IEnumerable<RecordFieldSchema> fields)
             : base(name, fields) { }
 
-        public ErrorSchema(string name, string ns, IEnumerable<Field> fields)
+        public ErrorSchema(string name, string ns, IEnumerable<RecordFieldSchema> fields)
             : base(name, ns, fields) { }
     }
 }

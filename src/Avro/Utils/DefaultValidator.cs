@@ -10,13 +10,11 @@ namespace Avro.Utils
     {
         public static void ValidateString(AvroSchema schema, string value)
         {
-            var jToken = default(JToken);
-            if (value != null)
-                jToken = JToken.Parse(value);
+            var jToken = JToken.Parse(value);
             ValidateJson(schema, jToken);
         }
 
-        public static void ValidateJson(AvroSchema schema, JToken jToken)
+        public static void ValidateJson(AvroSchema schema, JToken? jToken)
         {
             if (jToken == null)
                 return;
@@ -45,24 +43,24 @@ namespace Avro.Utils
                 case StringSchema s when jToken.Type == JTokenType.String:
                     break;
                 case ArraySchema s when jToken.Type == JTokenType.Array:
-                    foreach (var item in jToken as JArray)
+                    foreach (var item in (JArray)jToken)
                         ValidateJson(s.Items, item);
                     break;
                 case MapSchema s when jToken.Type == JTokenType.Object:
-                    foreach (var item in jToken as JObject)
+                    foreach (var item in (JObject)jToken)
                         ValidateJson(s.Values, item.Value);
                     break;
                 case EnumSchema e when jToken.Type == JTokenType.String &&
                         Regex.IsMatch(jToken.ToString().Trim('"'), @"^[a-zA-Z][0-9a-zA-Z]*$") &&
-                        e.Symbols.Contains(jToken.ToString().Trim('"')):
+                        e.ContainsKey(jToken.ToString().Trim('"')):
                     break;
                 case FixedSchema f when jToken.Type == JTokenType.String &&
                         Regex.Match(jToken.ToString(), @"^(\\u00[0-9a-fA-F][0-9a-fA-F])*$").Length == f.Size * 6:
                     break;
                 case RecordSchema r when jToken.Type == JTokenType.Object &&
-                    !r.Any(f => f.Default == null && !(jToken as JObject).ContainsKey(f.Name)) && // No fields without defaults omitted in default value.
-                    !(jToken as JObject).Properties().Any(k => r.FirstOrDefault(f => f.Name == k.Name) == null): // No invalud default values references
-                    foreach (var defaultValue in (jToken as JObject))
+                    !r.Any(f => f.Default == null && !((JObject)jToken).ContainsKey(f.Name)) && // No fields without defaults omitted in default value.
+                    !((JObject)jToken).Properties().Any(k => r.FirstOrDefault(f => f.Name == k.Name) == null): // No invalud default values references
+                    foreach (var defaultValue in (JObject)jToken)
                         ValidateJson(r.First(f => f.Name == defaultValue.Key).Type, defaultValue.Value);
                     break;
                 case UnionSchema u:

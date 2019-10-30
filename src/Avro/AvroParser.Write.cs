@@ -1,6 +1,8 @@
 using Avro.Protocol;
 using Avro.Protocol.Schema;
 using Avro.Schema;
+using Avro.Utils;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,17 +21,17 @@ namespace Avro
 
         public static void WriteAvro(TextWriter writer, AvroSchema schema)
         {
-            Write(writer, schema, WriterMode.None, null, null, false);
+            Write(writer, schema, WriterMode.None, string.Empty, new HashSet<string>(), false);
         }
 
         public static void WriteAvroFull(TextWriter writer, AvroSchema schema)
         {
-            Write(writer, schema, WriterMode.Full, null, null, false);
+            Write(writer, schema, WriterMode.Full, string.Empty, new HashSet<string>(), false);
         }
 
         public static void WriteAvroCanonical(TextWriter writer, AvroSchema schema)
         {
-            Write(writer, schema, WriterMode.Canonical, null, null, false);
+            Write(writer, schema, WriterMode.Canonical, string.Empty, new HashSet<string>(), false);
         }
 
         public static string ToAvroCanonical(this AvroSchema schema)
@@ -97,25 +99,23 @@ namespace Avro
 
         private static void Write(TextWriter writer, AvroSchema schema, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
         {
+            if (schema is EmptySchema)
+                return;
             var ns = parentNamespace;
-
-            if (namedSchemas == null)
-                namedSchemas = new HashSet<string>();
             if (schema is NamedSchema)
             {
-                var namedSchema = schema as NamedSchema;
-                var name = namedSchema.FullName;
-                if (stripNs && namedSchema.Namespace == parentNamespace)
-                    name = namedSchema.Name;
-                if (namedSchemas.Contains(namedSchema.FullName))
+                var name = ((NamedSchema)schema).FullName;
+                if (stripNs && ((NamedSchema)schema).Namespace == parentNamespace)
+                    name = ((NamedSchema)schema).Name;
+                if (namedSchemas.Contains(((NamedSchema)schema).FullName))
                 {
                     writer.Write(@"""");
                     writer.Write(name);
                     writer.Write(@"""");
                     return;
                 }
-                namedSchemas.Add(namedSchema.FullName);
-                ns = namedSchema.Namespace;
+                namedSchemas.Add(((NamedSchema)schema).FullName);
+                ns = ((NamedSchema)schema).Namespace;
             }
 
             switch (schema)
@@ -355,7 +355,7 @@ namespace Avro
             if (!string.IsNullOrEmpty(schema.Namespace))
                 ns = schema.Namespace;
             if (stripNs && ns == parentNamespace)
-                ns = null;
+                ns = string.Empty;
             switch (mode)
             {
                 case WriterMode.Canonical:
@@ -412,7 +412,7 @@ namespace Avro
             if (!string.IsNullOrEmpty(schema.Namespace))
                 ns = schema.Namespace;
             if (stripNs && ns == parentNamespace)
-                ns = null;
+                ns = string.Empty;
             switch (mode)
             {
                 case WriterMode.Canonical:
@@ -421,7 +421,7 @@ namespace Avro
                     writer.Write(@"""");
                     writer.Write(@",""type"":""enum""");
                     writer.Write(@",""symbols"":[");
-                    writer.Write(string.Join(",", schema.Symbols.Select(r => $"\"{r}\"")));
+                    writer.Write(string.Join(",", schema.Keys.Select(r => $"\"{r}\"")));
                     writer.Write(@"]");
                     writer.Write(@"}");
                     break;
@@ -434,7 +434,7 @@ namespace Avro
                     writer.Write(schema.Namespace);
                     writer.Write(@"""");
                     writer.Write(@", ""symbols"": [");
-                    writer.Write(string.Join(", ", schema.Symbols.Select(r => $"\"{r}\"")));
+                    writer.Write(string.Join(", ", schema.Keys.Select(r => $"\"{r}\"")));
                     writer.Write(@"]");
                     writer.Write(@", ""doc"": """);
                     writer.Write(schema.Doc);
@@ -456,7 +456,7 @@ namespace Avro
                         writer.Write(@"""");
                     }
                     writer.Write(@", ""symbols"": [");
-                    writer.Write(string.Join(", ", schema.Symbols.Select(r => $"\"{r}\"")));
+                    writer.Write(string.Join(", ", schema.Keys.Select(r => $"\"{r}\"")));
                     writer.Write(@"]");
                     if (!string.IsNullOrEmpty(schema.Doc))
                     {
@@ -482,7 +482,7 @@ namespace Avro
             if (!string.IsNullOrEmpty(schema.Namespace))
                 ns = schema.Namespace;
             if (stripNs && ns == parentNamespace)
-                ns = null;
+                ns = string.Empty;
             switch (mode)
             {
                 case WriterMode.Canonical:
@@ -551,7 +551,7 @@ namespace Avro
             if (!string.IsNullOrEmpty(schema.Namespace))
                 ns = schema.Namespace;
             if (stripNs && ns == parentNamespace)
-                ns = null;
+                ns = string.Empty;
             switch (mode)
             {
                 case WriterMode.Canonical:
@@ -614,7 +614,7 @@ namespace Avro
             }
         }
 
-        private static void WriteFields(TextWriter writer, IEnumerable<RecordSchema.Field> fields, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
+        private static void WriteFields(TextWriter writer, IEnumerable<RecordFieldSchema> fields, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
         {
             var i = 0;
             foreach (var field in fields)
@@ -630,7 +630,7 @@ namespace Avro
                         writer.Write(@"""");
                         writer.Write(@",""type"":");
                         Write(writer, field.Type, mode, parentNamespace, namedSchemas, stripNs);
-                        if (field.Default != null)
+                        if (!field.Default.Equals(JsonUtil.EmptyDefault))
                         {
                             writer.Write(@",""default"":");
                             writer.Write(field.Default);
@@ -647,12 +647,9 @@ namespace Avro
                         writer.Write(@"""");
                         writer.Write(@", ""type"": ");
                         Write(writer, field.Type, mode, parentNamespace, namedSchemas, stripNs);
-                        if (field.Default != null)
-                        {
-                            writer.Write(@", ""default"": ");
-                            writer.Write(field.Default);
-                            writer.Write(@"");
-                        }
+                        writer.Write(@", ""default"": ");
+                        writer.Write(field.Default);
+                        writer.Write(@"");
                         writer.Write(@", ""doc"": """);
                         writer.Write(field.Doc);
                         writer.Write(@"""");
@@ -660,7 +657,7 @@ namespace Avro
                         writer.Write(string.Join(", ", field.Aliases.Select(r => $"\"{r}\"")));
                         writer.Write(@"]");
                         writer.Write(@", ""order"": """);
-                        writer.Write(field.Order ?? "ignore");
+                        writer.Write(field.Order);
                         writer.Write(@"""");
                         writer.Write(@" }");
                         break;
@@ -673,7 +670,7 @@ namespace Avro
                         writer.Write(@"""");
                         writer.Write(@", ""type"": ");
                         Write(writer, field.Type, mode, parentNamespace, namedSchemas, stripNs);
-                        if (field.Default != null)
+                        if (!field.Default.Equals(JsonUtil.EmptyDefault))
                         {
                             writer.Write(@", ""default"": ");
                             writer.Write(field.Default);
@@ -691,7 +688,7 @@ namespace Avro
                             writer.Write(string.Join(", ", field.Aliases.Select(r => $"\"{r}\"")));
                             writer.Write(@"]");
                         }
-                        if (!string.IsNullOrEmpty(field.Order))
+                        if (field.Order != "ignore")
                         {
                             writer.Write(@", ""order"": """);
                             writer.Write(field.Order);
@@ -816,17 +813,17 @@ namespace Avro
                         writer.Write(@""":");
                         writer.Write(@"{");
                         writer.Write(@"""request"":[");
-                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, namedSchemas, stripNs);
+                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, stripNs);
                         writer.Write(@"]");
-                        if (message.Response != null)
+                        if (!(message.Response is EmptySchema))
                         {
                             writer.Write(@",""response"":");
-                            Write(writer, message.Response, mode, parentNamespace, namedSchemas, stripNs);
+                            Write(writer, message.Response ?? EmptySchema.Value, mode, parentNamespace, namedSchemas, stripNs);
                         }
                         if (message.Error.Count > 1)
                         {
                             writer.Write(@",""errors"":[");
-                            writer.Write(string.Join(",", message.Error.Skip(1).Select(r => $"\"{(r as NamedSchema).FullName}\"")));
+                            writer.Write(string.Join(",", message.Error.Skip(1).Select(r => $"\"{((NamedSchema)r).FullName}\"")));
                             writer.Write(@"]");
                         }
                         if (message.Oneway)
@@ -846,15 +843,15 @@ namespace Avro
                         writer.Write(message.Doc);
                         writer.Write(@"""");
                         writer.Write(@", ""request"": [");
-                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, namedSchemas, stripNs);
+                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, stripNs);
                         writer.Write(@"], ");
                         writer.Write(@"""response"": ");
-                        if (message.Response != null)
-                            Write(writer, message.Response, mode, parentNamespace, namedSchemas, stripNs);
+                        if (!(message.Response is EmptySchema))
+                            Write(writer, message.Response ?? EmptySchema.Value, mode, parentNamespace, namedSchemas, stripNs);
                         else
                             writer.Write("null");
                         writer.Write(@", ""errors"": [");
-                        writer.Write(string.Join(", ", message.Error.Skip(1).Select(r => $"\"{(r as NamedSchema).FullName}\"")));
+                        writer.Write(string.Join(", ", message.Error.Skip(1).Select(r => $"\"{((NamedSchema)r).FullName}\"")));
                         writer.Write(@"], ");
                         writer.Write(@"""one-way"": ");
                         writer.Write(message.Oneway.ToString().ToLower());
@@ -874,12 +871,12 @@ namespace Avro
                             writer.Write(@""", ");
                         }
                         writer.Write(@"""request"": [");
-                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, namedSchemas, stripNs);
+                        WriteParameters(writer, message.RequestParameters, mode, parentNamespace, stripNs);
                         writer.Write(@"]");
-                        if (message.Response != null)
+                        if (!(message.Response is EmptySchema))
                         {
                             writer.Write(@", ""response"": ");
-                            Write(writer, message.Response, mode, parentNamespace, namedSchemas, stripNs);
+                            Write(writer, message.Response ?? EmptySchema.Value, mode, parentNamespace, namedSchemas, stripNs);
                         }
                         if (message.Error.Count > 1)
                         {
@@ -898,7 +895,7 @@ namespace Avro
             }
         }
 
-        private static void WriteParameters(TextWriter writer, IEnumerable<ParameterSchema> requestParameters, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
+        private static void WriteParameters(TextWriter writer, IEnumerable<ParameterSchema> requestParameters, WriterMode mode, string parentNamespace, bool stripNs)
         {
             var i = 0;
             foreach (var requestParameter in requestParameters)
@@ -907,8 +904,8 @@ namespace Avro
                 if (!string.IsNullOrEmpty(requestParameter.Type.Namespace))
                     ns = requestParameter.Type.Namespace;
                 if (stripNs && ns == parentNamespace)
-                    ns = null;
-                var name = ns == null ? requestParameter.Type.Name : $"{ns}.{requestParameter.Type.Name}";
+                    ns = string.Empty;
+                var name = ns == string.Empty ? requestParameter.Type.Name : $"{ns}.{requestParameter.Type.Name}";
                 switch (mode)
                 {
                     case WriterMode.Canonical:

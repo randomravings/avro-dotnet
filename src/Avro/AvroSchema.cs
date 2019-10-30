@@ -2,14 +2,13 @@ using System;
 
 namespace Avro
 {
-    public abstract class AvroSchema : AvroMeta, IEquatable<AvroSchema>
+    public abstract class AvroSchema : AvroMeta
     {
         public AvroSchema()
         : base() { }
 
-        public virtual bool Equals(AvroSchema other)
-        {
-            return GetType().Equals(other.GetType());
-        }
+        public override bool Equals(object obj) => obj != null && GetType().Equals(obj.GetType());
+
+        public override int GetHashCode() => base.GetHashCode();
     }
 }

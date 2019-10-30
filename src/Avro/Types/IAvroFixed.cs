@@ -9,5 +9,6 @@ namespace Avro.Types
         FixedSchema Schema { get; }
         int Size { get; }
         byte this[int i] { get; set; }
+        byte[] Value { get; }
     }
 }

@@ -21,7 +21,6 @@ namespace Avro.IO
         public AvroSchema ReaderSchema { get; private set; }
         public AvroSchema WriterSchema { get; private set; }
         public T Read(IAvroDecoder stream) => _reader.Invoke(stream);
-        public T Read(IAvroDecoder stream, ref T reuse) => reuse = _reader.Invoke(stream);
         public void Skip(IAvroDecoder stream) => _skipper.Invoke(stream);
     }
 }

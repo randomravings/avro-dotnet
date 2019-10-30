@@ -6,6 +6,6 @@ namespace Avro.Types
     {
         RecordSchema Schema { get; }
         int FieldCount { get; }
-        object this[int i] { get; set; }
+        object? this[int i] { get; set; }
     }
 }

@@ -1,10 +1,9 @@
 ﻿using Avro.IO;
-using Avro.Protocol.Schema;
 using Avro.Types;
 
 namespace Avro.Protocol
 {
-    public sealed class GenericRequestor : IAvroRequestor
+    public sealed class GenericRequestor
     {
         private readonly GenericProtocolPair _protocolPair;
         public GenericRequestor(AvroProtocol local, AvroProtocol remote)
@@ -17,19 +16,19 @@ namespace Avro.Protocol
         public AvroProtocol Local { get; private set; }
         public AvroProtocol Remote { get; private set; }
 
-        public void WriteRequest<T>(IAvroEncoder encoder, string message, T record) where T : class, IAvroRecord
+        public void WriteRequest<T>(IAvroEncoder encoder, string message, T record) where T : GenericRecord
         {
             _protocolPair.RequestWriters[message].Write(encoder, record);
         }
 
         public T ReadResponse<T>(IAvroDecoder decoder, string message) where T : class
         {
-            return _protocolPair.ResponseReaders[message].Read(decoder) as T;
+            return (T)_protocolPair.ResponseReaders[message].Read(decoder);
         }
 
         public T ReadError<T>(IAvroDecoder decoder, string message) where T : class
         {
-            return _protocolPair.ErrorReaders[message].Read(decoder) as T;
+            return (T)_protocolPair.ErrorReaders[message].Read(decoder);
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Avro
     public static class AvroFingerprint
     {
         private const long EMPTY = -4513414715797952619L;
-        private static long[] FP_TABLE = null;
+        private static readonly long[] FP_TABLE = InitFPTable();
 
         public static long CRC64Value(AvroSchema s)
         {
@@ -15,16 +15,15 @@ namespace Avro
 
         private static long Fingerprint64(byte[] buf)
         {
-            if (FP_TABLE == null) InitFPTable();
             long fp = EMPTY;
             foreach (var b in buf)
                 fp = ((long)(((ulong)fp) >> 8)) ^ FP_TABLE[(int)(fp ^ b) & 0xff];
             return fp;
         }
 
-        private static void InitFPTable()
+        private static long[] InitFPTable()
         {
-            FP_TABLE = new long[256];
+            var fpt = new long[256];
             for (int i = 0; i < 256; i++)
             {
                 long fp = i;
@@ -33,8 +32,9 @@ namespace Avro
                     long mask = -(fp & 1L);
                     fp = ((long)(((ulong)fp) >> 1)) ^ (EMPTY & mask);
                 }
-                FP_TABLE[i] = fp;
+                fpt[i] = fp;
             }
+            return fpt;
         }
     }
 }

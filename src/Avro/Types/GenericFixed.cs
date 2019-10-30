@@ -2,17 +2,17 @@ using Avro.Schema;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Avro.Types
 {
     public class GenericFixed : IAvroFixed
     {
-        private readonly byte[] _value;
         public GenericFixed(FixedSchema schema)
         {
             Schema = schema;
             Size = schema.Size;
-            _value = new byte[schema.Size];
+            Value = new byte[schema.Size];
         }
 
         public GenericFixed(FixedSchema schema, byte[] value)
@@ -21,34 +21,36 @@ namespace Avro.Types
                 throw new ArgumentException($"Array size mismatch, schema: {schema.Size}, value: {value.Length}");
             Schema = schema;
             Size = schema.Size;
-            _value = value;
+            Value = value;
         }
 
         public GenericFixed(GenericFixed f)
         {
             Schema = f.Schema;
             Size = f.Size;
-            _value = new byte[f.Size];
+            Value = new byte[f.Size];
         }
-        public byte this[int i] { get => _value[i]; set => _value[i] = value; }
         public FixedSchema Schema { get; private set; }
         public int Size { get; private set; }
+        public byte this[int i] { get => Value[i]; set => Value[i] = value; }
+        public byte[] Value { get; private set; }
+        public override bool Equals(object obj) => obj != null && obj is IAvroFixed && Equals((IAvroFixed)obj);
         public bool Equals(IAvroFixed other)
         {
+            if (Schema.Name != other.Schema.Name)
+                return false;
             if (Size != other.Size)
                 return false;
             for (int i = 0; i < Size; i++)
-                if (_value[i] != other[i])
+                if (this[i] != other[i])
                     return false;
             return true;
         }
-
-        public IEnumerator<byte> GetEnumerator()
-        {
-            foreach (var b in _value)
-                yield return b;
-        }
-        public static implicit operator byte[](GenericFixed f) => f._value;
+        public IEnumerator<byte> GetEnumerator() => Value.Cast<byte>().GetEnumerator();
+        public static implicit operator byte[](GenericFixed f) => f.Value;
+        public static bool operator ==(GenericFixed left, GenericFixed right) => EqualityComparer<GenericFixed>.Default.Equals(left, right);
+        public static bool operator !=(GenericFixed left, GenericFixed right) => !(left == right);
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public override int GetHashCode() => HashCode.Combine(Value);
     }
 }

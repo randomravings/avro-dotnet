@@ -2,9 +2,11 @@ using Avro.Protocol;
 using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
+using Avro.Utils;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
@@ -49,7 +51,7 @@ namespace Avro.Code
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(ns ?? string.Empty)
+                                                        Literal(ns)
                                                     )
                                                 ),
                                                 Token(SyntaxKind.CommaToken),
@@ -886,6 +888,36 @@ namespace Avro.Code
                                     )
                                 )
                             ),
+                            PropertyDeclaration(
+                                ArrayType(
+                                    PredefinedType(
+                                        Token(SyntaxKind.ByteKeyword)
+                                    )
+                                )
+                                .WithRankSpecifiers(
+                                    SingletonList(
+                                        ArrayRankSpecifier(
+                                            SingletonSeparatedList<ExpressionSyntax>(
+                                                OmittedArraySizeExpression()
+                                            )
+                                        )
+                                    )
+                                ),
+                                Identifier(nameof(IAvroFixed.Value))
+                            )
+                            .WithModifiers(
+                                TokenList(
+                                    Token(SyntaxKind.PublicKeyword)
+                                )
+                            )
+                            .WithExpressionBody(
+                                ArrowExpressionClause(
+                                    IdentifierName("_value")
+                                )
+                            )
+                            .WithSemicolonToken(
+                                Token(SyntaxKind.SemicolonToken)
+                            ),
                             MethodDeclaration(
                                 PredefinedType(
                                     Token(SyntaxKind.BoolKeyword)
@@ -1178,7 +1210,7 @@ namespace Avro.Code
 
             classDeclarationSyntax =
                 classDeclarationSyntax.WithLeadingTrivia(
-                    CreateSummaryToken(null, aliases.ToArray())
+                    CreateSummaryToken(string.Empty, aliases.ToArray())
                 )
             ;
 
@@ -1255,7 +1287,7 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static PropertyDeclarationSyntax CreateClassProperty(RecordSchema.Field field)
+        internal static PropertyDeclarationSyntax CreateClassProperty(RecordFieldSchema field)
         {
             var systemType = GetSystemType(field.Type);
             var propertyDeclaration =
@@ -1308,7 +1340,7 @@ namespace Avro.Code
                 )
             ;
 
-            if (field.Default != null)
+            if (!field.Default.Equals(JsonUtil.EmptyDefault))
                 propertyDeclaration =
                     propertyDeclaration
                         .WithInitializer(
@@ -1568,8 +1600,8 @@ namespace Avro.Code
 
             if (aliases.Count() > 0)
             {
-                var aliasItems = new List<XmlNodeSyntax>();
-                aliasItems.Add(
+                var aliasItems = new List<XmlNodeSyntax>
+                {
                     XmlExampleElement(
                         XmlText()
                         .WithTextTokens(
@@ -1669,7 +1701,7 @@ namespace Avro.Code
                             )
                         )
                     )
-                );
+                };
 
                 foreach (var alias in aliases)
                     aliasItems.Add(
@@ -1934,11 +1966,17 @@ namespace Avro.Code
 
         public static Assembly Compile(string assemblyName, string code, out XmlDocument xmlDocumentation)
         {
-            var references = new[] {
-                MetadataReference.CreateFromFile(typeof(object).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-            };
+            var references =
+                DependencyContext.Default.CompileLibraries
+                .SelectMany(cl => cl.ResolveReferencePaths())
+                .Select(asm => MetadataReference.CreateFromFile(asm))
+                .Append(MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location))
+                .ToArray();
+            //var references = new[] {
+            //    MetadataReference.CreateFromFile(typeof(object).GetTypeInfo().Assembly.Location),
+            //    MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location),
+            //    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+            //};
 
             var compilationUnit = ParseCompilationUnit(code);
 
@@ -1951,37 +1989,33 @@ namespace Avro.Code
                 )
             );
 
-            using (var ms = new MemoryStream())
-            using (var ds = new MemoryStream())
+            using var ms = new MemoryStream();
+            using var ds = new MemoryStream();
+            var result = cSharpCompilation.Emit(
+                peStream: ms,
+                xmlDocumentationStream: ds
+            );
+
+            var compilationErrors = result.Diagnostics.Where(
+                diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error
+            );
+
+            if (compilationErrors.Any())
             {
-                var result = cSharpCompilation.Emit(
-                    peStream: ms,
-                    xmlDocumentationStream: ds
-                );
-
-                var compilationErrors =
-                    result.Diagnostics.Where(
-                        diagnostic =>
-                        diagnostic.Severity == DiagnosticSeverity.Error
-                    )
-                ;
-
-                if (compilationErrors.Any())
-                {
-                    var firstError = compilationErrors.First();
-                    var errorNumber = firstError.Id;
-                    var errorDescription = firstError.GetMessage();
-                    var firstErrorMessage = $"{errorNumber}: {errorDescription};";
-                    throw new CodeGenException($"Compilation failed, first error is: {firstErrorMessage}");
-                }
-
-                ds.Seek(0, SeekOrigin.Begin);
-                xmlDocumentation = new XmlDocument();
-                xmlDocumentation.Load(ds);
-
-                var assembly = Assembly.Load(ms.ToArray());
-                return assembly;
+                var firstError = compilationErrors.First();
+                var errorNumber = firstError.Id;
+                var errorDescription = firstError.GetMessage();
+                var firstErrorMessage = $"{errorNumber}: {errorDescription};";
+                throw new CodeGenException($"Compilation failed, first error is: {firstErrorMessage}");
             }
+
+            ds.Seek(0, SeekOrigin.Begin);
+            xmlDocumentation = new XmlDocument();
+            xmlDocumentation.Load(ds);
+
+            var assembly = Assembly.Load(ms.ToArray());
+            return assembly;
         }
 
         public static string GetSystemType(AvroSchema schema, bool nullable = false)
@@ -2027,20 +2061,23 @@ namespace Avro.Code
                 case StringSchema _:
                     return "string";
 
-                case ArraySchema _:
-                    return GetSystemType(schema as ArraySchema);
+                case ArraySchema s:
+                    return GetSystemType(s);
 
-                case MapSchema _:
-                    return GetSystemType(schema as MapSchema);
+                case MapSchema s:
+                    return GetSystemType(s);
 
-                case FixedSchema _:
-                case EnumSchema _:
-                case ErrorSchema _:
-                case RecordSchema _:
-                    return GetSystemType(schema as NamedSchema);
+                case FixedSchema s:
+                    return GetSystemType(s);
+                case EnumSchema s:
+                    return GetSystemType(s);
+                case ErrorSchema s:
+                    return GetSystemType(s);
+                case RecordSchema s:
+                    return GetSystemType(s);
 
-                case UnionSchema _:
-                    return GetSystemType(schema as UnionSchema);
+                case UnionSchema s:
+                    return GetSystemType(s);
 
                 case DecimalSchema _:
                     if (nullable)
@@ -2077,8 +2114,8 @@ namespace Avro.Code
                     else
                         return "Guid";
 
-                case LogicalSchema _:
-                    return GetSystemType(schema as LogicalSchema);
+                case LogicalSchema s:
+                    return GetSystemType(s);
 
                 default:
                     return "object";
@@ -2118,7 +2155,7 @@ namespace Avro.Code
                     defaultInit = $"new List<{GetSystemType(a.Items)}>() {{{string.Join(", ", (value as JArray).Select(r => GetSystemTypeInitialization(a.Items, r)))}}}";
                     break;
                 case MapSchema m:
-                    defaultInit = $"new Dictionary<string, {GetSystemType(m.Values)}>() {{{string.Join(", ", (value as JObject).Properties().Select(r => $"{{\"{r.Name}\", {GetSystemTypeInitialization(m.Values, r.Value)}}}"))}}}";
+                    defaultInit = $"new Dictionary<string, {GetSystemType(m.Values)}>() {{{string.Join(", ", ((JObject)value).Properties().Select(r => $"{{\"{r.Name}\", {GetSystemTypeInitialization(m.Values, r.Value)}}}"))}}}";
                     break;
                 case FixedSchema f:
                     defaultInit = $"new {GetSystemType(f)}({GetSystemTypeInitialization(new BytesSchema(), value)})";
@@ -2129,7 +2166,7 @@ namespace Avro.Code
                 case RecordSchema r:
                     var defaultFields =
                         from f in r
-                        join p in (value as JObject).Properties() on f.Name equals p.Name
+                        join p in ((JObject)value).Properties() on f.Name equals p.Name
                         select new
                         {
                             Field = f,

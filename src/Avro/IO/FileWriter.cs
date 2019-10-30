@@ -63,7 +63,7 @@ namespace Avro.IO
             _serializeStream.Seek(0, SeekOrigin.Begin);
         }
 
-        private ReadOnlySpan<byte> Compress(byte[] data, int count, Codec? codec)
+        private static ReadOnlySpan<byte> Compress(byte[] data, int count, Codec? codec)
         {
             switch (codec)
             {

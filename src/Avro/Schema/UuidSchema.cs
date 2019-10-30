@@ -1,9 +1,5 @@
-using Avro.Serialization;
-using System;
-
 namespace Avro.Schema
 {
-    [SerializationType(typeof(Guid))]
     public sealed class UuidSchema : LogicalSchema
     {
         public UuidSchema()

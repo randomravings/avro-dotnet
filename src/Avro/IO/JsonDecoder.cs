@@ -1,34 +1,276 @@
-﻿using Avro.IO.Formatting;
+﻿using Avro.Schema;
 using Avro.Types;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Avro.IO
 {
     public class JsonDecoder : IAvroDecoder
     {
+        private delegate int DecodeDelegate(JsonTextReader reader, int index, out string value);
+
         private readonly TextReader _stream;
         private readonly JsonTextReader _reader;
-        private readonly string _delimiter;
-        private readonly AvroJsonFormatter.Reader[] _actions;
+
+        private List<DecodeDelegate> _actions;
         private int _index = 0;
 
-        public JsonDecoder(TextReader stream, AvroSchema schema, string delimiter = null)
+        public JsonDecoder(TextReader stream, AvroSchema schema)
         {
             _stream = stream;
             _reader = new JsonTextReader(_stream) { SupportMultipleContent = true };
-            _delimiter = delimiter;
-            _actions = AvroJsonFormatter.GetReadActions(schema);
 
+            _actions = new List<DecodeDelegate>();
+            var reader = Expression.Parameter(typeof(JsonTextReader));
+            var index = Expression.Parameter(typeof(int));
+            var key = Expression.Parameter(typeof(string).MakeByRefType());
+            var value = Expression.Parameter(typeof(string).MakeByRefType());
+            var actionExpressions = new List<Expression<DecodeDelegate>>();
+
+            var pre = new List<Expression>();
+            var post = new List<Expression>();
+
+            if (!(schema is RecordSchema))
+            {
+                pre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                post.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+            }
+
+            AppendAction(actionExpressions, string.Empty, schema, pre, post, reader, index, value);
+            _actions = actionExpressions.Select(r => r.Compile()).ToList();
             _reader.Read();
+        }
+
+        private static void AppendAction(List<Expression<DecodeDelegate>> actions, string key, AvroSchema schema, List<Expression> pre, List<Expression> post, ParameterExpression reader, ParameterExpression index, ParameterExpression value)
+        {
+            var startIndex = actions.Count;
+            switch (schema)
+            {
+                case RecordSchema r:
+                    for (var i = 0; i < r.Count; i++)
+                    {
+                        var localPre = new List<Expression>();
+                        var localPost = new List<Expression>();
+
+                        if (i == 0)
+                        {
+                            localPre = pre;
+                            localPre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                        }
+                        if (i == r.Count - 1)
+                        {
+                            localPost = post;
+                            localPost.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                        }
+                        if (r[i].Type is RecordSchema)
+                        {
+                            localPre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                        }
+                        AppendAction(actions, r[i].Name, r[i].Type, localPre, localPost, reader, index, value);
+                    }
+                    break;
+                case ArraySchema r:
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Constant(0),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+
+                    AppendAction(actions, string.Empty, r.Items, new List<Expression>(), new List<Expression>(), reader, index, value);
+
+                    pre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    pre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    pre.Add(Expression.Constant(actions.Count));
+
+                    post.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    post.Add(Expression.Constant(1));
+
+                    actions[startIndex] =
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(pre),
+                            reader,
+                            index,
+                            value
+                        );
+
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(post),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+                    break;
+                case MapSchema r:
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Constant(0),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+
+                    AppendAction(actions, string.Empty, r.Values, new List<Expression>(), new List<Expression>(), reader, index, value);
+
+                    pre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    pre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    pre.Add(Expression.Constant(actions.Count));
+
+                    post.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    post.Add(Expression.Constant(1));
+
+                    actions[startIndex] =
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(pre),
+                            reader,
+                            index,
+                            value
+                        );
+
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(post),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+                    break;
+                case UnionSchema r:
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Constant(0),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Constant(0),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+
+                    var indexes = new int[r.Count];
+                    for (int i = 0; i < r.Count; i++)
+                    {
+                        indexes[i] = actions.Count();
+                        var unionPre = new List<Expression>(pre);
+                        var unionPost = new List<Expression>(post);
+
+                        var typeKey = string.Empty;
+                        if (!typeof(NullSchema).Equals(r[i].GetType()))
+                        {
+                            typeKey = r[i].ToString();
+                            unionPre.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                            unionPost.Insert(0, Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                        }
+
+                        AppendAction(actions, typeKey, r[i], unionPre, unionPost, reader, index, value);
+                    }
+
+                    actions[startIndex] =
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(
+                                Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))),
+                                Expression.Constant(actions.Count())
+                            ),
+                            reader,
+                            index,
+                            value
+                        );
+
+                    actions[startIndex + 1] =
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.MakeIndex(
+                                Expression.Constant(indexes),
+                                typeof(int[]).GetProperty("Item", new[] { typeof(int) }),
+                                new[] { index }
+                            ),
+                            reader,
+                            index,
+                            value
+                        );
+
+                    break;
+
+                case NullSchema r:
+                    var nullOps = new List<Expression>();
+                    if(key != string.Empty)
+                        nullOps.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    nullOps.AddRange(pre);
+                    nullOps.Add(
+                        Expression.Assign(
+                            value,
+                            Expression.Default(typeof(string))         
+                        )
+                    );
+                    nullOps.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    nullOps.AddRange(post);
+                    nullOps.Add(Expression.Constant(1));
+
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(nullOps),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+                    break;
+                case AvroSchema r:
+                    var ops = new List<Expression>();
+                    ops.AddRange(pre);
+                    if (key != string.Empty)
+                        ops.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    ops.Add(
+                        Expression.Assign(
+                            value,
+                            Expression.Call(
+                                Expression.MakeMemberAccess(reader, typeof(JsonTextReader).GetProperty(nameof(JsonTextReader.Value))),
+                                typeof(object).GetMethod(nameof(object.ToString))
+                            )
+                        )
+                    );
+                    ops.Add(Expression.Call(reader, typeof(JsonTextReader).GetMethod(nameof(JsonTextReader.Read))));
+                    ops.AddRange(post);
+                    ops.Add(Expression.Constant(1));
+
+                    actions.Add(
+                        Expression.Lambda<DecodeDelegate>(
+                            Expression.Block(ops),
+                            reader,
+                            index,
+                            value
+                        )
+                    );
+                    break;
+            }
+        }
+
+        private int Increment()
+        {
+            var i = _index;
+            _index = (_index + 1) % _actions.Count;
+            return i;
         }
 
         public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
         {
-            var end = Advance(false, out _);
+            var end = _actions[Increment()].Invoke(_reader, 0, out _);
             var loop = _index;
             var items = new List<T>();
             while (_reader.TokenType != JsonToken.EndArray)
@@ -37,7 +279,7 @@ namespace Avro.IO
                 items.Add(itemsReader.Invoke(this));
             }
             _index = end;
-            Advance(false, out _);
+            _actions[Increment()].Invoke(_reader, 0, out _);
             return items;
         }
 
@@ -49,44 +291,44 @@ namespace Avro.IO
 
         public bool ReadBoolean()
         {
-            Advance(false, out var value);
-            return bool.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return bool.Parse(s);
         }
 
         public byte[] ReadBytes()
         {
-            Advance(true, out var value);
-            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r, 16)).ToArray();
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return s.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r, 16)).ToArray();
         }
 
         public DateTime ReadDate()
         {
-            Advance(true, out var value);
-            return DateTime.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return DateTime.Parse(s);
         }
 
         public decimal ReadDecimal(int scale)
         {
-            Advance(false, out var value);
-            return decimal.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return decimal.Parse(s);
         }
 
         public decimal ReadDecimal(int scale, int len)
         {
-            Advance(false, out var value);
-            return decimal.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return decimal.Parse(s);
         }
 
         public double ReadDouble()
         {
-            Advance(false, out var value);
-            return double.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return double.Parse(s);
         }
 
         public AvroDuration ReadDuration()
         {
-            Advance(true, out var value);
-            var bytes = value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            var bytes = s.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
 
             var mm =
                 (uint)(bytes[0] & 0xFF) << 24 |
@@ -112,51 +354,72 @@ namespace Avro.IO
             return new AvroDuration(mm, dd, ms);
         }
 
+        public T ReadEnum<T>() where T : struct, Enum
+        {
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return Enum.Parse<T>(s);
+        }
+
+        public T ReadEnum<T>(T value) where T : notnull, IAvroEnum
+        {
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            value.Symbol = s;
+            return value;
+        }
+
+        public T ReadFixed<T>(T bytes) where T : notnull, IAvroFixed
+        {
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            s.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select((r, i) => bytes[i] = Convert.ToByte(r));
+            return bytes;
+        }
+
         public byte[] ReadFixed(byte[] bytes)
         {
-            Advance(true, out var value);
-            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            s.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select((r, i) => bytes[i] = Convert.ToByte(r));
+            return bytes;
         }
 
         public byte[] ReadFixed(int len)
         {
-            Advance(true, out var value);
-            return value.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return s.Split(new string[] { "\\u00" }, StringSplitOptions.RemoveEmptyEntries).Select(r => Convert.ToByte(r)).ToArray();
         }
 
         public float ReadFloat()
         {
-            Advance(false, out var value);
-            return float.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return float.Parse(s);
         }
 
         public int ReadInt()
         {
-            Advance(false, out var value);
-            return int.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return int.Parse(s);
         }
 
         public long ReadLong()
         {
-            Advance(false, out var value);
-            return long.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return long.Parse(s);
         }
 
         public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
         {
-            var end = Advance(false, out _);
+            var end = _actions[Increment()].Invoke(_reader, 0, out _);
             var loop = _index;
             var items = new Dictionary<string, T>();
-            while (true)
+            while (_reader.TokenType != JsonToken.EndObject)
             {
                 _index = loop;
-                if (Advance(true, out var key) == 0)
-                    break;
+                var key = _reader.Value.ToString();
+                _reader.Read();
                 var value = valuesReader.Invoke(this);
                 items.Add(key, value);
             }
             _index = end;
-            Advance(false, out _);
+            _actions[Increment()].Invoke(_reader, 0, out _);
             return items;
         }
 
@@ -168,90 +431,116 @@ namespace Avro.IO
 
         public AvroNull ReadNull()
         {
-            Advance(false, out _);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
             return AvroNull.Value;
         }
 
-        public T ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
+        public T? ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class
         {
-            Advance(false, out var index);
-            if (index == nullIndex.ToString())
+            var value = default(T?);
+            var skip = _actions[Increment()].Invoke(_reader, 0, out _);
+            if (_reader.TokenType == JsonToken.Null)
             {
-                _index++;
-                return null;
+                _index = _actions[_index].Invoke(_reader, (int)nullIndex, out var s);
+                ReadNull();
             }
             else
             {
-                return reader.Invoke(this);
+                _index = _actions[_index].Invoke(_reader, (int)(nullIndex + 1) % 2, out var s);
+                value = reader.Invoke(this);
             }
+            _index = skip;
+            return value;
         }
 
         public T? ReadNullableValue<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : struct
         {
-            Advance(false, out var index);
-            if (index == nullIndex.ToString())
+            var value = default(T?);
+            var skip = _actions[Increment()].Invoke(_reader, 0, out _);
+            if (_reader.TokenType == JsonToken.Null)
             {
-                _index++;
-                return null;
+                _index = _actions[_index].Invoke(_reader, (int)nullIndex, out var s);
+                ReadNull();
             }
             else
             {
-                return reader.Invoke(this);
+                _index = _actions[_index].Invoke(_reader, (int)(nullIndex + 1) % 2, out var s);
+                value = reader.Invoke(this);
             }
+            _index = skip;
+            return value;
         }
 
         public string ReadString()
         {
-            Advance(true, out var value);
-            return value;
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return s;
         }
 
         public TimeSpan ReadTimeMS()
         {
-            Advance(true, out var value);
-            return TimeSpan.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return TimeSpan.Parse(s);
         }
 
         public TimeSpan ReadTimeNS()
         {
-            Advance(true, out var value);
-            return TimeSpan.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return TimeSpan.Parse(s);
         }
 
         public TimeSpan ReadTimeUS()
         {
-            Advance(true, out var value);
-            return TimeSpan.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return TimeSpan.Parse(s);
         }
 
         public DateTime ReadTimestampMS()
         {
-            Advance(true, out var value);
-            return DateTime.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return DateTime.Parse(s);
         }
 
         public DateTime ReadTimestampNS()
         {
-            Advance(true, out var value);
-            return DateTime.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return DateTime.Parse(s);
         }
 
         public DateTime ReadTimestampUS()
         {
-            Advance(true, out var value);
-            return DateTime.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return DateTime.Parse(s);
         }
 
         public Guid ReadUuid()
         {
-            Advance(true, out var value);
-            return Guid.Parse(value);
+            _actions[Increment()].Invoke(_reader, 0, out var s);
+            return Guid.Parse(s);
+        }
+
+        public AvroUnion<T1> ReadUnion<T1>(
+            Func<IAvroDecoder, T1> reader1
+        )
+            where T1 : notnull
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    return new AvroUnion<T1>(reader1.Invoke(this));
+                default:
+                    var ex = UnionIndexException(index, 1);
+                    throw ex;
+            }
         }
 
         public AvroUnion<T1, T2> ReadUnion<T1, T2>(
             Func<IAvroDecoder, T1> reader1,
             Func<IAvroDecoder, T2> reader2
         )
+            where T1 : notnull
+            where T2 : notnull
         {
             var index = ReadLong();
             switch (index)
@@ -271,6 +560,9 @@ namespace Avro.IO
             Func<IAvroDecoder, T2> reader2,
             Func<IAvroDecoder, T3> reader3
         )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
         {
             var index = ReadLong();
             switch (index)
@@ -293,6 +585,10 @@ namespace Avro.IO
             Func<IAvroDecoder, T3> reader3,
             Func<IAvroDecoder, T4> reader4
         )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
+            where T4 : notnull
         {
             var index = ReadLong();
             switch (index)
@@ -318,6 +614,11 @@ namespace Avro.IO
             Func<IAvroDecoder, T4> reader4,
             Func<IAvroDecoder, T5> reader5
         )
+            where T1 : notnull
+            where T2 : notnull
+            where T3 : notnull
+            where T4 : notnull
+            where T5 : notnull
         {
             var index = ReadLong();
             switch (index)
@@ -334,144 +635,6 @@ namespace Avro.IO
                     return new AvroUnion<T1, T2, T3, T4, T5>(reader4.Invoke(this));
                 default:
                     var ex = UnionIndexException(index, 4);
-                    throw ex;
-            }
-        }
-
-        public AvroUnion<T1, T2, T3, T4, T5, T6> ReadUnion<T1, T2, T3, T4, T5, T6>(
-            Func<IAvroDecoder, T1> reader1,
-            Func<IAvroDecoder, T2> reader2,
-            Func<IAvroDecoder, T3> reader3,
-            Func<IAvroDecoder, T4> reader4,
-            Func<IAvroDecoder, T5> reader5,
-            Func<IAvroDecoder, T6> reader6
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader1.Invoke(this));
-                case 1:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader2.Invoke(this));
-                case 2:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader3.Invoke(this));
-                case 3:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader4.Invoke(this));
-                case 4:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader4.Invoke(this));
-                case 5:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6>(reader5.Invoke(this));
-                default:
-                    var ex = UnionIndexException(index, 5);
-                    throw ex;
-            }
-        }
-
-        public AvroUnion<T1, T2, T3, T4, T5, T6, T7> ReadUnion<T1, T2, T3, T4, T5, T6, T7>(
-            Func<IAvroDecoder, T1> reader1,
-            Func<IAvroDecoder, T2> reader2,
-            Func<IAvroDecoder, T3> reader3,
-            Func<IAvroDecoder, T4> reader4,
-            Func<IAvroDecoder, T5> reader5,
-            Func<IAvroDecoder, T6> reader6,
-            Func<IAvroDecoder, T7> reader7
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader1.Invoke(this));
-                case 1:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader2.Invoke(this));
-                case 2:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader3.Invoke(this));
-                case 3:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader4.Invoke(this));
-                case 4:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader4.Invoke(this));
-                case 5:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader5.Invoke(this));
-                case 6:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7>(reader6.Invoke(this));
-                default:
-                    var ex = UnionIndexException(index, 6);
-                    throw ex;
-            }
-        }
-
-        public AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8> ReadUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
-            Func<IAvroDecoder, T1> reader1,
-            Func<IAvroDecoder, T2> reader2,
-            Func<IAvroDecoder, T3> reader3,
-            Func<IAvroDecoder, T4> reader4,
-            Func<IAvroDecoder, T5> reader5,
-            Func<IAvroDecoder, T6> reader6,
-            Func<IAvroDecoder, T7> reader7,
-            Func<IAvroDecoder, T8> reader8
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader1.Invoke(this));
-                case 1:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader2.Invoke(this));
-                case 2:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader3.Invoke(this));
-                case 3:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader4.Invoke(this));
-                case 4:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader4.Invoke(this));
-                case 5:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader5.Invoke(this));
-                case 6:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader6.Invoke(this));
-                case 7:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8>(reader7.Invoke(this));
-                default:
-                    var ex = UnionIndexException(index, 7);
-                    throw ex;
-            }
-        }
-
-        public AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9> ReadUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
-            Func<IAvroDecoder, T1> reader1,
-            Func<IAvroDecoder, T2> reader2,
-            Func<IAvroDecoder, T3> reader3,
-            Func<IAvroDecoder, T4> reader4,
-            Func<IAvroDecoder, T5> reader5,
-            Func<IAvroDecoder, T6> reader6,
-            Func<IAvroDecoder, T7> reader7,
-            Func<IAvroDecoder, T8> reader8,
-            Func<IAvroDecoder, T9> reader9
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader1.Invoke(this));
-                case 1:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader2.Invoke(this));
-                case 2:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader3.Invoke(this));
-                case 3:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader4.Invoke(this));
-                case 4:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader4.Invoke(this));
-                case 5:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader5.Invoke(this));
-                case 6:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader6.Invoke(this));
-                case 7:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader7.Invoke(this));
-                case 8:
-                    return new AvroUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(reader8.Invoke(this));
-                default:
-                    var ex = UnionIndexException(index, 8);
                     throw ex;
             }
         }
@@ -512,6 +675,11 @@ namespace Avro.IO
         }
 
         public void SkipDuration()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SkipEnum()
         {
             throw new NotImplementedException();
         }
@@ -590,6 +758,23 @@ namespace Avro.IO
         {
             throw new NotImplementedException();
         }
+
+        public void SkipUnion<T1>(
+            Action<IAvroDecoder> skipper1
+        )
+        {
+            var index = ReadLong();
+            switch (index)
+            {
+                case 0:
+                    skipper1.Invoke(this);
+                    break;
+                default:
+                    var ex = UnionIndexException(index, 1);
+                    throw ex;
+            }
+        }
+
         public void SkipUnion<T1, T2>(
             Action<IAvroDecoder> skipper1,
             Action<IAvroDecoder> skipper2
@@ -694,187 +879,11 @@ namespace Avro.IO
             }
         }
 
-        public void SkipUnion<T1, T2, T3, T4, T5, T6>(
-            Action<IAvroDecoder> skipper1,
-            Action<IAvroDecoder> skipper2,
-            Action<IAvroDecoder> skipper3,
-            Action<IAvroDecoder> skipper4,
-            Action<IAvroDecoder> skipper5,
-            Action<IAvroDecoder> skipper6
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    skipper1.Invoke(this);
-                    break;
-                case 1:
-                    skipper2.Invoke(this);
-                    break;
-                case 2:
-                    skipper3.Invoke(this);
-                    break;
-                case 3:
-                    skipper4.Invoke(this);
-                    break;
-                case 4:
-                    skipper5.Invoke(this);
-                    break;
-                case 5:
-                    skipper6.Invoke(this);
-                    break;
-                default:
-                    var ex = UnionIndexException(index, 5);
-                    throw ex;
-            }
-        }
-
-        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7>(
-            Action<IAvroDecoder> skipper1,
-            Action<IAvroDecoder> skipper2,
-            Action<IAvroDecoder> skipper3,
-            Action<IAvroDecoder> skipper4,
-            Action<IAvroDecoder> skipper5,
-            Action<IAvroDecoder> skipper6,
-            Action<IAvroDecoder> skipper7
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    skipper1.Invoke(this);
-                    break;
-                case 1:
-                    skipper2.Invoke(this);
-                    break;
-                case 2:
-                    skipper3.Invoke(this);
-                    break;
-                case 3:
-                    skipper4.Invoke(this);
-                    break;
-                case 4:
-                    skipper5.Invoke(this);
-                    break;
-                case 5:
-                    skipper6.Invoke(this);
-                    break;
-                case 6:
-                    skipper7.Invoke(this);
-                    break;
-                default:
-                    var ex = UnionIndexException(index, 6);
-                    throw ex;
-            }
-        }
-
-        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7, T8>(
-            Action<IAvroDecoder> skipper1,
-            Action<IAvroDecoder> skipper2,
-            Action<IAvroDecoder> skipper3,
-            Action<IAvroDecoder> skipper4,
-            Action<IAvroDecoder> skipper5,
-            Action<IAvroDecoder> skipper6,
-            Action<IAvroDecoder> skipper7,
-            Action<IAvroDecoder> skipper8
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    skipper1.Invoke(this);
-                    break;
-                case 1:
-                    skipper2.Invoke(this);
-                    break;
-                case 2:
-                    skipper3.Invoke(this);
-                    break;
-                case 3:
-                    skipper4.Invoke(this);
-                    break;
-                case 4:
-                    skipper5.Invoke(this);
-                    break;
-                case 5:
-                    skipper6.Invoke(this);
-                    break;
-                case 6:
-                    skipper7.Invoke(this);
-                    break;
-                case 7:
-                    skipper8.Invoke(this);
-                    break;
-                default:
-                    var ex = UnionIndexException(index, 7);
-                    throw ex;
-            }
-        }
-
-        public void SkipUnion<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
-            Action<IAvroDecoder> skipper1,
-            Action<IAvroDecoder> skipper2,
-            Action<IAvroDecoder> skipper3,
-            Action<IAvroDecoder> skipper4,
-            Action<IAvroDecoder> skipper5,
-            Action<IAvroDecoder> skipper6,
-            Action<IAvroDecoder> skipper7,
-            Action<IAvroDecoder> skipper8,
-            Action<IAvroDecoder> skipper9
-        )
-        {
-            var index = ReadLong();
-            switch (index)
-            {
-                case 0:
-                    skipper1.Invoke(this);
-                    break;
-                case 1:
-                    skipper2.Invoke(this);
-                    break;
-                case 2:
-                    skipper3.Invoke(this);
-                    break;
-                case 3:
-                    skipper4.Invoke(this);
-                    break;
-                case 4:
-                    skipper5.Invoke(this);
-                    break;
-                case 5:
-                    skipper6.Invoke(this);
-                    break;
-                case 6:
-                    skipper7.Invoke(this);
-                    break;
-                case 7:
-                    skipper8.Invoke(this);
-                    break;
-                case 8:
-                    skipper8.Invoke(this);
-                    break;
-                default:
-                    var ex = UnionIndexException(index, 8);
-                    throw ex;
-            }
-        }
-
         private static IndexOutOfRangeException UnionIndexException(long index, long range)
         {
             return new IndexOutOfRangeException($"Union Index out of range: '{index}'. Valid range [{0}:{range}]");
         }
 
         public void Dispose() { }
-
-        private int Advance(bool quote, out string value)
-        {
-            if (_index >= _actions.Length)
-                _index = 0;
-
-            return _actions[_index++].Invoke(_reader, quote, out value);
-        }
     }
 }

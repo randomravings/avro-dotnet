@@ -1,6 +1,5 @@
 using Avro.IO;
 using Avro.Schema;
-using Avro.Serialization;
 using Avro.Types;
 using System;
 using System.Collections.Generic;
@@ -12,35 +11,27 @@ namespace Avro.Resolution
 {
     public static partial class SchemaResolver
     {
-        public static IEnumerable<SerializationType> GetSerializationTypes(AvroSchema avroSchema)
-        {
-            var attributes = avroSchema.GetType().GetCustomAttributes<SerializationType>();
-            switch (avroSchema)
-            {
-                case LogicalSchema l:
-                    attributes = attributes.Union(GetSerializationTypes(l.Type));
-                    break;
-                case UnionSchema u:
-                    foreach(var s in u)
-                        attributes = attributes.Union(GetSerializationTypes(s));
-                    break;
-            }
-            return attributes;
-        }
+        public static Action<IAvroEncoder, T> ResolveWriter<T>(AvroSchema writerSchema) => ResolveWriter<T>(writerSchema, writerSchema);
 
-        public static Action<IAvroEncoder, T> ResolveWriter<T>(AvroSchema writerSchema)
+        public static Action<IAvroEncoder, T> ResolveWriter<T>(AvroSchema sourceSchema, AvroSchema targetSchema)
         {
             var type = typeof(T);
-            var assembly = type.Assembly;
-            var attributes = GetSerializationTypes(writerSchema);
+            var assemblies = new[]
+{
+                type.Assembly,
+                Assembly.GetCallingAssembly(),
+                Assembly.GetExecutingAssembly(),
+                Assembly.GetEntryAssembly(),
+            }
+            .GroupBy(r => r.FullName)
+            .Select(g => g.First())
+            .ToArray();
 
-            var streamParameter = Expression.Parameter(typeof(IAvroEncoder), "s");
-            var valueParameter = Expression.Parameter(type, "v");
-            if (type.Equals(typeof(GenericRecord)) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
-                assembly = null;
-            var writeExpression = ResolveWriter(assembly, type, writerSchema, streamParameter, valueParameter, null);
+            var streamParameter = Expression.Parameter(typeof(IAvroEncoder));
+            var valueParameter = Expression.Parameter(type);
+            var writeExpression = ResolveEncoder(sourceSchema, targetSchema, assemblies, streamParameter, valueParameter);
             if (writeExpression == null)
-                throw new AvroException($"Unable to resolve writer: '{writerSchema}' for type: '{type}'");
+                throw new AvroException($"Unable to resolve writer: '{sourceSchema}' for type: '{type}'");
             return Expression.Lambda<Action<IAvroEncoder, T>>(
                 writeExpression,
                 streamParameter,
@@ -48,337 +39,998 @@ namespace Avro.Resolution
             ).Compile();
         }
 
-        private static Expression ResolveWriter(Assembly origin, Type type, AvroSchema writerSchema, ParameterExpression streamParameter, Expression valueExpression, Type valueParameterCast)
-        {
-            switch (writerSchema)
+        private static Expression? ResolveEncoder(AvroSchema sourceSchema, AvroSchema targetSchema, Assembly[] assemblies, ParameterExpression stream, ParameterExpression value) =>
+            (sourceSchema, targetSchema) switch
             {
-                case NullSchema r when type.IsInterface || type.IsClass || (type.IsValueType && Nullable.GetUnderlyingType(type) != null):
-                    return Expression.Call(
+                (NullSchema _, NullSchema _) => CreateNullEncoder(stream, value),
+                (BooleanSchema _, BooleanSchema _) => CreateBooleanEncoder(stream, value),
+                (IntSchema _, IntSchema _) => CreateIntEncoder(stream, value),
+                (IntSchema _, LongSchema _) => CreateLongEncoder(stream, value),
+                (IntSchema _, FloatSchema _) => CreateFloatEncoder(stream, value),
+                (IntSchema _, DoubleSchema _) => CreateDoubleEncoder(stream, value),
+                (LongSchema _, LongSchema _) => CreateLongEncoder(stream, value),
+                (LongSchema _, FloatSchema _) => CreateFloatEncoder(stream, value),
+                (LongSchema _, DoubleSchema _) => CreateDoubleEncoder(stream, value),
+                (FloatSchema _, FloatSchema _) => CreateFloatEncoder(stream, value),
+                (FloatSchema _, DoubleSchema _) => CreateDoubleEncoder(stream, value),
+                (DoubleSchema _, DoubleSchema _) => CreateDoubleEncoder(stream, value),
+                (BytesSchema _, BytesSchema _) => CreateBytesEncoder(stream, value),
+                (BytesSchema _, StringSchema _) => CreateBytesEncoder(stream, value),
+                (StringSchema _, StringSchema _) => CreateStringEncoder(stream, value),
+                (StringSchema _, BytesSchema _) => CreateStringEncoder(stream, value),
+                (UuidSchema _, UuidSchema _) => CreateUuidEncoder(stream, value),
+                (DateSchema _, DateSchema _) => CreateDateEncoder(stream, value),
+                (TimeMillisSchema _, TimeMillisSchema _) => CreateTimeMsEncoder(stream, value),
+                (TimeMillisSchema _, TimeMicrosSchema _) => CreateTimeUsEncoder(stream, value),
+                (TimeMillisSchema _, TimeNanosSchema _) => CreateTimeNsEncoder(stream, value),
+                (TimeMicrosSchema _, TimeMicrosSchema _) => CreateTimeUsEncoder(stream, value),
+                (TimeMicrosSchema _, TimeNanosSchema _) => CreateTimeNsEncoder(stream, value),
+                (TimeNanosSchema _, TimeNanosSchema _) => CreateTimeNsEncoder(stream, value),
+                (TimestampMillisSchema _, TimestampMillisSchema _) => CreateTimestampMsEncoder(stream, value),
+                (TimestampMillisSchema _, TimestampMicrosSchema _) => CreateTimestampUsEncoder(stream, value),
+                (TimestampMillisSchema _, TimestampNanosSchema _) => CreateTimestampNsEncoder(stream, value),
+                (TimestampMicrosSchema _, TimestampMicrosSchema _) => CreateTimestampUsEncoder(stream, value),
+                (TimestampMicrosSchema _, TimestampNanosSchema _) => CreateTimestampNsEncoder(stream, value),
+                (TimestampNanosSchema _, TimestampNanosSchema _) => CreateTimestampNsEncoder(stream, value),
+                (DurationSchema _, DurationSchema _) => CreateDurationEncoder(stream, value),
+                (DecimalSchema s, DecimalSchema t) => CreateDecimalEncoder(stream, value, s, t),
+                (ArraySchema s, ArraySchema t) => CreateArrayEncoder(stream, value, assemblies, s, t),
+                (MapSchema s, MapSchema t) => CreateMapEncoder(stream, value, assemblies, s, t),
+                (EnumSchema s, EnumSchema t) => CreateEnumEncoder(stream, value, s, t),
+                (FixedSchema s, FixedSchema t) => CreateFixedEncoder(stream, value, s, t),
+                (RecordSchema s, RecordSchema t) => CreateRecordEncoder(stream, value, assemblies, s, t),
+                (UnionSchema s, UnionSchema t) => CreateUnionToAnyEncoder(stream, value, assemblies, s, t),
+                (UnionSchema s, AvroSchema t) => CreateUnionToSingleEncoder(stream, value, assemblies, s, t),
+                (AvroSchema s, UnionSchema t) => CreateSingleToUnionEncoder(stream, value, assemblies, s, t),
+                (_, _) => null,
+            };
+
+        private static Expression CreateNullEncoder(ParameterExpression streamParameter, ParameterExpression value) =>
+            value.Type switch
+            {
+                var t when typeof(AvroNull).Equals(t) =>
+                    Expression.Call(
+                        streamParameter,
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNull)),
+                        value
+                    ),
+                var t when typeof(AvroUnion).IsAssignableFrom(t) && t.GetGenericArguments().Any(r => r.GetType().Equals(typeof(AvroNull))) =>
+                    Expression.Call(
                         streamParameter,
                         typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNull)),
                         Expression.Constant(
-                            AvroNull.Value,
-                            typeof(AvroNull)
+                            AvroNull.Value
                         )
-                    );
-                case BooleanSchema r when type.Equals(typeof(bool)):
-                    return Expression.Call(
+                    ),
+                var t when Nullable.GetUnderlyingType(value.Type) != null || t.IsClass || t.IsInterface =>
+                    Expression.Call(
                         streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteBoolean)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case IntSchema r when type.Equals(typeof(int)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case LongSchema r when type.Equals(typeof(long)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case FloatSchema r when type.Equals(typeof(float)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteFloat)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case DoubleSchema r when type.Equals(typeof(double)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDouble)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case BytesSchema r when type.Equals(typeof(byte[])):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteBytes)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case StringSchema r when type.Equals(typeof(string)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteString)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case UuidSchema r when type.Equals(typeof(Guid)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteUuid)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case DateSchema r when type.Equals(typeof(DateTime)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDate)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimeMillisSchema r when type.Equals(typeof(TimeSpan)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeMS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimeMicrosSchema r when type.Equals(typeof(TimeSpan)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeUS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimeNanosSchema r when type.Equals(typeof(TimeSpan)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeNS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimestampMillisSchema r when type.Equals(typeof(DateTime)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampMS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimestampMicrosSchema r when type.Equals(typeof(DateTime)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampUS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case TimestampNanosSchema r when type.Equals(typeof(DateTime)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampNS)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case DurationSchema r when type.Equals(typeof(AvroDuration)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDuration)),
-                        CastOrExpression(valueExpression, valueParameterCast)
-                    );
-                case DecimalSchema r when (r.Type is BytesSchema) && type.Equals(typeof(decimal)):
-                    return Expression.Call(
-                        streamParameter,
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNull)),
+                        Expression.Constant(
+                            AvroNull.Value
+                        )
+                    ),
+                var t => throw new ArgumentException($"Unsupported null type: '{t.Name}'")
+            };
+
+        private static Expression CreateBooleanEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteBoolean)),
+                CastOrExpression(value, typeof(bool))
+            );
+
+        private static Expression CreateIntEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
+                CastOrExpression(value, typeof(int))
+            );
+
+        private static Expression CreateLongEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                CastOrExpression(value, typeof(long))
+            );
+
+        private static Expression CreateFloatEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteFloat)),
+                CastOrExpression(value, typeof(float))
+            );
+
+        private static Expression CreateDoubleEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDouble)),
+                CastOrExpression(value, typeof(double))
+            );
+
+        private static Expression CreateBytesEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteBytes)),
+                CastOrExpression(value, typeof(byte[]))
+            );
+
+        private static Expression CreateStringEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteString)),
+                CastOrExpression(value, typeof(string))
+            );
+
+        private static Expression CreateUuidEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteUuid)),
+                CastOrExpression(value, typeof(Guid))
+            );
+
+        private static Expression CreateDateEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDate)),
+                CastOrExpression(value, typeof(DateTime))
+            );
+
+        private static Expression CreateTimeMsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeMS)),
+                CastOrExpression(value, typeof(TimeSpan))
+            );
+
+        private static Expression CreateTimeUsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeUS)),
+                CastOrExpression(value, typeof(TimeSpan))
+            );
+
+        private static Expression CreateTimeNsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimeNS)),
+                CastOrExpression(value, typeof(TimeSpan))
+            );
+
+        private static Expression CreateTimestampMsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampMS)),
+                CastOrExpression(value, typeof(DateTime))
+            );
+
+        private static Expression CreateTimestampUsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampUS)),
+                CastOrExpression(value, typeof(DateTime))
+            );
+
+        private static Expression CreateTimestampNsEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteTimestampNS)),
+                CastOrExpression(value, typeof(DateTime))
+            );
+
+        private static Expression CreateDurationEncoder(ParameterExpression stream, ParameterExpression value) =>
+            Expression.Call(
+                stream,
+                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDuration)),
+                CastOrExpression(value, typeof(AvroDuration))
+            );
+
+        private static Expression? CreateDecimalEncoder(ParameterExpression stream, ParameterExpression value, DecimalSchema sourceSchema, DecimalSchema targetSchema) =>
+            (sourceSchema.Equals(targetSchema), targetSchema.Type) switch
+            {
+                (true, BytesSchema s) =>
+                    Expression.Call(
+                        stream,
                         typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDecimal), new Type[] { typeof(decimal), typeof(int) }),
-                        CastOrExpression(valueExpression, valueParameterCast),
-                        Expression.Constant(r.Scale, typeof(int))
-                    );
-                case DecimalSchema r when (r.Type is FixedSchema) && type.Equals(typeof(decimal)):
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDecimal), new Type[] { typeof(decimal), typeof(int), typeof(int) }),
-                        CastOrExpression(valueExpression, valueParameterCast),
-                        Expression.Constant(r.Scale, typeof(int)),
-                        Expression.Constant((r.Type as FixedSchema).Size, typeof(int))
-                    );
-                case ArraySchema r when type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>):
-                    var arrayItemType = type.GenericTypeArguments.Last();
-                    var arrayItemParameter = Expression.Parameter(arrayItemType, "i");
-                    var arrayItemExpression = ResolveWriter(origin, arrayItemType, r.Items, streamParameter, arrayItemParameter, null);
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteArray)).MakeGenericMethod(arrayItemType),
-                        CastOrExpression(valueExpression, valueParameterCast),
-                        Expression.Lambda(
-                            arrayItemExpression,
-                            streamParameter,
-                            arrayItemParameter
-                        )
-                    );
-                case MapSchema r when type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>) && type.GetGenericArguments().First() == typeof(string):
-                    var mapValueType = type.GenericTypeArguments.Last();
-                    var mapValueParameter = Expression.Parameter(mapValueType, "m");
-                    var mapItemExpression = ResolveWriter(origin, mapValueType, r.Values, streamParameter, mapValueParameter, null);
-                    return Expression.Call(
-                        streamParameter,
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteMap)).MakeGenericMethod(mapValueType),
-                        CastOrExpression(valueExpression, valueParameterCast),
-                        Expression.Lambda(
-                            mapItemExpression,
-                            streamParameter,
-                            mapValueParameter
-                        )
-                    );
-                case EnumSchema r when typeof(GenericEnum).IsAssignableFrom(type) || type.Equals(typeof(object)) || (type.IsEnum && (Enum.GetNames(type).Intersect(r.Symbols).Count() == r.Symbols.Count)):
-                    if (typeof(GenericEnum).IsAssignableFrom(type))
+                        CastOrExpression(value, typeof(decimal)),
+                        Expression.Constant(sourceSchema.Scale, typeof(int))
+                    ),
+                (true, FixedSchema s) =>
+                    Expression.Call(
+                    stream,
+                    typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteDecimal), new Type[] { typeof(decimal), typeof(int), typeof(int) }),
+                    CastOrExpression(value, typeof(decimal)),
+                    Expression.Constant(sourceSchema.Scale, typeof(int)),
+                    Expression.Constant(s.Size, typeof(int))
+                ),
+                _ => default
+            };
+
+        private static Expression? CreateArrayEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ArraySchema sourceSchema, ArraySchema targetSchema) =>
+            (value.Type.GetGenericTypeDefinition(), Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            {
+                (var g, var p) when typeof(IList<>).Equals(g) =>
+                    ResolveEncoder(sourceSchema.Items, targetSchema.Items, assemblies, stream, p) switch
                     {
-                        return Expression.Call(
-                            streamParameter,
-                            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
-                            Expression.MakeMemberAccess(
-                                valueExpression,
-                                typeof(GenericEnum).GetProperty(nameof(GenericEnum.Value))
+                        Expression write =>
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteArray)).MakeGenericMethod(p.Type),
+                                value,
+                                Expression.Lambda(
+                                    write,
+                                    stream,
+                                    p
+                                )
+                            ),
+                        _ => default
+                    },
+                _ => default
+            };
+
+        private static Expression? CreateMapEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, MapSchema sourceSchema, MapSchema targetSchema) =>
+            (value.Type.GetGenericTypeDefinition(), value.Type.GetGenericArguments().First(), Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            {
+                (var g, var t, var p) when typeof(IDictionary<,>).Equals(g) && typeof(string).Equals(t) =>
+                    ResolveEncoder(sourceSchema.Values, targetSchema.Values, assemblies, stream, p) switch
+                    {
+                        Expression write =>
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteMap)).MakeGenericMethod(p.Type),
+                                value,
+                                Expression.Lambda(
+                                    write,
+                                    stream,
+                                    p
+                                )
+                            ),
+                        _ => default
+                    },
+                _ => default
+            };
+
+        private static Expression CreateEnumEncoder(ParameterExpression stream, ParameterExpression value, EnumSchema sourceSchema, EnumSchema targetSchema)
+        {
+            if(sourceSchema.SequenceEqual(targetSchema))
+            {
+                if (typeof(IAvroEnum).IsAssignableFrom(value.Type))
+                    return Expression.Call(
+                        stream,
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteEnum), new[] { typeof(IAvroEnum) }),
+                        value
+                    );
+                else
+                     return Expression.Call(
+                         stream,
+                         typeof(IAvroEncoder)
+                         .GetMethods()
+                         .First(
+                             r => r.Name == nameof(IAvroEncoder.WriteEnum) &&
+                                  r.GetGenericArguments().Length == 1 &&
+                                  r.GetGenericArguments()[0]
+                                    .GetGenericParameterConstraints()
+                                    .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
+                         ).MakeGenericMethod(value.Type),
+                         value
+                     );
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+            var symbolMap = new int[sourceSchema.Count()];
+            var switchCases = new List<SwitchCase>();
+
+            for (int i = 0; i < symbolMap.Length; i++)
+                if (targetSchema.TryGetValue(sourceSchema[i], out var targetValue))
+                    symbolMap[i] = targetValue;
+                else
+                    symbolMap[i] = -1;
+
+            for (int i = 0; i < symbolMap.Length; i++)
+            {
+                if (symbolMap[i] == -1)
+                    continue;
+
+                if (typeof(GenericEnum).IsAssignableFrom(value.Type))
+                    switchCases.Add(
+                        Expression.SwitchCase(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
+                                Expression.Constant(symbolMap[i], typeof(int))
+                            ),
+                            Expression.Constant(
+                                i,
+                                typeof(int)
                             )
-                        );
-                    }
-                    else
-                    {
-                        var switchCases = new SwitchCase[r.Symbols.Count];
-                        for (int i = 0; i < r.Symbols.Count; i++)
-                        {
-                            switchCases[i] =
-                                Expression.SwitchCase(
-                                    Expression.Call(
-                                        streamParameter,
-                                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
-                                        Expression.Constant(i, typeof(int))
-                                    ),
-                                    Expression.Constant(
-                                        Enum.Parse(type, r.Symbols[i]),
-                                        type
-                                    )
-                                );
-                        }
-                        return Expression.Switch(
-                            CastOrExpression(valueExpression, valueParameterCast),
-                            switchCases
-                        );
-                    }
-                case FixedSchema r when typeof(IAvroFixed).IsAssignableFrom(type) || type.Equals(typeof(object)):
-                    if (typeof(GenericFixed).IsAssignableFrom(type) || type.Equals(typeof(object)))
-                    {
-                        return Expression.Call(
-                            streamParameter,
-                            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteFixed)),
-                            Expression.Convert(valueExpression, typeof(byte[]))
-                        );
-                    }
-                    else
-                    {
-                        return Expression.Call(
-                            streamParameter,
-                            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteFixed)),
-                            CastOrExpression(Expression.Convert(valueExpression, typeof(byte[])), valueParameterCast)
-                        );
-                    }
-                case RecordSchema r when typeof(IAvroRecord).IsAssignableFrom(type) || type.Equals(typeof(object)):
-                    var fieldExpressions = new List<Expression>();
-                    int x = 0;
-                    foreach (var field in r)
-                    {
-                        var fieldType = default(Type);
-                        var fieldValueExpression = default(Expression);
-                        if (typeof(GenericRecord).IsAssignableFrom(type) || type.Equals(typeof(IAvroRecord)) || type.Equals(typeof(object)))
-                        {
-                            var recordProperty = typeof(IAvroRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) });
-                            fieldType = GetTypeFromSchema(field.Type, origin);
-                            fieldValueExpression =
-                                Expression.Convert(
-                                    Expression.MakeIndex(
-                                        Expression.TypeAs(
-                                            valueExpression,
-                                            typeof(IAvroRecord)
-                                        ),
-                                        recordProperty,
-                                        new Expression[] {
-                                            Expression.Constant(
-                                                x,
-                                                typeof(int)
-                                            )
-                                        }
-                                    ),
-                                    fieldType
-                                );
-                            var fieldExpression = ResolveWriter(origin, fieldType, field.Type, streamParameter, fieldValueExpression, fieldType);
-                            fieldExpressions.Add(fieldExpression);
-                            x++;
-                        }
-                        else
-                        {
-                            var recordProperty = type.GetProperty(field.Name);
-                            fieldType = recordProperty.PropertyType;
-                            fieldValueExpression =
-                                Expression.MakeMemberAccess(
-                                    valueExpression,
-                                    recordProperty
-                                );
-                            var fieldExpression = ResolveWriter(origin, fieldType, field.Type, streamParameter, fieldValueExpression, null);
-                            fieldExpressions.Add(fieldExpression);
-                        }
-                    }
-                    return Expression.Block(
-                        fieldExpressions
+                        )
                     );
-                case UnionSchema r when (Nullable.GetUnderlyingType(type) != null || type.IsInterface || type.IsClass) && r.Count == 2 && r.FirstOrDefault(n => n.GetType().Equals(typeof(NullSchema))) != null:
-                    var nullIndex = 0;
-                    if (!r[nullIndex].GetType().Equals(typeof(NullSchema)))
-                        nullIndex = 1;
-                    var localValueExpression = valueExpression;
-                    if (Nullable.GetUnderlyingType(type) != null)
+                else
+                    switchCases.Add(
+                        Expression.SwitchCase(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteInt)),
+                                Expression.Constant(symbolMap[i], typeof(int))
+                            ),
+                            Expression.Constant(
+                                Enum.Parse(value.Type, sourceSchema[i]),
+                                value.Type
+                            )
+                        )
+                    );
+            }
+
+            return Expression.Switch(
+                typeof(void),
+                typeof(GenericEnum).IsAssignableFrom(value.Type) switch
+                {
+                    true => Expression.MakeMemberAccess(value, typeof(GenericEnum).GetProperty(nameof(GenericEnum.Value))),
+                    _ => value
+                },
+                Expression.Throw(
+                    Expression.Constant(
+                        new IndexOutOfRangeException()
+                    )
+                ),
+                null,
+                switchCases.ToArray()
+            );
+        }
+
+        private static Expression? CreateFixedEncoder(ParameterExpression stream, ParameterExpression value, FixedSchema sourceSchema, FixedSchema targetSchema) =>
+            sourceSchema.Equals(targetSchema) switch
+            {
+                true =>
+                    value.Type switch
                     {
-                        localValueExpression =
+                        var t when typeof(IAvroFixed).IsAssignableFrom(t) =>
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder)
+                                .GetMethods()
+                                .First(
+                                    r => r.Name == nameof(IAvroEncoder.WriteFixed) &&
+                                         r.GetGenericArguments().Length == 1 &&
+                                         r.GetGenericArguments()[0]
+                                            .GetGenericParameterConstraints()
+                                            .Any(c => c.Equals(typeof(IAvroFixed)))
+                                ).MakeGenericMethod(value.Type),
+                                value
+                            ),
+                        var t when t.Equals(typeof(byte[])) =>
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteFixed), new[] { typeof(byte[]) }),
+                                value
+                            ),
+                        _ => default
+                    },
+                _ => default
+            };
+
+        private static Expression? CreateRecordEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, IEnumerable<RecordFieldSchema> sourceFields, IEnumerable<RecordFieldSchema> targetFields)
+        {
+            var recordVariable = Expression.Variable(
+                value.Type
+            );
+            var fieldVariables = new List<ParameterExpression>
+            {
+                recordVariable
+            };
+            var fieldExpressions = new List<Expression>
+            {
+                Expression.Assign(
+                    recordVariable,
+                    value
+                )
+            };
+            int x = 0;
+            foreach (var field in sourceFields)
+            {
+                var fieldValueExpression = default(Expression);
+                var fieldWriteExpression = default(Expression);
+                var fieldType = GetTypeFromSchema(field.Type, assemblies);
+                var fieldParameter = Expression.Parameter(fieldType);
+                fieldVariables.Add(fieldParameter);
+                if (typeof(GenericRecord).IsAssignableFrom(value.Type))
+                {
+                    var recordProperty = typeof(IAvroRecord).GetProperty("Item", typeof(object), new Type[] { typeof(int) });
+                    fieldValueExpression =
+                        Expression.Convert(
+                            Expression.MakeIndex(
+                                Expression.TypeAs(
+                                    value,
+                                    typeof(IAvroRecord)
+                                ),
+                                recordProperty,
+                                new Expression[] {
+                                    Expression.Constant(
+                                        x,
+                                        typeof(int)
+                                    )
+                                }
+                            ),
+                            fieldType
+                        );
+                    fieldWriteExpression = ResolveEncoder(field.Type, field.Type, assemblies, stream, fieldParameter);
+                }
+                else
+                {
+                    var recordProperty = value.Type.GetProperty(field.Name);
+                    fieldType = recordProperty.PropertyType;
+                    fieldValueExpression =
+                        Expression.MakeMemberAccess(
+                            recordVariable,
+                            recordProperty
+                        );
+                    fieldWriteExpression = ResolveEncoder(field.Type, field.Type, assemblies, stream, fieldParameter);
+                }
+
+                if (fieldWriteExpression == null)
+                    return default;
+                fieldExpressions.Add(Expression.Assign(fieldParameter, fieldValueExpression));
+                fieldExpressions.Add(fieldWriteExpression);
+                x++;
+            }
+            return Expression.Block(
+                typeof(void),
+                fieldVariables.ToArray(),
+                fieldExpressions
+            );
+        }
+
+        public static Expression? CreateUnionToAnyEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchema, AvroSchema targetSchema) =>
+            (sourceSchema, targetSchema, typeof(AvroUnion).IsAssignableFrom(value.Type)) switch
+            {
+                (var s, var t, false) when s.Count == 2 && s.NullIndex > -1 - 1 => CreateNullableEncoder(stream, value, assemblies, s, t),
+                (var t, var s, _) => GetUnionEncoder(stream, value, assemblies, t, s)
+            };
+
+        private static Expression? GetUnionEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchema, AvroSchema targetSchema) =>
+            targetSchema switch
+            {
+                UnionSchema s => sourceSchema.Select((r, i) => GetUnionEncodeSwitchCase(stream, value, assemblies, r, s, i)).Where(r => r != default) switch
+                {
+                    var c when c.Count() > 0 =>
+                        Expression.Switch(
                             Expression.MakeMemberAccess(
-                                localValueExpression,
-                                type.GetProperty("Value")
-                            );
-                    }
+                                value,
+                                value.Type.GetProperty(nameof(AvroUnion.Index))
+                            ),
+                            Expression.Throw(
+                                Expression.Constant(new IndexOutOfRangeException())
+                            ),
+                            c.ToArray()
+                        ),
+                    _ => throw new Exception()
+                },
+                var s => FindMatch(s, sourceSchema) switch
+                {
+                    (var i, var t) when i > -1 => ResolveEncoder(t, s, assemblies, stream, Expression.Parameter(GetTypeFromSchema(s, assemblies))) switch
+                    {
+                        Expression write =>
+                            Expression.New(
+                                value.Type.GetConstructor(new[] { value.Type.GetGenericArguments()[i] }),
+                                write
+                            ),
+                        _ => throw new Exception()
+                    },
+                    _ => throw new Exception(),
+                }
+            };
 
-                    var valueType = Nullable.GetUnderlyingType(type) ?? type;
-                    var nullableValueMethod =
-                        valueType.IsClass || valueType.IsInterface ?
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject)).MakeGenericMethod(valueType) :
-                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)).MakeGenericMethod(valueType)
-                    ;
+        private static SwitchCase? GetUnionEncodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema sourceSchema, UnionSchema targetSchema, long index) =>
+            FindMatch(sourceSchema, targetSchema) switch
+            {
+                (-1, _) => default,
+                (var i, var s) => ResolveEncoder(s, sourceSchema, assemblies, stream, value) switch
+                {
+                    var write =>
+                        Expression.SwitchCase(
+                            Expression.Block(
+                                Expression.Call(
+                                    stream,
+                                    typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                    Expression.Constant((long)i)
+                                ),
+                                write
+                            ),
+                            Expression.Constant(index)
+                        )
+                }
+            };
 
-                    var writeNotNullExpression = ResolveWriter(origin, valueType, r[(nullIndex + 1) % 2], streamParameter, localValueExpression, null);
-
-                    return Expression.Call(
-                        streamParameter,
-                        nullableValueMethod,
-                        CastOrExpression(valueExpression, valueParameterCast),
+        private static Expression CreateNullableEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchema, AvroSchema targetSchema) =>
+            (targetSchema, Nullable.GetUnderlyingType(value.Type)) switch
+            {
+                (NullSchema _, _) =>
+                    Expression.IfThenElse(
+                        Expression.Equal(value, Expression.Constant(null, value.Type)),
+                        CreateNullEncoder(stream, value),
+                        Expression.Throw(Expression.Constant(new IndexOutOfRangeException()))
+                    ),
+                (UnionSchema s, var u) when s.Count == 2 && s.NullIndex > -1 => ResolveEncoder(sourceSchema[(sourceSchema.NullIndex + 1) % 2], s[(s.NullIndex + 1) % 2], assemblies, stream, value) switch
+                {
+                    var write => Expression.Call(
+                        stream,
+                        u == null ?
+                            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject)).MakeGenericMethod(value.Type) :
+                            typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)).MakeGenericMethod(u),
+                        value,
                         Expression.Lambda(
-                            writeNotNullExpression,
-                            streamParameter,
-                            Expression.Parameter(valueType, "v")
+                            typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), u ?? value.Type),
+                            write,
+                            stream,
+                            Expression.Parameter(u ?? value.Type)
                         ),
                         Expression.Constant(
-                            (long)nullIndex,
+                            (long)s.NullIndex,
+                            typeof(long)
+                        )
+                    )
+                },
+                (AvroSchema s, _) =>
+                    Expression.IfThenElse(
+                        Expression.Equal(value, Expression.Constant(null, value.Type)),
+                        Expression.Throw(Expression.Constant(new IndexOutOfRangeException())),
+                        ResolveEncoder(s, targetSchema, assemblies, stream, value)
+                    )
+            };
+
+        private static SwitchCase? GetNullableEncodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchema, AvroSchema targetSchema, long index) =>
+            FindMatch(targetSchema, sourceSchema) switch
+            {
+                (-1, _) => default,
+                (_, var s) => ResolveEncoder(sourceSchema, s, assemblies, stream, value) switch
+                {
+                    var skip =>
+                        Expression.SwitchCase(
+                            Expression.Assign(
+                                value,
+                                skip
+                            ),
+                            Expression.Constant(
+                                index
+                            )
+                        )
+                }
+            };
+
+        private static Expression? CreateNullableValueToNullableDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema sourceSchema, AvroSchema targetSchema, long nullIndex) =>
+            ResolveEncoder(sourceSchema, targetSchema, assemblies, stream, value) switch
+            {
+                Expression w =>
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)).MakeGenericMethod(Nullable.GetUnderlyingType(value.Type)),
+                        value,
+                        Expression.Lambda(
+                            typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), Nullable.GetUnderlyingType(value.Type)),
+                            w,
+                            stream,
+                            Expression.Parameter(Nullable.GetUnderlyingType(value.Type))
+                        ),
+                        Expression.Constant(nullIndex)
+                    ),
+                _ => default
+            };
+
+        private static Expression? CreateNullableUnionToNullableDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema sourceSchema, AvroSchema targetSchema, long nullIndex)
+        {
+            return default;
+        }
+
+        private static Expression? CreateNullableObjectToNullableDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema sourceSchema, AvroSchema targetSchema, long nullIndex) =>
+            ResolveEncoder(sourceSchema, targetSchema, assemblies, stream, value) switch
+            {
+                Expression w =>
+                    Expression.Call(
+                        stream,
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject)).MakeGenericMethod(value.Type),
+                        value,
+                        Expression.Lambda(
+                            typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), value.Type),
+                            w,
+                            stream,
+                            Expression.Parameter(value.Type)
+                        ),
+                        Expression.Constant(
+                            nullIndex,
+                            typeof(long)
+                        )
+                    ),
+                _ => default
+            };
+
+        //public static Expression CreateUnionEncoder(ParameterExpression stream, ParameterExpression value, Type unionType, Assembly[] assemblies, UnionSchema sourceSchemas, UnionSchema targetSchemas)
+        //{
+        //    var types = unionType.GetGenericArguments();
+        //    var switchCases = new List<SwitchCase>();
+        //    var switchValue = Expression.MakeMemberAccess(
+        //        value,
+        //        typeof(AvroUnion).GetProperty(nameof(AvroUnion.Index))
+        //    );
+
+        //    var writeExpression =
+        //        Expression.Throw(
+        //            Expression.Constant(new ArgumentException())
+        //        ) as Expression;
+
+        //    for (int i = 0; i < sourceSchemas.Count; i++)
+        //    {
+        //        var sourceSchema = sourceSchemas[i];
+        //        var targetIndex = FindMatch(sourceSchemas[i], targetSchemas, out var targetSchema);
+
+        //        if (targetIndex == -1)
+        //            continue;
+
+        //        var writeValue = Expression.Convert(
+        //            value,
+        //            types[i]
+        //        );
+        //        var unionSubExpression = ResolveWriter(sourceSchema, targetSchema, types[i], assemblies, stream, writeValue);
+        //        switchCases.Add(
+        //            Expression.SwitchCase(
+        //                Expression.Block(
+        //                    Expression.Call(
+        //                        stream,
+        //                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+        //                        Expression.Constant(
+        //                            (long)targetIndex,
+        //                            typeof(long)
+        //                        )
+        //                    ),
+        //                    unionSubExpression
+        //                ),
+        //                Expression.Constant(
+        //                    (long)i,
+        //                    typeof(long)
+        //                )
+        //            )
+        //        );
+        //    }
+        //    return Expression.Switch(
+        //        typeof(void),
+        //        switchValue,
+        //        Expression.Throw(
+        //            Expression.Constant(
+        //                new IndexOutOfRangeException()
+        //            )
+        //        ),
+        //        null,
+        //        switchCases.ToArray()
+        //    );
+        //}
+
+        public static Expression? CreateNullableEncoder(ParameterExpression stream, ParameterExpression value, Type type, Assembly[] assemblies, AvroSchema sourceSchema, AvroSchema targetSchema)
+        {
+            var isValueType = Nullable.GetUnderlyingType(type) != null;
+            var valueType = Nullable.GetUnderlyingType(type) ?? type;
+            var write = default(Expression);
+            var nullExpression = default(Expression);
+            var valueExpression = default(Expression);
+            var testCondition = default(Expression);
+
+            switch (targetSchema)
+            {
+                case UnionSchema r when r.Count == 2 && r.NullIndex > -1:
+                    var valueSchema = r[(r.NullIndex + 1) % 2];
+                    var valueWriter = isValueType ?
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)) :
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject))
+                    ;
+                    valueWriter = valueWriter.MakeGenericMethod(valueType);
+
+                    write = ResolveEncoder(sourceSchema, r[(r.NullIndex + 1) % 2], assemblies, stream, value);
+                    if (write == null)
+                        return default;
+
+                    return Expression.Call(
+                        stream,
+                        valueWriter,
+                        value,
+                        Expression.Lambda(
+                            typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), valueType),
+                            write,
+                            stream,
+                            Expression.Parameter(valueType)
+                        ),
+                        Expression.Constant(
+                            (long)r.NullIndex,
                             typeof(long)
                         )
                     );
-                case UnionSchema r when type.Equals(typeof(object)) && r.Count > 0:
-                    var writeExpression =
+
+                case UnionSchema r:
+                    (var valueIndex, var matchingSchema) = FindMatch(sourceSchema, r);
+
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                type
+                            )
+                        );
+
+                    if (r.NullIndex > -1)
+                        nullExpression = Expression.Block(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                Expression.Constant(
+                                    (long)r.NullIndex,
+                                    typeof(long)
+                                )
+                            ),
+                            CreateNullEncoder(stream, value)
+                        );
+                    else
+                        nullExpression = Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        );
+
+                    if (valueIndex > -1)
+                        valueExpression = ResolveEncoder(sourceSchema, matchingSchema, assemblies, stream, value);
+
+                    if (valueExpression != null)
+                        valueExpression = Expression.Block(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                Expression.Constant(
+                                    (long)valueIndex,
+                                    typeof(long)
+                                )
+                            ),
+                            valueExpression
+                        );
+                    else
+                        valueExpression = Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        );
+
+                    return Expression.IfThenElse(
+                        testCondition,
+                        nullExpression,
+                        valueExpression
+                    );
+
+                case NullSchema r:
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                type
+                            )
+                        );
+                    nullExpression = CreateNullEncoder(stream, value);
+                    return Expression.IfThenElse(
+                        testCondition,
+                        CreateNullEncoder(stream, value),
                         Expression.Throw(
                             Expression.Constant(new ArgumentException())
-                        ) as Expression;
-                    for (int i = 0; i < r.Count; i++)
-                    {
-                        var unionSubType = GetTypeFromSchema(r[i], origin);
-                        var unionSubExpression = ResolveWriter(origin, unionSubType, r[i], streamParameter, valueExpression, unionSubType);
-                        writeExpression =
-                            Expression.IfThenElse((
-                                r[i] is NullSchema ?
-                                Expression.Equal(
-                                    valueExpression,
-                                    Expression.Constant(
-                                        AvroNull.Value,
-                                        typeof(AvroNull)
-                                    )
-                                ) as Expression :
-                                Expression.TypeIs(
-                                    valueExpression,
-                                    unionSubType
-                                ) as Expression),
-                                Expression.Block(
-                                    typeof(void),
-                                    Expression.Call(
-                                        streamParameter,
-                                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
-                                        Expression.Constant(
-                                            (long)i,
-                                            typeof(long)
-                                        )
-                                    ),
-                                    unionSubExpression
-                                ),
-                                writeExpression
-                            );
-                    }
-                    return writeExpression;
-            }
+                        )
+                    );
 
-            return null;
+                case AvroSchema r:
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                type
+                            )
+                        );
+                    valueExpression = ResolveEncoder(sourceSchema, r, assemblies, stream, value);
+                    if (valueExpression == null)
+                        return default;
+
+                    return Expression.IfThenElse(
+                        testCondition,
+                        Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        ),
+                        valueExpression
+                    );
+
+                default:
+                    return default;
+            }
+        }
+
+        public static Expression? CreateUnionToSingleEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchemas, AvroSchema targetSchema)
+        {
+            var isValueType = Nullable.GetUnderlyingType(value.Type) != null;
+            var valueType = Nullable.GetUnderlyingType(value.Type) ?? value.Type;
+            var write = default(Expression);
+            var nullExpression = default(Expression);
+            var valueExpression = default(Expression);
+            var testCondition = default(Expression);
+
+            switch (targetSchema)
+            {
+                case UnionSchema r when r.Count == 2 && r.NullIndex > -1:
+                    var valueSchema = r[(r.NullIndex + 1) % 2];
+                    var valueWriter = isValueType ?
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableValue)) :
+                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteNullableObject))
+                    ;
+                    valueWriter = valueWriter.MakeGenericMethod(valueType);
+
+                    write = ResolveEncoder(sourceSchemas, r[(r.NullIndex + 1) % 2], assemblies, stream, value);
+                    if (write == null)
+                        return default;
+
+                    return Expression.Call(
+                        stream,
+                        valueWriter,
+                        value,
+                        Expression.Lambda(
+                            typeof(Action<,>).MakeGenericType(typeof(IAvroEncoder), valueType),
+                            write,
+                            stream,
+                            Expression.Parameter(valueType)
+                        ),
+                        Expression.Constant(
+                            (long)r.NullIndex,
+                            typeof(long)
+                        )
+                    );
+
+                case UnionSchema r:
+                    (var valueIndex, var matchingSchema) = FindMatch(sourceSchemas, r);
+
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            value.Type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                value.Type
+                            )
+                        );
+
+                    if (r.NullIndex > -1)
+                        nullExpression = Expression.Block(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                Expression.Constant(
+                                    (long)r.NullIndex,
+                                    typeof(long)
+                                )
+                            ),
+                            CreateNullEncoder(stream, value)
+                        );
+                    else
+                        nullExpression = Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        );
+
+                    if (valueIndex > -1)
+                        valueExpression = ResolveEncoder(sourceSchemas, matchingSchema, assemblies, stream, value);
+
+                    if (valueExpression != null)
+                        valueExpression = Expression.Block(
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                Expression.Constant(
+                                    (long)valueIndex,
+                                    typeof(long)
+                                )
+                            ),
+                            valueExpression
+                        );
+                    else
+                        valueExpression = Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        );
+
+                    return Expression.IfThenElse(
+                        testCondition,
+                        nullExpression,
+                        valueExpression
+                    );
+
+                case NullSchema r:
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            value.Type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                value.Type
+                            )
+                        );
+                    nullExpression = CreateNullEncoder(stream, value);
+                    return Expression.IfThenElse(
+                        testCondition,
+                        nullExpression,
+                        Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        )
+                    );
+
+                case AvroSchema r:
+                    if (isValueType)
+                        testCondition = Expression.MakeMemberAccess(
+                            value,
+                            value.Type.GetProperty(nameof(Nullable<bool>.HasValue))
+                        );
+                    else
+                        testCondition = Expression.Equal(
+                            value,
+                            Expression.Constant(
+                                null,
+                                value.Type
+                            )
+                        );
+                    valueExpression = ResolveEncoder(sourceSchemas, r, assemblies, stream, value);
+                    if (valueExpression == null)
+                        return default;
+
+                    return Expression.IfThenElse(
+                        testCondition,
+                        Expression.Throw(
+                            Expression.Constant(new ArgumentException())
+                        ),
+                        valueExpression
+                    );
+
+                default:
+                    return default;
+            }
+        }
+
+        public static Expression? CreateSingleToUnionEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema valueSchema, UnionSchema targetSchemas)
+        {
+            (var index, var matchingSchema) = FindMatch(valueSchema, targetSchemas.ToArray());
+            if (index == -1)
+                return default;
+            var write = ResolveEncoder(valueSchema, matchingSchema, assemblies, stream, value);
+            if (write == null)
+                return default;
+            return Expression.Block(
+                Expression.Call(
+                    stream,
+                    typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                    Expression.Constant(
+                        (long)index,
+                        typeof(long)
+                    )
+                ),
+                write
+            );
         }
     }
 }

@@ -1,5 +1,3 @@
-using Avro.Serialization;
-using Avro.Types;
 using Avro.Utils;
 using Newtonsoft.Json.Linq;
 using System;
@@ -9,10 +7,10 @@ using System.Linq;
 
 namespace Avro.Schema
 {
-    [SerializationType(typeof(GenericRecord), CompatibleTypes = new [] { typeof(IAvroRecord) })]
-    public class RecordSchema : ComplexSchema, IEnumerable<RecordSchema.Field>
+    public class RecordSchema : ComplexSchema, IList<RecordFieldSchema>, IEquatable<RecordSchema>
     {
-        private readonly IList<Field> _fields = new List<Field>();
+        private readonly IDictionary<string, RecordFieldSchema> _nameLookup = new Dictionary<string, RecordFieldSchema>();
+        private readonly IList<RecordFieldSchema> _fields = new List<RecordFieldSchema>();
 
         public RecordSchema()
             : base() { }
@@ -23,44 +21,18 @@ namespace Avro.Schema
         public RecordSchema(string name, string ns)
             : base(name, ns) { }
 
-        public RecordSchema(string name, IEnumerable<Field> fields)
+        public RecordSchema(string name, IEnumerable<RecordFieldSchema> fields)
             : base(name)
         {
             foreach (var field in fields)
                 Add(field);
         }
 
-        public RecordSchema(string name, string ns, IEnumerable<Field> fields)
+        public RecordSchema(string name, string ns, IEnumerable<RecordFieldSchema> fields)
             : base(name, ns)
         {
             foreach (var field in fields)
                 Add(field);
-        }
-
-        public int Count => _fields.Count;
-
-        public void Add(Field field)
-        {
-            if (field == null || string.IsNullOrEmpty(field.Name))
-                throw new AvroParseException("Null or unnamed fields are not supported.");
-            if (Contains(field.Name))
-                throw new AvroParseException($"Record already contains field with name: '{field.Name}'.");
-            if (field.Type is NamedSchema && string.IsNullOrEmpty((field.Type as NamedSchema).Namespace))
-                (field.Type as NamedSchema).Namespace = Namespace;
-            _fields.Add(field);
-        }
-
-        public bool Contains(string name)
-        {
-            return _fields.Any(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public bool Remove(string name)
-        {
-            var field = _fields.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (field != null)
-                return _fields.Remove(field);
-            return false;
         }
 
         public override string Namespace
@@ -79,7 +51,7 @@ namespace Avro.Schema
 
                 var namedTypes =
                     _fields.Where(r => r.Type is NamedSchema)
-                        .Select(t => t.Type as NamedSchema)
+                        .Select(t => (NamedSchema)t.Type)
                         .Where(r => r.Namespace == old || r.Namespace != null && r.Namespace.StartsWith(old))
                     ;
 
@@ -91,51 +63,85 @@ namespace Avro.Schema
             }
         }
 
-        public IEnumerator<Field> GetEnumerator() => _fields.GetEnumerator();
+        public int Count => _fields.Count;
+
+        public bool IsReadOnly => _fields.IsReadOnly;
+
+        public RecordFieldSchema this[int index] { get => _fields[index]; set => Insert(index, value); }
+
+        public RecordFieldSchema this[string name] { get => _nameLookup[name]; }
+
+        public void Add(RecordFieldSchema field)
+        {
+            _fields.Add(CheckField(field));
+            _nameLookup.Add(field.Name, _fields.Last());
+        }
+
+        public bool Contains(string name) => _nameLookup.ContainsKey(name);
+
+        public bool Remove(string name) =>
+            _nameLookup.TryGetValue(name, out var field) switch
+            {
+                true => RemoveField(field),
+                _ => false
+            };
+
+        private bool RemoveField(RecordFieldSchema item) =>
+            _nameLookup.Remove(item.Name) switch
+            {
+                true => _fields.Remove(item),
+                _ => false
+            };
+
+        public IEnumerator<RecordFieldSchema> GetEnumerator() => _fields.GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => _fields.GetEnumerator();
 
-        public class Field : AvroSchema, IEquatable<Field>
+        public int IndexOf(RecordFieldSchema item) => _fields.IndexOf(item);
+
+        public int IndexOf(string name) =>
+            _nameLookup.TryGetValue(name, out var item) switch
+            {
+                true => _fields.IndexOf(item),
+                _ => -1
+            };
+
+        public void Insert(int index, RecordFieldSchema item) => _fields.Insert(index, CheckField(item));
+
+        public void RemoveAt(int index) => RemoveField(_fields[index]);
+
+        public void Clear()
         {
-            private string _name;
-            private IList<string> _aliases;
-            private JToken _default;
-
-            public Field()
-                : base()
-            {
-                Aliases = new List<string>();
-            }
-
-            public Field(string name)
-                : base()
-            {
-                Name = name;
-                Aliases = new List<string>();
-            }
-
-            public Field(string name, AvroSchema type)
-                : base()
-            {
-                Name = name;
-                Type = type;
-                Aliases = new List<string>();
-                Default = null;
-            }
-
-            public string Name { get { return _name; } set { NameValidator.ValidateName(value); _name = value; } }
-
-            public AvroSchema Type { get; set; }
-
-            public string Order { get; set; }
-            public JToken Default { get { return _default; } set { DefaultValidator.ValidateJson(Type, value); _default = value; } }
-            public string Doc { get; set; }
-            public IList<string> Aliases { get { return _aliases; } set { NameValidator.ValidateNames(value); _aliases = value; } }
-
-            public bool Equals(Field other)
-            {
-                return string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
-            }
+            _nameLookup.Clear();
+            _fields.Clear();
         }
+
+        public bool Contains(RecordFieldSchema item) => _fields.Contains(item);
+
+        public void CopyTo(RecordFieldSchema[] array, int arrayIndex) => _fields.CopyTo(array, arrayIndex);
+
+        public bool Remove(RecordFieldSchema item) =>
+            _fields.Remove(item) switch
+            {
+                true => _nameLookup.Remove(item.Name),
+                _ => false
+            };
+
+        private RecordFieldSchema CheckField(RecordFieldSchema item) =>
+            item switch
+            {
+                var x when x.Name == string.Empty => throw new AvroParseException("Unnamed fields are not supported."),
+                var x when Contains(x.Name) => throw new AvroParseException($"Record already contains field with name: '{item.Name}'."),
+                var x when x.Type is NamedSchema && ((NamedSchema)x.Type).Namespace == string.Empty => SetChildNamespace(x),
+                _ => item
+            };
+
+        private RecordFieldSchema SetChildNamespace(RecordFieldSchema item)
+        {
+            ((NamedSchema)item.Type).Namespace = Namespace;
+            return item;
+        }
+
+        public bool Equals(RecordSchema other) => other != null && Name == other.Name;
     }
 }

@@ -1,10 +1,8 @@
-using Avro.Serialization;
-using System.Collections.Generic;
+using System;
 
 namespace Avro.Schema
 {
-    [SerializationType(typeof(IList<>))]
-    public sealed class ArraySchema : AvroSchema
+    public sealed class ArraySchema : AvroSchema, IEquatable<ArraySchema>
     {
         public ArraySchema(AvroSchema items)
         {
@@ -13,12 +11,12 @@ namespace Avro.Schema
 
         public AvroSchema Items { get; set; }
 
-        public override bool Equals(AvroSchema other)
-        {
-            return base.Equals(other) &&
-                (other as ArraySchema).Items.Equals(Items);
-        }
+        public override bool Equals(object other) => base.Equals(other) && Equals((ArraySchema)other);
+
+        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Items);
 
         public override string ToString() => $"array";
+
+        public bool Equals(ArraySchema other) => other != null && Items.Equals(other.Items);
     }
 }

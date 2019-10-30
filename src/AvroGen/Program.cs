@@ -1,6 +1,7 @@
 using Avro.Code;
 using CommandLine;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,10 +16,24 @@ namespace Avro
 
         static int Main(string[] args)
         {
-            return Parser.Default.ParseArguments<NewOptions, AddOptions, ExampleOptions>(args)
+            var foo = typeof(IO.IAvroDecoder).GetMethods().Where(r => r.Name == "ReadEnum");
+            var bar = foo.SelectMany(r => r.GetGenericArguments()).Select(g => g.GetGenericParameterConstraints());
+
+
+            var x = typeof(IO.IAvroDecoder)
+                            .GetMethods()
+                            .First(
+                                r => r.Name == nameof(IO.IAvroDecoder.ReadEnum) &&
+                                     r.GetGenericArguments().Length == 1 &&
+                                     r.GetGenericArguments()[0]
+                                        .GetGenericParameterConstraints()
+                                        .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
+                            );
+
+            return Parser.Default.ParseArguments<NewOption, AddOption, ExampleOptions>(args)
             .MapResult(
-                (NewOptions opts) => GenerateCode(opts.Project, opts),
-                (AddOptions opts) => GenerateCode(null, opts),
+                (NewOption opts) => GenerateCode(opts.Project, opts),
+                (AddOption opts) => GenerateCode(string.Empty, opts),
                 (ExampleOptions ops) => ShowExample(),
                 errs => 1
             ); ;
@@ -52,10 +67,10 @@ namespace Avro
                 return new FileInfo[] { new FileInfo(fileOrDirectory) };
             if (Directory.Exists(fileOrDirectory))
                 return Directory.GetFiles(fileOrDirectory, $"*{fileExt}").Select(r => new FileInfo(r));
-            return null;
+            return new FileInfo[0];
         }
 
-        static int GenerateCode(string projectName, Options options)
+        static int GenerateCode(string projectName, DefaultOption options)
         {
             var namespaceMapping = options.Namespace.Select(r => r.Split('.')).ToDictionary(k => k[0], v => v[1]);
 
@@ -71,21 +86,20 @@ namespace Avro
                 foreach (var schemaFile in GetFiles(options.Path, ".avsc"))
                 {
                     Log($"    '{schemaFile.FullName}' ...", options.Quiet);
-                    using (var reader = new StreamReader(schemaFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8))
+                    using var reader = new StreamReader(schemaFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8);
+
+                    var text = reader.ReadToEnd();
+                    var schema = AvroParser.ReadSchema(text, out var schemas);
+                    codeGen.AddSchemas(schemas);
+                    foreach (var s in schemas)
                     {
-                        var text = reader.ReadToEnd();
-                        var schema = AvroParser.ReadSchema(text, out var schemas);
-                        codeGen.AddSchemas(schemas);                        
-                        foreach(var s in schemas)
-                        {
-                            var hash = string.Join("", HASH_FUNC.ComputeHash(Encoding.UTF8.GetBytes(s.ToAvroCanonical())).Select(r => r.ToString("X2")));
-                            if(typeHashes.TryGetValue(s.Name, out var existingHash))
-                                typeHashes.Add(s.Name, hash);
-                            else
-                                if(hash != existingHash)
-                                    Log("           Hash mismatch:", options.Quiet);
-                            Log($"        T: '{s.FullName}'", options.Quiet);
-                        }
+                        var hash = string.Join("", HASH_FUNC.ComputeHash(Encoding.UTF8.GetBytes(s.ToAvroCanonical())).Select(r => r.ToString("X2")));
+                        if (typeHashes.TryGetValue(s.Name, out var existingHash))
+                            typeHashes.Add(s.Name, hash);
+                        else
+                            if (hash != existingHash)
+                            Log("           Hash mismatch:", options.Quiet);
+                        Log($"        T: '{s.FullName}'", options.Quiet);
                     }
                 }
             }
@@ -96,55 +110,54 @@ namespace Avro
                 foreach (var protocolFile in GetFiles(options.Path, ".avpr"))
                 {
                     Log($"    '{protocolFile.FullName}' ...", options.Quiet);
-                    using (var reader = new StreamReader(protocolFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8))
-                    {
-                        var text = reader.ReadToEnd();
-                        var protocol = AvroParser.ReadProtocol(text, out var schemas);
-                        codeGen.AddProtocol(protocol);
-                        Log($"        P: '{protocol.FullName}'", options.Quiet);
-                        foreach(var s in schemas)
-                            Log($"        T: '{s.FullName}'", options.Quiet);
-                    }
+                    using var reader = new StreamReader(protocolFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8);
+
+                    var text = reader.ReadToEnd();
+                    var protocol = AvroParser.ReadProtocol(text, out var schemas);
+                    codeGen.AddProtocol(protocol);
+                    Log($"        P: '{protocol.FullName}'", options.Quiet);
+                    foreach (var s in schemas)
+                        Log($"        T: '{s.FullName}'", options.Quiet);
                 }
             }
 
             codeWriter.WriteProject(options.OutDir, codeGen, projectName);
             return 0;
         }
-
-        public class Options
-        {
-
-            [Value(0, MetaName = "path", Required = true, HelpText = "Source file or directory.")]
-            public string Path { get; set; }
-
-            [Value(1, MetaName = "outdir", Required = true, HelpText = "Target root directory for code bindings.")]
-
-            public string OutDir { get; set; }
-            [Option('s', "schema", Required = false, HelpText = "Add files with .avsc extension.")]
-            public bool Schema { get; set; }
-
-            [Option('p', "protocol", Required = false, HelpText = "Add files with .avpr extension.")]
-            public bool Protocol { get; set; }
-
-            [Option('n', "namespace", Required = false, HelpText = "Avro to C# namespace translations as colon separated key-values: (<x.y>:<y.x> <a.b:x>). Namespaces are sored by the longest sequence meanging that <x.y.z> will be applied before <x.y> etc.")]
-            public IEnumerable<string> Namespace{ get; set; }
-
-            [Option('q', "quiet", Required = false, HelpText = "Run in Quiet mode")]
-            public bool Quiet { get; set; }
-        }
-
-        [Verb("new", HelpText = "Add code binding to outdir and create a C# project.")]
-        public class NewOptions : Options
-        {
-            [Option('c', "project", HelpText = "C# project file without extension. If omitted the target directory name is used.")]
-            public string Project { get; set; }
-        }
-
-        [Verb("add", HelpText = "Add code binding to outdir.")]
-        public class AddOptions : Options { }
-
-        [Verb("example", HelpText = "Display example usage.")]
-        public class ExampleOptions { }
     }
+
+    public class DefaultOption
+    {
+
+        [Value(0, MetaName = "path", Required = true, HelpText = "Source file or directory.")]
+        public string Path { get; set; } = string.Empty;
+
+        [Value(1, MetaName = "outdir", Required = true, HelpText = "Target root directory for code bindings.")]
+
+        public string OutDir { get; set; } = string.Empty;
+        [Option('s', "schema", Required = false, HelpText = "Add files with .avsc extension.")]
+        public bool Schema { get; set; }
+
+        [Option('p', "protocol", Required = false, HelpText = "Add files with .avpr extension.")]
+        public bool Protocol { get; set; }
+
+        [Option('n', "namespace", Required = false, HelpText = "Avro to C# namespace translations as colon separated key-values: (<x.y>:<y.x> a.b:x>). Namespaces are sored by the longest sequence meanging that <x.y.z> will be applied before <x.y> etc.")]
+        public IEnumerable<string> Namespace { get; set; } = new List<string>();
+
+        [Option('q', "quiet", Required = false, HelpText = "Run in Quiet mode")]
+        public bool Quiet { get; set; }
+    }
+
+    [Verb("new", HelpText = "Add code binding to outdir and create a C# project.")]
+    public class NewOption : DefaultOption
+    {
+        [Option('c', "project", HelpText = "C# project file without extension. If omitted the target directory name is used.")]
+        public string Project { get; set; } = string.Empty;
+    }
+
+    [Verb("add", HelpText = "Add code binding to outdir.")]
+    public class AddOption : DefaultOption { }
+
+    [Verb("example", HelpText = "Display example usage.")]
+    public class ExampleOptions { }
 }

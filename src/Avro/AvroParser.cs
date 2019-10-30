@@ -15,12 +15,12 @@ namespace Avro
             var jString = JSonEncodeString(text);
 
             var json = JToken.Parse(jString);
-            var protocol = ParseProtocol(json, namedTypes, new Stack<string>(new string[] { null }));
+            var protocol = ParseProtocol(json, namedTypes, new Stack<string>(new string[] { string.Empty }));
             namedSchemas = namedTypes.Values;
             return protocol;
         }
 
-        public static T ReadSchema<T>(string text) where T : AvroSchema => ReadSchema(text) as T;
+        public static T ReadSchema<T>(string text) where T : AvroSchema => (T)ReadSchema(text);
 
         public static AvroSchema ReadSchema(string text) => ReadSchema(text, out _);
 
@@ -30,7 +30,7 @@ namespace Avro
             var jString = JSonEncodeString(text);
 
             var json = JToken.Parse(jString);
-            var schema = ParseSchema(json, namedTypes, new Stack<string>(new string[] { null }));
+            var schema = ParseSchema(json, namedTypes, new Stack<string>(new string[] { string.Empty }));
             namedSchemas = namedTypes.Values;
             return schema;
         }

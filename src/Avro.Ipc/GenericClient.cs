@@ -32,62 +32,58 @@ namespace Avro.Ipc
 
         private async Task<GenericContext> Request(GenericContext rpcContext, CancellationToken token)
         {
-            using (var requestData = new FrameStream())
-            using (var encoder = new BinaryEncoder(requestData))
+            using var requestData = new FrameStream();
+            using var encoder = new BinaryEncoder(requestData);
+
+            if (DoHandshake())
             {
-                if (DoHandshake())
-                {
-                    if(rpcContext.HandshakeRequest == null)
-                        rpcContext.HandshakeRequest = NewHandshakeRequest((MD5)Protocol.MD5, (MD5)RemoteProtocol.MD5);
-                    HANDSHAKE_REQUEST_WRITER.Write(encoder, rpcContext.HandshakeRequest);
-                }
+                if (rpcContext.HandshakeRequest == null)
+                    rpcContext.HandshakeRequest = NewHandshakeRequest(Protocol.MD5, RemoteProtocol.MD5, string.Empty);
+                HANDSHAKE_REQUEST_WRITER.Write(encoder, rpcContext.HandshakeRequest);
+            }
 
-                META_WRITER.Write(encoder, EMPTY_META);
-                encoder.WriteString(rpcContext.MessageName);
+            META_WRITER.Write(encoder, EMPTY_META);
+            encoder.WriteString(rpcContext.MessageName);
+            if(rpcContext.RequestParameters != null)
                 _protocol.WriteRequest(encoder, rpcContext.MessageName, rpcContext.RequestParameters);
-                encoder.WriteBytes(END_OF_FRAME);
-                requestData.Seek(0, SeekOrigin.Begin);
+            encoder.WriteBytes(END_OF_FRAME);
+            requestData.Seek(0, SeekOrigin.Begin);
 
-                using (var responseData = await _tranceiver.RequestAsync(rpcContext.MessageName, requestData, token))
-                using (var decode = new BinaryDecoder(responseData))
+            using var responseData = await _tranceiver.RequestAsync(rpcContext.MessageName, requestData, token);
+            using var decode = new BinaryDecoder(responseData);
+
+            responseData.Seek(0, SeekOrigin.Begin);
+
+            if (DoHandshake())
+            {
+                rpcContext.HandshakeResponse = HANDSHAKE_RESPONSE_READER.Read(decode);
+                _handshakePending = rpcContext.HandshakeResponse.match == HandshakeMatch.NONE;
+
+                var remoteProtocol = AvroParser.ReadProtocol(rpcContext.HandshakeResponse.serverProtocol);
+                if (rpcContext.HandshakeResponse.match == HandshakeMatch.CLIENT || rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
+                    _protocol = new GenericRequestor(Protocol, remoteProtocol);
+
+                if (rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
                 {
-                    responseData.Seek(0, SeekOrigin.Begin);
-
-                    if (DoHandshake())
-                    {
-                        rpcContext.HandshakeResponse = HANDSHAKE_RESPONSE_READER.Read(decode);
-                        _handshakePending = rpcContext.HandshakeResponse.match == HandshakeMatch.NONE;
-
-                        var remoteProtocol = default(AvroProtocol);
-                        if (rpcContext.HandshakeResponse.match == HandshakeMatch.CLIENT || rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
-                        {
-                            remoteProtocol = AvroParser.ReadProtocol(rpcContext.HandshakeResponse.serverProtocol);
-                            _protocol = new GenericRequestor(Protocol, remoteProtocol);
-                        }
-
-                        if (rpcContext.HandshakeResponse.match == HandshakeMatch.NONE)
-                        {
-                            rpcContext.HandshakeRequest.serverHash = (MD5)remoteProtocol.MD5;
-                            rpcContext.HandshakeRequest.clientProtocol = Protocol.ToAvroCanonical();
-                            _protocol = new GenericRequestor(Protocol, remoteProtocol);
-                            rpcContext = await Request(rpcContext, token);
-                        }
-                    }
-
-                    rpcContext.Metadata = META_READER.Read(decode);
-                    rpcContext.IsError = decode.ReadBoolean();
-                    if (rpcContext.IsError)
-                        rpcContext.Error = _protocol.ReadError<object>(decode, rpcContext.MessageName);
-                    else
-                        rpcContext.Response = _protocol.ReadResponse<object>(decode, rpcContext.MessageName);
-
-
-                    return rpcContext;
+                    rpcContext.HandshakeRequest.serverHash = remoteProtocol.MD5;
+                    rpcContext.HandshakeRequest.clientProtocol = Protocol.ToAvroCanonical();
+                    _protocol = new GenericRequestor(Protocol, remoteProtocol);
+                    rpcContext = await Request(rpcContext, token);
                 }
             }
+
+            rpcContext.Metadata = META_READER.Read(decode);
+            rpcContext.IsError = decode.ReadBoolean();
+            if (rpcContext.IsError)
+                rpcContext.Error = _protocol.ReadError<object>(decode, rpcContext.MessageName);
+            else
+                rpcContext.Response = _protocol.ReadResponse<object>(decode, rpcContext.MessageName);
+
+
+            return rpcContext;
         }
 
-        protected static HandshakeRequest NewHandshakeRequest(MD5 clientHash, MD5 serverHash, string clientProtocol = null)
+        protected static HandshakeRequest NewHandshakeRequest(MD5 clientHash, MD5 serverHash, string clientProtocol)
         {
             return new HandshakeRequest()
             {
