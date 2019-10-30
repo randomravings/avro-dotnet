@@ -1,7 +1,4 @@
-﻿using Avro.Schema;
-using System;
-using Test.Avro.IO;
-using Test.Avro.Resolution;
+﻿using Test.Avro.Resolution;
 
 namespace DebugConsole
 {

@@ -12,9 +12,9 @@ namespace Avro
         public static AvroProtocol ReadProtocol(string text, out IEnumerable<NamedSchema> namedSchemas)
         {
             var namedTypes = new Dictionary<string, NamedSchema>();
-            var jString = JSonEncodeString(text);
+            //var jString = JSonEncodeString(text);
 
-            var json = JToken.Parse(jString);
+            var json = JToken.Parse(text);
             var protocol = ParseProtocol(json, namedTypes, new Stack<string>(new string[] { string.Empty }));
             namedSchemas = namedTypes.Values;
             return protocol;
@@ -27,9 +27,9 @@ namespace Avro
         public static AvroSchema ReadSchema(string text, out IEnumerable<NamedSchema> namedSchemas)
         {
             var namedTypes = new Dictionary<string, NamedSchema>();
-            var jString = JSonEncodeString(text);
+            //var jString = JSonEncodeString(text);
 
-            var json = JToken.Parse(jString);
+            var json = JToken.Parse(text);
             var schema = ParseSchema(json, namedTypes, new Stack<string>(new string[] { string.Empty }));
             namedSchemas = namedTypes.Values;
             return schema;
@@ -43,13 +43,12 @@ namespace Avro
             return $"\"{trimmed}\"";
         }
 
-        private static string QualifyName(string name, Stack<string> enclosingNamespace)
-        {
-            if (name.Contains('.'))
-                return name;
-            if (!string.IsNullOrEmpty(enclosingNamespace.Peek()))
-                return $"{enclosingNamespace.Peek()}.{name}";
-            return name;
-        }
+        private static string QualifyName(string name, Stack<string> enclosingNamespace) =>
+            (name.Contains('.'), enclosingNamespace.Peek()) switch
+            {
+                (_, "") => name,
+                (false, string ns) => $"{ns}.{name}",
+                (true, _) => name
+            };
     }
 }

@@ -9,16 +9,6 @@ namespace Test.Avro.Protocols
     public class ProtocolParseExceptionTest
     {
         [TestCase(
-            @"""protocol"": ""TestProtocol""",
-            typeof(JsonReaderException),
-            TestName = "Protocol - Invalid JSON"
-        )]
-        [TestCase(
-            @"protocol",
-            typeof(AvroParseException),
-            TestName = "Protocol - Non JSON Object"
-        )]
-        [TestCase(
             @"{
                 ""protocol"": ""TestProtocol"",
                 ""namespace"": ""com.acme"",

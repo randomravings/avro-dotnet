@@ -23,14 +23,14 @@ namespace Test.Avro.Schema
     {
         public IEnumerator GetEnumerator()
         {
-            yield return new object[] { @"null", 7195948357588979594 };
-            yield return new object[] { @"boolean", -6970731678124411036 };
-            yield return new object[] { @"int", 8247732601305521295 };
-            yield return new object[] { @"long", -3434872931120570953 };
-            yield return new object[] { @"float", 5583340709985441680 };
-            yield return new object[] { @"double", -8181574048448539266 };
-            yield return new object[] { @"bytes", 5746618253357095269 };
-            yield return new object[] { @"string", -8142146995180207161 };
+            yield return new object[] { @"""null""", 7195948357588979594 };
+            yield return new object[] { @"""boolean""", -6970731678124411036 };
+            yield return new object[] { @"""int""", 8247732601305521295 };
+            yield return new object[] { @"""long""", -3434872931120570953 };
+            yield return new object[] { @"""float""", 5583340709985441680 };
+            yield return new object[] { @"""double""", -8181574048448539266 };
+            yield return new object[] { @"""bytes""", 5746618253357095269 };
+            yield return new object[] { @"""string""", -8142146995180207161 };
             yield return new object[] { @"[]", -1241056759729112623 };
             yield return new object[] { @"[""int""]", -5232228896498058493 };
             yield return new object[] { @"[""int"",""boolean""]", 5392556393470105090 };

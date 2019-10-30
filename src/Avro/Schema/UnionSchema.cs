@@ -9,13 +9,16 @@ namespace Avro.Schema
     {
         private readonly IList<AvroSchema> _schemas;
 
-        public UnionSchema(params AvroSchema[] additionalSchemas)
+        public UnionSchema(IEnumerable<AvroSchema> schemas)
         {
             _schemas = new List<AvroSchema>();
-            if (additionalSchemas != null)
-                foreach (var schema in additionalSchemas)
+            if (schemas != null)
+                foreach (var schema in schemas)
                     Add(schema);
         }
+
+        public UnionSchema(params AvroSchema[] schemas)
+            : this(schemas as IEnumerable<AvroSchema>) { }
 
         public int NullIndex => _schemas.IndexOf(new NullSchema());
 

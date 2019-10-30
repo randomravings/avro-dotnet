@@ -10,12 +10,6 @@ namespace Test.Avro.Schema
     {
         [TestCase(
             typeof(NullSchema),
-            @"null",
-            @"null",
-            TestName = "Null - Litteral"
-        )]
-        [TestCase(
-            typeof(NullSchema),
             @"""null""",
             @"null",
             TestName = "Null - String"
@@ -25,12 +19,6 @@ namespace Test.Avro.Schema
             @"{""type"": ""null""}",
             @"null",
             TestName = "Null - Object"
-        )]
-        [TestCase(
-            typeof(BooleanSchema),
-            @"boolean",
-            @"boolean",
-            TestName = "Boolean - Litteral"
         )]
         [TestCase(
             typeof(BooleanSchema),
@@ -46,12 +34,6 @@ namespace Test.Avro.Schema
         )]
         [TestCase(
             typeof(IntSchema),
-            @"int",
-            @"int",
-            TestName = "Int - Litteral"
-        )]
-        [TestCase(
-            typeof(IntSchema),
             @"""int""",
             @"int",
             TestName = "Int - String"
@@ -61,12 +43,6 @@ namespace Test.Avro.Schema
             @"{""type"": ""int""}",
             @"int",
             TestName = "Int - Object"
-        )]
-        [TestCase(
-            typeof(LongSchema),
-            @"long",
-            @"long",
-            TestName = "Long - Litteral"
         )]
         [TestCase(
             typeof(LongSchema),
@@ -82,12 +58,6 @@ namespace Test.Avro.Schema
         )]
         [TestCase(
             typeof(FloatSchema),
-            @"float",
-            @"float",
-            TestName = "Float - Litteral"
-        )]
-        [TestCase(
-            typeof(FloatSchema),
             @"""float""",
             @"float",
             TestName = "Float - String"
@@ -97,12 +67,6 @@ namespace Test.Avro.Schema
             @"{""type"": ""float""}",
             @"float",
             TestName = "Float - Object"
-        )]
-        [TestCase(
-            typeof(DoubleSchema),
-            @"double",
-            @"double",
-            TestName = "Double - Litteral"
         )]
         [TestCase(
             typeof(DoubleSchema),
@@ -118,12 +82,6 @@ namespace Test.Avro.Schema
         )]
         [TestCase(
             typeof(BytesSchema),
-            @"bytes",
-            @"bytes",
-            TestName = "Bytes - Litteral"
-        )]
-        [TestCase(
-            typeof(BytesSchema),
             @"""bytes""",
             @"bytes",
             TestName = "Bytes - String"
@@ -133,12 +91,6 @@ namespace Test.Avro.Schema
             @"{""type"": ""bytes""}",
             @"bytes",
             TestName = "Bytes - Object"
-        )]
-        [TestCase(
-            typeof(StringSchema),
-            @"string",
-            @"string",
-            TestName = "String - Litteral"
         )]
         [TestCase(
             typeof(StringSchema),

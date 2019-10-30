@@ -1,5 +1,4 @@
 using Avro;
-using Avro.Schema;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -10,22 +9,17 @@ namespace Test.Avro.Schema
     public class SchemaParseExceptionTest
     {
         [TestCase(
-            "1:abc",
+            @"""1:abc""",
             typeof(AvroParseException),
             TestName = "Invalid - JSON"
         )]
         [TestCase(
-            "1",
+            @"""RGWRG24353er""",
             typeof(AvroParseException),
-            TestName = "Number - Litteral"
+            TestName = "Random String"
         )]
         [TestCase(
-            null,
-            typeof(AvroParseException),
-            TestName = "Null - Litteral"
-        )]
-        [TestCase(
-            @"decimal",
+            @"""decimal""",
             typeof(AvroParseException),
             TestName = "Unknown Type - Litteral"
         )]
