@@ -1,5 +1,7 @@
 using Avro.Resolution;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Avro.IO
 {
@@ -21,6 +23,8 @@ namespace Avro.IO
         public AvroSchema ReaderSchema { get; private set; }
         public AvroSchema WriterSchema { get; private set; }
         public T Read(IAvroDecoder stream) => _reader.Invoke(stream);
+        public async Task<T> ReadAsync(IAvroDecoder stream, CancellationToken token = default) => await Task<T>.Factory.StartNew(() => _reader.Invoke(stream), token);
         public void Skip(IAvroDecoder stream) => _skipper.Invoke(stream);
+        public async Task SkipAsync(IAvroDecoder stream, CancellationToken token = default) => await Task.Factory.StartNew(() => _skipper.Invoke(stream), token);
     }
 }

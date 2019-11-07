@@ -104,11 +104,9 @@ namespace Test.Avro.Resolution
 
         public object? this[int i] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public RecordSchema Schema => AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TypeLookupError).Namespace}.{typeof(TypeLookupError).Name}"",""type"":""error"",""fields"":[]}}");
+        public ErrorSchema Schema => AvroParser.ReadSchema<ErrorSchema>(@$"{{""name"":""{typeof(TypeLookupError).Namespace}.{typeof(TypeLookupError).Name}"",""type"":""error"",""fields"":[]}}");
 
         public int FieldCount => throw new NotImplementedException();
-
-        public AvroException Exception => throw new NotImplementedException();
     }
 
     public class TypeLookupFixed : IAvroFixed

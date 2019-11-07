@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Xml;
+using System;
 
 namespace Avro.Code
 {
@@ -24,15 +25,15 @@ namespace Avro.Code
             _nsMap = nsMap;
         }
 
-        public IDictionary<string, string> Code => _code.ToDictionary(k => k.Key, v => CreateCompileUnit(v.Value).NormalizeWhitespace().ToFullString());
+        public IDictionary<string, string> Code => _code.ToDictionary(k => k.Key, v => SyntaxGenerator.CreateCompileUnit(v.Value).NormalizeWhitespace().ToFullString());
 
         public IEnumerable<string> Keys => _code.Keys;
 
-        public IEnumerable<string> Values => _code.Values.Select(r => CreateCompileUnit(r).NormalizeWhitespace().ToFullString());
+        public IEnumerable<string> Values => _code.Values.Select(r => SyntaxGenerator.CreateCompileUnit(r).NormalizeWhitespace().ToFullString());
 
         public int Count => _code.Count;
 
-        public string this[string key] => CreateCompileUnit(_code[key]).NormalizeWhitespace().ToFullString();
+        public string this[string key] => SyntaxGenerator.CreateCompileUnit(_code[key]).NormalizeWhitespace().ToFullString();
 
         public bool ContainsKey(string key) => _code.ContainsKey(key);
 
@@ -40,7 +41,7 @@ namespace Avro.Code
         {
             if (_code.TryGetValue(key, out var member))
             {
-                value = CreateCompileUnit(member).NormalizeWhitespace().ToFullString();
+                value = SyntaxGenerator.CreateCompileUnit(member).NormalizeWhitespace().ToFullString();
                 return true;
             }
             else
@@ -53,7 +54,7 @@ namespace Avro.Code
         public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
         {
             foreach (var kv in _code)
-                yield return new KeyValuePair<string, string>(kv.Key, CreateCompileUnit(kv.Value).NormalizeWhitespace().ToFullString());
+                yield return new KeyValuePair<string, string>(kv.Key, SyntaxGenerator.CreateCompileUnit(kv.Value).NormalizeWhitespace().ToFullString());
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -92,7 +93,7 @@ namespace Avro.Code
 
         public void WriteCode(TextWriter textWriter)
         {
-            var compileUnit = CreateCompileUnit(_code.Values);
+            var compileUnit = SyntaxGenerator.CreateCompileUnit(_code.Values);
             textWriter.Write(
                 compileUnit
                 .NormalizeWhitespace()
@@ -118,9 +119,9 @@ namespace Avro.Code
             {
                 FixedSchema s => CreateFixedCode(s, ns),
                 EnumSchema s => CreateEnumCode(s, ns),
-                ErrorSchema s => CreateRecordCode(s, ns, true),
-                RecordSchema s => CreateRecordCode(s, ns, false),
-                _ => throw new CodeGenException($"Unsupported Schema: '{schema.ToString()}'"),
+                ErrorSchema s => CreateErrorCode(s, ns),
+                RecordSchema s => CreateRecordCode(s, ns),
+                _ => throw new NotSupportedException($"Unsupported Schema: '{schema.ToString()}'"),
             };
         }
 
@@ -128,7 +129,7 @@ namespace Avro.Code
         {
             var avro = protocol.ToAvroCanonical();
             var classDeclaration =
-                CreateProtocolClass(
+                SyntaxGenerator.CreateProtocolClass(
                     protocol.Name,
                     avro,
                     protocol.Doc,
@@ -136,7 +137,7 @@ namespace Avro.Code
                 );
 
             return
-                QualifyMember(
+                SyntaxGenerator.QualifyMember(
                     classDeclaration,
                     protocol.Namespace
                 );
@@ -146,7 +147,7 @@ namespace Avro.Code
         {
             var avro = fixedSchema.ToAvroCanonical();
             var classDeclaration =
-                CreateFixedClass(
+                SyntaxGenerator.CreateFixedClass(
                     ns,
                     fixedSchema.Name,
                     avro,
@@ -155,7 +156,7 @@ namespace Avro.Code
                 );
 
             return
-                QualifyMember(
+                SyntaxGenerator.QualifyMember(
                     classDeclaration,
                     fixedSchema.Namespace
                 );
@@ -164,7 +165,7 @@ namespace Avro.Code
         private static MemberDeclarationSyntax CreateEnumCode(EnumSchema enumSchema, string ns)
         {
             var enumDeclaration =
-                CreateEnum(
+                SyntaxGenerator.CreateEnum(
                     ns,
                     enumSchema.Name,
                     enumSchema.Keys,
@@ -175,29 +176,18 @@ namespace Avro.Code
             return enumDeclaration;
         }
 
-        private static MemberDeclarationSyntax CreateRecordCode(RecordSchema recordSchema, string ns, bool isError)
+        private static MemberDeclarationSyntax CreateErrorCode(ErrorSchema recordSchema, string ns)
         {
             var avro = recordSchema.ToAvroCanonical();
-            var classDeclaration =
-                isError ?
-                CreateErrorClass(
-                    ns,
-                    recordSchema.Name,
-                    recordSchema.FullName,
-                    recordSchema.Count,
-                    avro,
-                    recordSchema.Doc,
-                    recordSchema.Aliases
-                ) :
-                CreateRecordClass(
-                    ns,
-                    recordSchema.Name,
-                    recordSchema.Count,
-                    avro,
-                    recordSchema.Doc,
-                    recordSchema.Aliases
-                )
-            ;
+            var classDeclaration = SyntaxGenerator.CreateErrorClass(
+                ns,
+                recordSchema.Name,
+                recordSchema.FullName,
+                recordSchema.Count,
+                avro,
+                recordSchema.Doc,
+                recordSchema.Aliases
+            );
 
             var index = 0;
             var memberDeclarationSyntaxes = new List<MemberDeclarationSyntax>();
@@ -206,23 +196,23 @@ namespace Avro.Code
             foreach (var fieldSchema in recordSchema)
             {
                 var propertyName = fieldSchema.Name;
-                var propertyType = GetSystemType(fieldSchema.Type);
+                var propertyType = SyntaxGenerator.GetSystemType(fieldSchema.Type);
 
                 memberDeclarationSyntaxes.Add(
-                    CreateClassProperty(
+                    SyntaxGenerator.CreateClassProperty(
                         fieldSchema
                     )
                 );
 
                 getSwitchSectionSyntaxes.Add(
-                    SwitchCaseGetProperty(
+                    SyntaxGenerator.SwitchCaseGetProperty(
                         index,
                         propertyName
                     )
                 );
 
                 setSwitchSectionSyntaxes.Add(
-                    SwitchCaseSetProperty(
+                    SyntaxGenerator.SwitchCaseSetProperty(
                         index,
                         propertyName,
                         propertyType
@@ -233,7 +223,7 @@ namespace Avro.Code
             }
 
             memberDeclarationSyntaxes.Add(
-                CreateRecordClassIndexer(
+                SyntaxGenerator.CreateRecordClassIndexer(
                     getSwitchSectionSyntaxes,
                     setSwitchSectionSyntaxes,
                     getSwitchSectionSyntaxes.Count() - 1
@@ -241,13 +231,79 @@ namespace Avro.Code
             );
 
             classDeclaration =
-                AddMembersToClass(
+                SyntaxGenerator.AddMembersToClass(
                     classDeclaration,
                     memberDeclarationSyntaxes.ToArray()
                 );
 
             return
-                QualifyMember(
+                SyntaxGenerator.QualifyMember(
+                    classDeclaration,
+                    recordSchema.Namespace
+                );
+        }
+
+        private static MemberDeclarationSyntax CreateRecordCode(RecordSchema recordSchema, string ns)
+        {
+            var avro = recordSchema.ToAvroCanonical();
+            var classDeclaration = SyntaxGenerator.CreateRecordClass(
+                ns,
+                recordSchema.Name,
+                recordSchema.Count,
+                avro,
+                recordSchema.Doc,
+                recordSchema.Aliases
+            );
+
+            var index = 0;
+            var memberDeclarationSyntaxes = new List<MemberDeclarationSyntax>();
+            var getSwitchSectionSyntaxes = new List<SwitchSectionSyntax>();
+            var setSwitchSectionSyntaxes = new List<SwitchSectionSyntax>();
+            foreach (var fieldSchema in recordSchema)
+            {
+                var propertyName = fieldSchema.Name;
+                var propertyType = SyntaxGenerator.GetSystemType(fieldSchema.Type);
+
+                memberDeclarationSyntaxes.Add(
+                    SyntaxGenerator.CreateClassProperty(
+                        fieldSchema
+                    )
+                );
+
+                getSwitchSectionSyntaxes.Add(
+                    SyntaxGenerator.SwitchCaseGetProperty(
+                        index,
+                        propertyName
+                    )
+                );
+
+                setSwitchSectionSyntaxes.Add(
+                    SyntaxGenerator.SwitchCaseSetProperty(
+                        index,
+                        propertyName,
+                        propertyType
+                    )
+                );
+
+                index++;
+            }
+
+            memberDeclarationSyntaxes.Add(
+                SyntaxGenerator.CreateRecordClassIndexer(
+                    getSwitchSectionSyntaxes,
+                    setSwitchSectionSyntaxes,
+                    getSwitchSectionSyntaxes.Count() - 1
+                )
+            );
+
+            classDeclaration =
+                SyntaxGenerator.AddMembersToClass(
+                    classDeclaration,
+                    memberDeclarationSyntaxes.ToArray()
+                );
+
+            return
+                SyntaxGenerator.QualifyMember(
                     classDeclaration,
                     recordSchema.Namespace
                 );
@@ -270,7 +326,7 @@ namespace Avro.Code
         public static Assembly Compile(string assemblyName, NamedSchema schema, out XmlDocument xmlDocumentation)
         {
             var code = GetCode(schema);
-            return Compile(assemblyName, code, out xmlDocumentation);
+            return SyntaxGenerator.Compile(assemblyName, code, out xmlDocumentation);
         }
 
         #endregion

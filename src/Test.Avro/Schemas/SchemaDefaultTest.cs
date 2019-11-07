@@ -46,10 +46,10 @@ namespace Test.Avro.Schema
                 yield return new object[] { new UnionSchema(new NullSchema(), new IntSchema()), @"null" };
                 yield return new object[] { new UnionSchema(new LongSchema(), new StringSchema()), @"87" };
                 yield return new object[] { new RecordSchema("X", string.Empty,
-                                                new RecordFieldSchema[]
+                                                new FieldSchema[]
                                                 {
-                                                    new RecordFieldSchema("f1", new IntSchema()),
-                                                    new RecordFieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
+                                                    new FieldSchema("f1", new IntSchema()),
+                                                    new FieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
                                                 }
                                             ),
                                             @"{ ""f1"": 123 }"
@@ -84,36 +84,36 @@ namespace Test.Avro.Schema
                 yield return new object[] { new UnionSchema(new NullSchema(), new IntSchema()), @"0" };
                 yield return new object[] { new UnionSchema(new LongSchema(), new StringSchema()), @"""87""" };
                 yield return new object[] { new RecordSchema("X", string.Empty,
-                                                new RecordFieldSchema[]
+                                                new FieldSchema[]
                                                 {
-                                                    new RecordFieldSchema("f1", new IntSchema()),
-                                                    new RecordFieldSchema("f2", new StringSchema())
+                                                    new FieldSchema("f1", new IntSchema()),
+                                                    new FieldSchema("f2", new StringSchema())
                                                 }
                                             ),
                                             @"{ ""f1"": 123 }"
                 };
                 yield return new object[] { new RecordSchema("X", string.Empty,
-                                                new RecordFieldSchema[]
+                                                new FieldSchema[]
                                                 {
-                                                    new RecordFieldSchema("f1", new IntSchema()),
-                                                    new RecordFieldSchema("f2", new StringSchema())
+                                                    new FieldSchema("f1", new IntSchema()),
+                                                    new FieldSchema("f2", new StringSchema())
                                                 }
                                             ),
                                             @"123"
                 };
                 yield return new object[] { new RecordSchema("X", string.Empty,
-                                                new RecordFieldSchema[]
+                                                new FieldSchema[]
                                                 {
-                                                    new RecordFieldSchema("f1", new IntSchema()),
-                                                    new RecordFieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
+                                                    new FieldSchema("f1", new IntSchema()),
+                                                    new FieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
                                                 }
                                             ),
                                             @"{ ""f1"": ""123"" }"
                 };
                 yield return new object[] { new RecordSchema("X", string.Empty,
-                                                new RecordFieldSchema[]
+                                                new FieldSchema[]
                                                 {
-                                                    new RecordFieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
+                                                    new FieldSchema("f2", new StringSchema()) { Default = @"""ABC""" }
                                                 }
                                             ),
                                             @"{ ""f3"": ""456"" }"

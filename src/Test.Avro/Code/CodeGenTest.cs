@@ -15,8 +15,8 @@ namespace Test.Avro.Code
         {
             string badCode = "public class RandomClass{ public MissingTypeProperty { get; set;} }";
             Assert.Throws(
-                typeof(CodeGenException),
-                () => CodeGen.Compile("RandomAssembly", badCode, out _)
+                typeof(CompileException),
+                () => SyntaxGenerator.Compile("RandomAssembly", badCode, out _)
             );
         }
 
@@ -37,11 +37,11 @@ namespace Test.Avro.Code
             codeGen.AddSchema(fixedSchema);
             Assert.AreEqual(2, codeGen.Count);
 
-            var recordSchema = new RecordSchema("TestRecord", "Test.Namespace", new RecordFieldSchema[] { new RecordFieldSchema("A", new IntSchema()) });
+            var recordSchema = new RecordSchema("TestRecord", "Test.Namespace", new FieldSchema[] { new FieldSchema("A", new IntSchema()) });
             codeGen.AddSchema(recordSchema);
             Assert.AreEqual(3, codeGen.Count);
 
-            var errorSchema = new RecordSchema("TestError", "Test.Namespace", new RecordFieldSchema[] { new RecordFieldSchema("B", enumSchema) });
+            var errorSchema = new RecordSchema("TestError", "Test.Namespace", new FieldSchema[] { new FieldSchema("B", enumSchema) });
             codeGen.AddSchema(errorSchema);
             Assert.AreEqual(4, codeGen.Count);
 
@@ -55,7 +55,7 @@ namespace Test.Avro.Code
         {
             var codeGen = new CodeGen(new Dictionary<string, string>());
 
-            var recordSchema = new RecordSchema("TestRecord", string.Empty, new RecordFieldSchema[] { new RecordFieldSchema("A", new IntSchema()) });
+            var recordSchema = new RecordSchema("TestRecord", string.Empty, new FieldSchema[] { new FieldSchema("A", new IntSchema()) });
             var protocol = new AvroProtocol("TestProtocol", "Test.Namespace");
             protocol.AddType(recordSchema);
 
@@ -99,7 +99,7 @@ namespace Test.Avro.Code
         [Test, TestCaseSource(typeof(SchemaSource))]
         public void TestGetSystemType(AvroSchema schema, string expectedTypeString)
         {
-            var actualTypeString = CodeGen.GetSystemType(schema);
+            var actualTypeString = SyntaxGenerator.GetSystemType(schema);
             Assert.AreEqual(expectedTypeString, actualTypeString);
         }
 

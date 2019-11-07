@@ -20,11 +20,11 @@ namespace Test.Avro.Code
             var schema02 = new FixedSchema("TestFixed", "NS.Stuff", 14);
             var schema03 = new RecordSchema(
                 "TestRecord",
-                "NS.Stuff", new RecordFieldSchema[]
+                "NS.Stuff", new FieldSchema[]
                 {
-                    new RecordFieldSchema("FieldA", new IntSchema()),
-                    new RecordFieldSchema("FieldB", schema01),
-                    new RecordFieldSchema("FieldC", schema02),
+                    new FieldSchema("FieldA", new IntSchema()),
+                    new FieldSchema("FieldB", schema01),
+                    new FieldSchema("FieldC", schema02),
                 }
             );
 

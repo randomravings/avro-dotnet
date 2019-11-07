@@ -1,95 +1,87 @@
 ﻿using Avro.Container;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
+using System.IO.Abstractions;
+using System.Text;
 
 namespace Avro.IO
 {
     public class FileWriter<T> : IAvroFileWriter<T>
     {
-        private const long MAX_CHUNK_SIZE = 1073741824;
-
+        private readonly object _guard = new object();
+        private readonly IFileInfo _file;
         private readonly Header _header;
         private readonly IAvroWriter<T> _writer;
         private readonly long _maxBlockCount;
-        private readonly MemoryStream _serializeStream;
-        private readonly IAvroEncoder _encoder;
-        private readonly FileStream _fileStream;
+        private readonly Stream _stream;
 
         private long _count = 0;
+        private WriteBlock<T> _block;
 
-        public FileWriter(Header header, IAvroWriter<T> writer, long maxBlockCount = 1000)
+        public FileWriter(IFileInfo file, AvroSchema schema, Codec codec = Codec.Null, long maxBlockCount = 1024)
         {
-            if (header.Schema.ToAvroCanonical() != writer.WriterSchema.ToAvroCanonical())
-                throw new ArgumentException("Incompatible DatumWriter");
-
-            _header = header;
-            _writer = writer;
+            _file = file;
+            _header = new Header(schema, codec);
+            _stream = _file.Open(FileMode.CreateNew, FileAccess.Write, FileShare.Read);
             _maxBlockCount = maxBlockCount;
-            _serializeStream = new MemoryStream(1024 * 1024);
-            _encoder = new BinaryEncoder(_serializeStream);
+            _writer = new DatumWriter<T>(schema);
+            _block = new WriteBlock<T>(_writer, codec);
 
-            _fileStream = _header.FileInfo.Open(FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            Header.WriteToStream(_stream, _header);
+        }
 
-            using (var encoding = new BinaryEncoder(_fileStream))
-            {
-                encoding.WriteFixed(_header.Magic);
-                encoding.WriteMap(_header.Metadata, (s, v) => s.WriteBytes(v));
-                encoding.WriteFixed(_header.Sync);
-            }
-            _fileStream.Flush();
+        public void Write(WriteBlock<T> item)
+        {
+            lock (_guard)
+                WriteBlock(_stream, item, _header.Sync);
         }
 
         public void Write(T item)
         {
-            _writer.Write(_encoder, item);
-            _count++;
-            if (_count >= _maxBlockCount || _serializeStream.Position > MAX_CHUNK_SIZE)
-                WriteBlock();
+            lock (_guard)
+            {
+                _block.Write(item);
+                if (++_count >= _maxBlockCount)
+                {
+                    Flush();
+                    _count = 0;
+                }
+            }
         }
 
-        private void WriteBlock()
+        public void Flush()
         {
-            _serializeStream.Flush();
-            var data = Compress(_serializeStream.GetBuffer(), (int)_serializeStream.Position, _header.Codec);
-            using (var encoding = new BinaryEncoder(_fileStream))
+            lock (_guard)
             {
-                encoding.WriteLong(_count);
-                encoding.WriteLong(data.Length);
-                _fileStream.Write(data);
-                encoding.WriteFixed(_header.Sync);
+                WriteBlock(_stream, _block, _header.Sync);
+                _block = new WriteBlock<T>(_writer, _header.Codec);
             }
-            _count = 0;
-            _serializeStream.Seek(0, SeekOrigin.Begin);
         }
 
-        private static ReadOnlySpan<byte> Compress(byte[] data, int count, Codec? codec)
+        public void Close()
         {
-            switch (codec)
-            {
-                case null:
-                case Codec.Null:
-                    return data.AsSpan(0, count);
-                case Codec.Deflate:
-                    var deflatedResult = new MemoryStream();
-                    using (var deflater = new DeflateStream(deflatedResult, CompressionMode.Compress, true))
-                    {
-                        deflater.Write(data, 0, count);
-                        deflater.Flush();
-                    }
-                    return deflatedResult.GetBuffer().AsSpan(0, (int)deflatedResult.Position);
-                default:
-                    throw new NotSupportedException($"Codec: '{codec}' is not supported");
-
-            }
+            lock (_guard)
+                _stream.Close();
         }
 
         public void Dispose()
         {
-            _fileStream.Flush();
-            _fileStream.Close();
-            _encoder.Dispose();
-            _serializeStream.Dispose();
+            lock (_guard)
+                _stream.Dispose();
+        }
+
+        private static void WriteBlock(Stream stream, WriteBlock<T> block, Sync sync)
+        {
+            if (block.Count == 0)
+                return;
+            block.Flush();
+            using var encoder = new BinaryEncoder(stream, true);
+            encoder.WriteLong(block.Count);
+            encoder.WriteLong(block.Size);
+            stream.Write(block.Data, 0, (int)block.Size);
+            encoder.WriteFixed(sync);
+            stream.Flush();
         }
     }
 }

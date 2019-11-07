@@ -202,6 +202,8 @@ namespace Avro.IO
             WriteLong(0L);
         }
 
+        public void WriteArray<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T> => WriteArray<T>(items, itemsWriter);
+
         public void WriteArrayStart() { }
 
         public void WriteArrayBlock<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter)
@@ -217,6 +219,8 @@ namespace Avro.IO
             localEncoder._stream.Seek(0, SeekOrigin.Begin);
             localEncoder._stream.CopyTo(_stream);
         }
+
+        public void WriteArrayBlock<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T> => WriteArray<T>(items, itemsWriter);
 
         public void WriteArrayEnd()
         {
@@ -239,6 +243,8 @@ namespace Avro.IO
             WriteLong(0);
         }
 
+        public void WriteMap<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T> => WriteMap<T>(keyValues, valuesWriter);
+
         public void WriteMapEnd()
         {
             WriteLong(0L);
@@ -260,6 +266,8 @@ namespace Avro.IO
             localEncoder._stream.Seek(0, SeekOrigin.Begin);
             localEncoder._stream.CopyTo(_stream);
         }
+
+        public void WriteMapBlock<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T> => WriteMapBlock<T>(keyValues, valuesWriter);
 
         public void WriteNull(AvroNull value) { }
 

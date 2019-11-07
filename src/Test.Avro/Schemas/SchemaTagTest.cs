@@ -8,7 +8,7 @@ using System.Linq;
 namespace Test.Avro.Schema
 {
     [TestFixture(TypeArgs = new Type[] { typeof(IntSchema) })]
-    [TestFixture(TypeArgs = new Type[] { typeof(RecordFieldSchema) })]
+    [TestFixture(TypeArgs = new Type[] { typeof(FieldSchema) })]
 
     public class SchemaTagTest<T> where T : AvroSchema, new()
     {

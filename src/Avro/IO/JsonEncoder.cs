@@ -17,9 +17,7 @@ namespace Avro.IO
         private readonly TextWriter _stream;
         private readonly JsonTextWriter _writer;
 
-        private bool _disposed = false;
-
-        private List<EncodeDelegate> _actions;
+        private readonly List<EncodeDelegate> _actions;
         private int _index = 0;
         private readonly Stack<int> _loops = new Stack<int>();
         private readonly Stack<int> _skips = new Stack<int>();
@@ -249,6 +247,8 @@ namespace Avro.IO
             _actions[Increment()].Invoke(_writer, 0, () => _writer.WriteEndArray());
         }
 
+        public void WriteArray<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T> => WriteArray<T>(items, itemsWriter);
+
         public void WriteArrayStart()
         {
             var skip = _actions[Increment()].Invoke(_writer, 0, () => _writer.WriteStartArray());
@@ -264,6 +264,8 @@ namespace Avro.IO
                 itemsWriter.Invoke(this, item);
             }
         }
+
+        public void WriteArrayBlock<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T> => WriteArrayBlock<T>(items, itemsWriter);
 
         public void WriteArrayEnd()
         {
@@ -390,6 +392,8 @@ namespace Avro.IO
             _actions[Increment()].Invoke(_writer, 0, () => _writer.WriteEndObject());
         }
 
+        public void WriteMap<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T> => WriteMap<T>(keyValues, valuesWriter);
+
         public void WriteMapStart()
         {
             var skip = _actions[Increment()].Invoke(_writer, 0, () => _writer.WriteStartObject());
@@ -406,6 +410,8 @@ namespace Avro.IO
                 valuesWriter.Invoke(this, keyValue.Value);
             }
         }
+
+        public void WriteMapBlock<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T> => WriteMapBlock<T>(keyValues, valuesWriter);
 
         public void WriteMapEnd()
         {
@@ -614,6 +620,7 @@ namespace Avro.IO
 
         public void Dispose()
         {
+            ((IDisposable)_writer).Dispose();
             if (!_leaveOpen && _stream != null)
                 _stream.Dispose();
         }

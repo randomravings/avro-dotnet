@@ -5,25 +5,25 @@ using System.Collections.Generic;
 
 namespace Avro.Schema
 {
-    public class RecordFieldSchema : AvroSchema, IEquatable<RecordFieldSchema>
+    public sealed class FieldSchema : AvroSchema, IEquatable<FieldSchema>
     {
         private string _name = string.Empty;
         private IList<string> _aliases = new List<string>();
         private JToken _default = JsonUtil.EmptyDefault;
 
-        public RecordFieldSchema()
+        public FieldSchema()
             : base()
         {
             Aliases = new List<string>();
         }
 
-        public RecordFieldSchema(string name)
+        public FieldSchema(string name)
             : base()
         {
             Name = name;
         }
 
-        public RecordFieldSchema(string name, AvroSchema type)
+        public FieldSchema(string name, AvroSchema type)
             : base()
         {
             Name = name;
@@ -39,9 +39,9 @@ namespace Avro.Schema
         public string Doc { get; set; } = string.Empty;
         public IList<string> Aliases { get { return _aliases; } set { NameValidator.ValidateNames(value); _aliases = value; } }
 
-        public bool Equals(RecordFieldSchema other) => string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
+        public bool Equals(FieldSchema other) => string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
 
-        public override bool Equals(object obj) => Equals((RecordFieldSchema)obj);
+        public override bool Equals(object obj) => Equals((FieldSchema)obj);
         public override int GetHashCode() => base.GetHashCode();
     }
 }

@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 
 namespace Avro.Schema
 {
-    public class ErrorSchema : RecordSchema
+    public sealed class ErrorSchema : FieldsSchema, IEquatable<ErrorSchema>
     {
         public ErrorSchema()
             : base() { }
@@ -13,10 +14,12 @@ namespace Avro.Schema
         public ErrorSchema(string name, string ns)
             : base(name, ns) { }
 
-        public ErrorSchema(string name, IEnumerable<RecordFieldSchema> fields)
+        public ErrorSchema(string name, IEnumerable<FieldSchema> fields)
             : base(name, fields) { }
 
-        public ErrorSchema(string name, string ns, IEnumerable<RecordFieldSchema> fields)
+        public ErrorSchema(string name, string ns, IEnumerable<FieldSchema> fields)
             : base(name, ns, fields) { }
+
+        public bool Equals(ErrorSchema other) => base.Equals(other);
     }
 }

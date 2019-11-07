@@ -7,8 +7,10 @@ namespace Avro.IO
     public interface IAvroEncoder : IDisposable
     {
         void WriteArray<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter);
+        void WriteArray<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T>;
         void WriteArrayStart();
         void WriteArrayBlock<T>(IList<T> items, Action<IAvroEncoder, T> itemsWriter);
+        void WriteArrayBlock<A, T>(A items, Action<IAvroEncoder, T> itemsWriter) where A : notnull, IList<T>;
         void WriteArrayEnd();
         void WriteBoolean(bool value);
         void WriteBytes(byte[] value);
@@ -25,8 +27,10 @@ namespace Avro.IO
         void WriteInt(int value);
         void WriteLong(long value);
         void WriteMap<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter);
+        void WriteMap<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T>;
         void WriteMapStart();
         void WriteMapBlock<T>(IDictionary<string, T> keyValues, Action<IAvroEncoder, T> valuesWriter);
+        void WriteMapBlock<M, T>(M keyValues, Action<IAvroEncoder, T> valuesWriter) where M : notnull, IDictionary<string, T>;
         void WriteMapEnd();
         void WriteNull(AvroNull value);
         void WriteNullableObject<T>(T? value, Action<IAvroEncoder, T> valueWriter, long nullIndex) where T : class;

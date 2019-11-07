@@ -22,7 +22,7 @@ namespace Test.Avro.Code
             var schema = new ClassBuilderTestSchema() { Name = "X" };
 
             Assert.Throws(
-                typeof(CodeGenException),
+                typeof(NotSupportedException),
                 () => CodeGen.Compile(Guid.NewGuid().ToString(), schema, out _)
             );
         }
@@ -91,7 +91,7 @@ namespace Test.Avro.Code
             var type = assembly.ExportedTypes.FirstOrDefault(r => r.Name == expectedName);
             Assert.NotNull(type);
             Assert.IsTrue(type.IsClass);
-            Assert.IsTrue(typeof(IAvroRecord).IsAssignableFrom(type));
+            Assert.IsTrue(typeof(IAvroError).IsAssignableFrom(type));
             Assert.AreEqual(expectedNamespace, type.Namespace);
 
             var doc = GetSummaryText(xmlDocument, type.FullName ?? string.Empty, string.Empty);
@@ -191,8 +191,8 @@ namespace Test.Avro.Code
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new IntSchema()) { Doc = "Field Doc" } }, "Field1", "Field Doc", new string[0] };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field2", new StringSchema()) { Aliases = new string[] { "OldField" } } }, "Field2", string.Empty, new string[] { "OldField" } };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new IntSchema()) { Doc = "Field Doc" } }, "Field1", "Field Doc", new string[0] };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field2", new StringSchema()) { Aliases = new string[] { "OldField" } } }, "Field2", string.Empty, new string[] { "OldField" } };
             }
         }
 
@@ -200,43 +200,43 @@ namespace Test.Avro.Code
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new NullSchema()) { Default = JValue.CreateNull() } }, "Field1", null, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new BooleanSchema()) { Default = true } }, "Field1", true, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new IntSchema()) { Default = 123 } }, "Field1", 123, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new LongSchema()) { Default = 987654321L } }, "Field1", 987654321L, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new FloatSchema()) { Default = 98765.4321F } }, "Field1", 98765.4321F, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new DoubleSchema()) { Default = 98765.4321D } }, "Field1", 98765.4321D, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new BytesSchema()) { Default = @"\u0000\u0001\u0010\u00AB\u00FF" } }, "Field1", new byte[] { 0x00, 0x01, 0x10, 0xAB, 0xFF }, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new StringSchema()) { Default = @"""Hello World!""" } }, "Field1", "Hello World!", null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new ArraySchema(new IntSchema())) { Default = JToken.Parse("[1, 2, 4]") } }, "Field1", new List<int>() { 1, 2, 4 }, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new MapSchema(new IntSchema())) { Default = JToken.Parse(@"{""key1"":1, ""key2"":2, ""key3"":4}") } }, "Field1", new Dictionary<string, int>() { { "key1", 1 }, { "key2", 2 }, { "key3", 4 } }, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new UuidSchema()) { Default = @"""61FEDC68-47CA-4727-BDFF-685A4E3EC846""" } }, "Field1", new Guid("61FEDC68-47CA-4727-BDFF-685A4E3EC846"), null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new UnionSchema(new NullSchema(), new IntSchema())) { Default = JValue.CreateNull() } }, "Field1", null, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new FixedSchema("Y", string.Empty, 3)) { Default = @"\u0001\u0002\u0003" } }, "Field1", new byte[] { 0x01, 0x02, 0x03 }, null };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new EnumSchema("Y", string.Empty, new string[] { "A", "B", "C" })) { Default = @"""B""" } }, "Field1", 1, new Func<object, object, bool>((a, b) => ((int)a) == ((int)b)) };
-                yield return new object?[] { new RecordSchema("X") { new RecordFieldSchema("Field1", new LogicalSchema(new IntSchema(), "ls")) { Default = 42 } }, "Field1", 42, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new NullSchema()) { Default = JValue.CreateNull() } }, "Field1", null, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new BooleanSchema()) { Default = true } }, "Field1", true, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new IntSchema()) { Default = 123 } }, "Field1", 123, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new LongSchema()) { Default = 987654321L } }, "Field1", 987654321L, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new FloatSchema()) { Default = 98765.4321F } }, "Field1", 98765.4321F, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new DoubleSchema()) { Default = 98765.4321D } }, "Field1", 98765.4321D, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new BytesSchema()) { Default = @"\u0000\u0001\u0010\u00AB\u00FF" } }, "Field1", new byte[] { 0x00, 0x01, 0x10, 0xAB, 0xFF }, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new StringSchema()) { Default = @"""Hello World!""" } }, "Field1", "Hello World!", null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new ArraySchema(new IntSchema())) { Default = JToken.Parse("[1, 2, 4]") } }, "Field1", new List<int>() { 1, 2, 4 }, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new MapSchema(new IntSchema())) { Default = JToken.Parse(@"{""key1"":1, ""key2"":2, ""key3"":4}") } }, "Field1", new Dictionary<string, int>() { { "key1", 1 }, { "key2", 2 }, { "key3", 4 } }, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new UuidSchema()) { Default = @"""61FEDC68-47CA-4727-BDFF-685A4E3EC846""" } }, "Field1", new Guid("61FEDC68-47CA-4727-BDFF-685A4E3EC846"), null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new UnionSchema(new NullSchema(), new IntSchema())) { Default = JValue.CreateNull() } }, "Field1", null, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new FixedSchema("Y", string.Empty, 3)) { Default = @"\u0001\u0002\u0003" } }, "Field1", new byte[] { 0x01, 0x02, 0x03 }, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new EnumSchema("Y", string.Empty, new string[] { "A", "B", "C" })) { Default = @"""B""" } }, "Field1", 1, new Func<object, object, bool>((a, b) => ((int)a) == ((int)b)) };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new LogicalSchema(new IntSchema(), "ls")) { Default = 42 } }, "Field1", 42, null };
                 yield return new object?[] { new RecordSchema("X") {
-                        new RecordFieldSchema(
+                        new FieldSchema(
                             "Field1",
                             new RecordSchema(
                                 "Y",
                                 string.Empty,
-                                new RecordFieldSchema[] {
-                                    new RecordFieldSchema(
+                                new FieldSchema[] {
+                                    new FieldSchema(
                                         "f1",
                                         new IntSchema()
                                     ),
-                                    new RecordFieldSchema(
+                                    new FieldSchema(
                                         "f2",
                                         new RecordSchema(
                                             "Z",
                                             string.Empty,
-                                            new RecordFieldSchema[] {
-                                                new RecordFieldSchema(
+                                            new FieldSchema[] {
+                                                new FieldSchema(
                                                     "f3",
                                                     new StringSchema()
                                                 ),
-                                                new RecordFieldSchema(
+                                                new FieldSchema(
                                                     "f4",
                                                     new FloatSchema()
                                                 )

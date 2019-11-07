@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AvroGen", "AvroGen\AvroGen.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avro.Ipc", "Avro.Ipc\Avro.Ipc.csproj", "{FC0D5B8D-5BF3-4688-B8E2-35D4BD49FD4E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DebugConsole", "DebugConsole\DebugConsole.csproj", "{95F7DF77-7E33-4F7C-802D-4F9B43FA24F7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DebugConsole", "DebugConsole\DebugConsole.csproj", "{95F7DF77-7E33-4F7C-802D-4F9B43FA24F7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.Avro", "Test.Avro\Test.Avro.csproj", "{BC0CB5DD-1585-4675-87C4-97C3E0212F45}"
 EndProject

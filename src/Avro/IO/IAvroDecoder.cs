@@ -7,7 +7,11 @@ namespace Avro.IO
     public interface IAvroDecoder : IDisposable
     {
         IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader);
-        bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array);
+        IList<T> ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader);
+        bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, ref IList<T> array);
+        A ReadArray<A, T>(Func<IAvroDecoder, T> itemsReader) where A : notnull, IList<T>, new();
+        A ReadArrayBlock<A, T>(Func<IAvroDecoder, T> itemsReader) where A : notnull, IList<T>, new();
+        bool ReadArrayBlock<A, T>(Func<IAvroDecoder, T> itemsReader, ref A array) where A : notnull, IList<T>;
         bool ReadBoolean();
         byte[] ReadBytes();
         DateTime ReadDate();
@@ -24,7 +28,11 @@ namespace Avro.IO
         int ReadInt();
         long ReadLong();
         IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader);
-        bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map);
+        IDictionary<string, T> ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader);
+        bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, ref IDictionary<string, T> map);
+        M ReadMap<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new();
+        M ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new();
+        bool ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader, ref M map) where M : notnull, IDictionary<string, T>;
         AvroNull ReadNull();
         T? ReadNullableObject<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : class;
         T? ReadNullableValue<T>(Func<IAvroDecoder, T> reader, long nullIndex) where T : struct;

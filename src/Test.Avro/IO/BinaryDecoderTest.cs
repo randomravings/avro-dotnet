@@ -283,13 +283,13 @@ namespace Test.Avro.IO
             using var decoder = new BinaryDecoder(stream);
 
             var decode = new List<IList<int>>();
-            var read = true;
-            do
+            var loop = true;
+            while (loop)
             {
-                read = decoder.ReadArrayBlock(s => s.ReadInt(), out var block);
+                var block = new List<int>();
+                loop = decoder.ReadArrayBlock(s => s.ReadInt(), ref block);
                 decode.Add(block);
             }
-            while (read);
             Assert.AreEqual(expectedLength, stream.Position, "Decode offset error");
             Assert.AreEqual(expectedValue, decode);
 
@@ -320,13 +320,13 @@ namespace Test.Avro.IO
             using var decoder = new BinaryDecoder(stream);
 
             var decode = new List<IDictionary<string, int>>();
-            var read = true;
-            do
+            var loop = true;
+            while (loop)
             {
-                read = decoder.ReadMapBlock(s => s.ReadInt(), out var block);
+                var block = new Dictionary<string, int>();
+                loop = decoder.ReadMapBlock(s => s.ReadInt(), ref block);
                 decode.Add(block);
             }
-            while (read);
             Assert.AreEqual(expectedLength, stream.Position, "Decode offset error");
             Assert.AreEqual(expectedValue, decode);
 
@@ -610,7 +610,7 @@ namespace Test.Avro.IO
             }
         }
 
-        class ArrayBlockData : IEnumerable
+        public class ArrayBlockData : IEnumerable
         {
             public IEnumerator GetEnumerator()
             {

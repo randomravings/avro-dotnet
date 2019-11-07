@@ -65,7 +65,7 @@ namespace Test.Avro.Schema
             public SchemaSource()
             {
                 _recordSchemaRecurse.Add(
-                    new RecordFieldSchema()
+                    new FieldSchema()
                     {
                         Name = "Recurse",
                         Type = _recordSchemaRecurse
@@ -201,14 +201,14 @@ namespace Test.Avro.Schema
                     new RecordSchema(
                         "TestRecord",
                         "Test.Namespace",
-                        new List<RecordFieldSchema>()
+                        new List<FieldSchema>()
                         {
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema()
                             },
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldB",
                                 Type = new ArraySchema(new DoubleSchema())
@@ -224,9 +224,9 @@ namespace Test.Avro.Schema
                     new RecordSchema(
                         "TestRecord",
                         "Test.Namespace",
-                        new List<RecordFieldSchema>()
+                        new List<FieldSchema>()
                         {
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema(),
@@ -235,7 +235,7 @@ namespace Test.Avro.Schema
                                 Aliases = new List<string>{ "X" },
                                 Order = "ascending"
                             },
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldB",
                                 Type = new ArraySchema(new DoubleSchema())
@@ -262,14 +262,14 @@ namespace Test.Avro.Schema
                     new ErrorSchema(
                         "TestError",
                         "Test.Namespace",
-                        new List<RecordFieldSchema>()
+                        new List<FieldSchema>()
                         {
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema()
                             },
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldB",
                                 Type = new ArraySchema(new DoubleSchema())
@@ -285,9 +285,9 @@ namespace Test.Avro.Schema
                     new ErrorSchema(
                         "TestError",
                         "Test.Namespace",
-                        new List<RecordFieldSchema>()
+                        new List<FieldSchema>()
                         {
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldA",
                                 Type = new StringSchema(),
@@ -296,7 +296,7 @@ namespace Test.Avro.Schema
                                 Aliases = new List<string>{ "X" },
                                 Order = "ascending"
                             },
-                            new RecordFieldSchema()
+                            new FieldSchema()
                             {
                                 Name = "FieldB",
                                 Type = new ArraySchema(new DoubleSchema())

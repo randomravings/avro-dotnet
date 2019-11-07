@@ -11,11 +11,12 @@ namespace Avro.Ipc
 {
     public class GenericClient : Session
     {
+        private readonly IClient _client;
         private GenericRequestor _protocol;
-        public GenericClient(AvroProtocol protocol, ITranceiver tranceiver)
-            : base(protocol, tranceiver)
+        public GenericClient(AvroProtocol protocol, IClient client)
+            : base(protocol)
         {
-            RemoteProtocol = protocol;
+            _client = client;
             _protocol = new GenericRequestor(Protocol, RemoteProtocol);
         }
 
@@ -44,12 +45,12 @@ namespace Avro.Ipc
 
             META_WRITER.Write(encoder, EMPTY_META);
             encoder.WriteString(rpcContext.MessageName);
-            if(rpcContext.RequestParameters != null)
+            if(rpcContext.RequestParameters != GenericRecord.Empty)
                 _protocol.WriteRequest(encoder, rpcContext.MessageName, rpcContext.RequestParameters);
             encoder.WriteBytes(END_OF_FRAME);
             requestData.Seek(0, SeekOrigin.Begin);
 
-            using var responseData = await _tranceiver.RequestAsync(rpcContext.MessageName, requestData, token);
+            using var responseData = await _client.RequestAsync(rpcContext.MessageName, requestData, token);
             using var decode = new BinaryDecoder(responseData);
 
             responseData.Seek(0, SeekOrigin.Begin);
@@ -75,11 +76,9 @@ namespace Avro.Ipc
             rpcContext.Metadata = META_READER.Read(decode);
             rpcContext.IsError = decode.ReadBoolean();
             if (rpcContext.IsError)
-                rpcContext.Error = _protocol.ReadError<object>(decode, rpcContext.MessageName);
+                rpcContext.Error = _protocol.ReadError(decode, rpcContext.MessageName);
             else
-                rpcContext.Response = _protocol.ReadResponse<object>(decode, rpcContext.MessageName);
-
-
+                rpcContext.Response = _protocol.ReadResponse(decode, rpcContext.MessageName);
             return rpcContext;
         }
 

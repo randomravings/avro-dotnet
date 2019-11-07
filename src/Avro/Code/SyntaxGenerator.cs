@@ -19,9 +19,9 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Avro.Code
 {
-    public partial class CodeGen
+    public partial class SyntaxGenerator
     {
-        internal static MemberDeclarationSyntax CreateEnum(string ns, string name, IEnumerable<string> symbols, string doc, IEnumerable<string> aliases)
+        public static MemberDeclarationSyntax CreateEnum(string ns, string name, IEnumerable<string> symbols, string doc, IEnumerable<string> aliases)
         {
             var enumSymbols =
                 symbols.Select(
@@ -83,7 +83,7 @@ namespace Avro.Code
             return QualifyMember(enumDeclaration, ns);
         }
 
-        internal static ClassDeclarationSyntax CreateRecordClass(string ns, string name, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
+        public static ClassDeclarationSyntax CreateRecordClass(string ns, string name, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
@@ -133,7 +133,7 @@ namespace Avro.Code
                         .WithVariables(
                             SingletonSeparatedList(
                                 VariableDeclarator(
-                                    Identifier("_SCHEMA")
+                                    Identifier("SCHEMA")
                                 )
                                 .WithInitializer(
                                     EqualsValueClause(
@@ -190,7 +190,7 @@ namespace Avro.Code
                     )
                     .WithExpressionBody(
                         ArrowExpressionClause(
-                            IdentifierName("_SCHEMA")
+                            IdentifierName("SCHEMA")
                         )
                     )
                     .WithSemicolonToken(
@@ -230,7 +230,7 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateErrorClass(string ns, string name, string errorMessage, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
+        public static ClassDeclarationSyntax CreateErrorClass(string ns, string name, string errorMessage, int fieldCount, string avro, string doc, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
@@ -280,7 +280,7 @@ namespace Avro.Code
                         .WithVariables(
                             SingletonSeparatedList(
                                 VariableDeclarator(
-                                    Identifier("_SCHEMA")
+                                    Identifier("SCHEMA")
                                 )
                                 .WithInitializer(
                                     EqualsValueClause(
@@ -326,87 +326,8 @@ namespace Avro.Code
                             }
                         )
                     ),
-                    ConstructorDeclaration(
-                        Identifier(name)
-                    )
-                    .WithModifiers(
-                        TokenList(
-                            Token(SyntaxKind.PublicKeyword)
-                        )
-                    )
-                    .WithParameterList(
-                        ParameterList(
-                            SingletonSeparatedList(
-                                Parameter(
-                                    Identifier("errorMessage")
-                                )
-                                .WithType(
-                                    PredefinedType(
-                                        Token(SyntaxKind.StringKeyword)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                    .WithBody(
-                        Block(
-                            SingletonList<StatementSyntax>(
-                                ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(nameof(IAvroError.Exception)),
-                                        ObjectCreationExpression(
-                                            IdentifierName(nameof(AvroException))
-                                        )
-                                        .WithArgumentList(
-                                            ArgumentList(
-                                                SingletonSeparatedList(
-                                                    Argument(
-                                                        IdentifierName("errorMessage")
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    ),
-                    ConstructorDeclaration(
-                        Identifier(name)
-                    )
-                    .WithModifiers(
-                        TokenList(
-                            Token(SyntaxKind.PublicKeyword)
-                        )
-                    )
-                    .WithParameterList(
-                        ParameterList(
-                            SingletonSeparatedList(
-                                Parameter(
-                                    Identifier("exception")
-                                )
-                                .WithType(
-                                    IdentifierName(nameof(AvroException))
-                                )
-                            )
-                        )
-                    )
-                    .WithBody(
-                        Block(
-                            SingletonList<StatementSyntax>(
-                                ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(nameof(IAvroError.Exception)),
-                                        IdentifierName("exception")
-                                    )
-                                )
-                            )
-                        )
-                    ),
                     PropertyDeclaration(
-                        IdentifierName(nameof(RecordSchema)),
+                        IdentifierName(nameof(ErrorSchema)),
                         Identifier("Schema")
                     )
                     .WithModifiers(
@@ -416,40 +337,11 @@ namespace Avro.Code
                     )
                     .WithExpressionBody(
                         ArrowExpressionClause(
-                            IdentifierName("_SCHEMA")
+                            IdentifierName("SCHEMA")
                         )
                     )
                     .WithSemicolonToken(
                         Token(SyntaxKind.SemicolonToken)
-                    ),
-                    PropertyDeclaration(
-                        IdentifierName(nameof(AvroException)),
-                        Identifier(nameof(IAvroError.Exception))
-                    )
-                    .AddModifiers(
-                        Token(SyntaxKind.PublicKeyword)
-                    )
-                    .WithAccessorList(
-                        AccessorList()
-                            .AddAccessors(
-                                AccessorDeclaration(
-                                    SyntaxKind.GetAccessorDeclaration
-                                )
-                                .WithSemicolonToken(
-                                    Token(SyntaxKind.SemicolonToken)
-                                ),
-                                AccessorDeclaration(
-                                    SyntaxKind.SetAccessorDeclaration
-                                )
-                                .WithModifiers(
-                                    TokenList(
-                                        Token(SyntaxKind.PrivateKeyword)
-                                    )
-                                )
-                                .WithSemicolonToken(
-                                    Token(SyntaxKind.SemicolonToken)
-                                )
-                            )
                     ),
                     PropertyDeclaration(
                         PredefinedType(
@@ -485,7 +377,7 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateFixedClass(string ns, string name, string avro, int size, IEnumerable<string> aliases)
+        public static ClassDeclarationSyntax CreateFixedClass(string ns, string name, string avro, int size, IEnumerable<string> aliases)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
@@ -537,7 +429,7 @@ namespace Avro.Code
                                 .WithVariables(
                                     SingletonSeparatedList(
                                         VariableDeclarator(
-                                            Identifier("_SCHEMA")
+                                            Identifier("SCHEMA")
                                         )
                                         .WithInitializer(
                                             EqualsValueClause(
@@ -783,7 +675,7 @@ namespace Avro.Code
                             )
                             .WithExpressionBody(
                                 ArrowExpressionClause(
-                                    IdentifierName("_SCHEMA")
+                                    IdentifierName("SCHEMA")
                                 )
                             )
                             .WithSemicolonToken(
@@ -1217,7 +1109,7 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static ClassDeclarationSyntax CreateProtocolClass(string name, string avro, string doc, IEnumerable<MessageSchema> messages)
+        public static ClassDeclarationSyntax CreateProtocolClass(string name, string avro, string doc, IEnumerable<MessageSchema> messages)
         {
             var classDeclarationSyntax =
                 ClassDeclaration(name)
@@ -1240,7 +1132,7 @@ namespace Avro.Code
                                 .WithVariables(
                                     SingletonSeparatedList(
                                         VariableDeclarator(
-                                            Identifier("_SCHEMA")
+                                            Identifier("SCHEMA")
                                         )
                                         .WithInitializer(
                                             EqualsValueClause(
@@ -1287,7 +1179,7 @@ namespace Avro.Code
             return classDeclarationSyntax;
         }
 
-        internal static PropertyDeclarationSyntax CreateClassProperty(RecordFieldSchema field)
+        public static PropertyDeclarationSyntax CreateClassProperty(FieldSchema field)
         {
             var systemType = GetSystemType(field.Type);
             var propertyDeclaration =
@@ -1366,7 +1258,7 @@ namespace Avro.Code
         }
 
 
-        internal static ClassDeclarationSyntax AddMembersToClass(ClassDeclarationSyntax classDeclarationSyntax, params MemberDeclarationSyntax[] memberDeclarationSyntax)
+        public static ClassDeclarationSyntax AddMembersToClass(ClassDeclarationSyntax classDeclarationSyntax, params MemberDeclarationSyntax[] memberDeclarationSyntax)
         {
             return classDeclarationSyntax
                 .AddMembers(
@@ -1375,7 +1267,7 @@ namespace Avro.Code
             ;
         }
 
-        internal static MemberDeclarationSyntax CreateRecordClassIndexer(IEnumerable<SwitchSectionSyntax> getSwitchSectionSyntaxes, IEnumerable<SwitchSectionSyntax> switchSectionSyntaxes, int maxRange)
+        public static MemberDeclarationSyntax CreateRecordClassIndexer(IEnumerable<SwitchSectionSyntax> getSwitchSectionSyntaxes, IEnumerable<SwitchSectionSyntax> switchSectionSyntaxes, int maxRange)
         {
             return
                 IndexerDeclaration(
@@ -1455,7 +1347,7 @@ namespace Avro.Code
                 ;
         }
 
-        internal static SwitchSectionSyntax SwitchCaseGetProperty(int caseLabel, string propertyName)
+        public static SwitchSectionSyntax SwitchCaseGetProperty(int caseLabel, string propertyName)
         {
             return
                 SwitchSection()
@@ -1479,7 +1371,7 @@ namespace Avro.Code
             ;
         }
 
-        internal static SwitchSectionSyntax SwitchCaseSetProperty(int caseLabel, string propertyName, string propertyType)
+        public static SwitchSectionSyntax SwitchCaseSetProperty(int caseLabel, string propertyName, string propertyType)
         {
             return
                 SwitchSection()
@@ -1546,7 +1438,7 @@ namespace Avro.Code
             ;
         }
 
-        internal static MemberDeclarationSyntax QualifyMember(MemberDeclarationSyntax memberDeclarationSyntax, string ns)
+        public static MemberDeclarationSyntax QualifyMember(MemberDeclarationSyntax memberDeclarationSyntax, string ns)
         {
             if (!string.IsNullOrEmpty(ns))
                 return NamespaceDeclaration(ParseName(ns))
@@ -1894,7 +1786,7 @@ namespace Avro.Code
             ;
         }
 
-        internal static CompilationUnitSyntax CreateCompileUnit(MemberDeclarationSyntax memberDeclarationSyntax)
+        public static CompilationUnitSyntax CreateCompileUnit(MemberDeclarationSyntax memberDeclarationSyntax)
         {
             return
                 CompilationUnit()
@@ -1929,7 +1821,7 @@ namespace Avro.Code
                 );
         }
 
-        internal static CompilationUnitSyntax CreateCompileUnit(IEnumerable<MemberDeclarationSyntax> memberDeclarationSyntaxes)
+        public static CompilationUnitSyntax CreateCompileUnit(IEnumerable<MemberDeclarationSyntax> memberDeclarationSyntaxes)
         {
             return
                 CompilationUnit()
@@ -2007,7 +1899,7 @@ namespace Avro.Code
                 var errorNumber = firstError.Id;
                 var errorDescription = firstError.GetMessage();
                 var firstErrorMessage = $"{errorNumber}: {errorDescription};";
-                throw new CodeGenException($"Compilation failed, first error is: {firstErrorMessage}");
+                throw new CompileException($"Compilation failed, first error is: {firstErrorMessage}");
             }
 
             ds.Seek(0, SeekOrigin.Begin);

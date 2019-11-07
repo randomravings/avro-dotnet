@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Test.Avro.Ipc\Test.Avro.Ipc.csproj" />
     <ProjectReference Include="..\Test.Avro\Test.Avro.csproj" />
   </ItemGroup>
 

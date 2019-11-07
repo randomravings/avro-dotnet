@@ -3,75 +3,58 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
+using System.IO.Abstractions;
 using System.Linq;
+using System.Threading;
 
 namespace Avro.IO
 {
     public class FileReader<T> : IAvroFileReader<T>
     {
-        private readonly Header _fileHeader;
+        private readonly IFileInfo _file;
+        private readonly Header _header;
+        private readonly long _offset;
+        private readonly Stream _stream;
         private readonly IAvroReader<T> _reader;
 
-        public FileReader(Header header, IAvroReader<T> reader)
+        public FileReader(IFileInfo file, AvroSchema schema)
         {
-            if (header.Schema.ToAvroCanonical() != reader.WriterSchema.ToAvroCanonical())
-                throw new ArgumentException("Incompatible DatumReader");
-            _fileHeader = header;
-            _reader = reader;
+            _file = file;
+            _stream = _file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+            _header = Header.FromStream(_stream);
+            _offset = _stream.Position;
+            _reader = new DatumReader<T>(schema, _header.Schema);
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public void Dispose()
         {
-            using (var stream = _fileHeader.FileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+            _stream.Dispose();
+        }
+
+        public async IAsyncEnumerator<ReadBlock<T>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            _stream.Seek(_offset, SeekOrigin.Begin);
+            while (_stream.Position < _stream.Length)
             {
-                stream.Seek(_fileHeader.FileHeaderSize, SeekOrigin.Begin);
-                while (stream.Position < stream.Length)
-                {
-                    var blockCount = 0L;
-                    var blockSize = 0L;
-                    var blockData = default(byte[]);
-                    var blockSync = new byte[16];
-                    using (var decoder = new BinaryDecoder(stream))
-                    {
-                        blockCount = decoder.ReadLong();
-                        blockSize = decoder.ReadLong();
-                    }
-                    blockData = new byte[blockSize];
-                    stream.Read(blockData.AsSpan());
-                    stream.Read(blockSync.AsSpan());
-
-                    if (!blockSync.SequenceEqual(_fileHeader.Sync))
-                        throw new Exception("Sync marker mismach");
-
-                    using (var memoryStream = CreateDataStream(blockData))
-                    using (var decoder = new BinaryDecoder(memoryStream))
-                        for (var i = 0L; i < blockCount; i++)
-                            yield return _reader.Read(decoder);
-                }
+                var block = new ReadBlock<T>(_reader, _stream, _header.Codec);
+                if (!block.Sync.SequenceEqual(_header.Sync))
+                    throw new Exception("Sync marker mismach");
+                yield return block;
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        public IEnumerator<ReadBlock<T>> GetEnumerator()
         {
-            return GetEnumerator();
-        }
-
-        private Stream CreateDataStream(byte[] bytes)
-        {
-            switch (_fileHeader.Codec)
+            _stream.Seek(_offset, SeekOrigin.Begin);
+            while (_stream.Position < _stream.Length)
             {
-                case null:
-                case Codec.Null:
-                    return new MemoryStream(bytes);
-                case Codec.Deflate:
-                    return new DeflateStream(new MemoryStream(bytes), CompressionMode.Decompress, true);
-                default:
-                    throw new NotSupportedException($"Codec: '{_fileHeader.Codec}' is not supported");
-
+                var block = new ReadBlock<T>(_reader, _stream, _header.Codec);
+                if (!block.Sync.SequenceEqual(_header.Sync))
+                    throw new Exception("Sync marker mismach");
+                yield return block;
             }
         }
 
-        public void Dispose() { }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

@@ -5,38 +5,30 @@ namespace Avro.Types
 {
     public abstract class AvroUnion : IEquatable<AvroUnion>
     {
-        protected byte _index = 0;
+        protected int _index = 0;
         protected Type _type = typeof(AvroNull);
         protected object _value = AvroNull.Value;
 
         public Type Type => _type;
         public long Index => _index;
         public object Value => _value;
-
         public override string ToString() => _value.ToString();
-
         public override bool Equals(object obj) => _value.Equals(obj);
-
         public bool Equals(AvroUnion other) => EqualityComparer<object>.Default.Equals(Value, other.Value);
-
         public override int GetHashCode() => HashCode.Combine(Value);
-
         protected T Get<T>(int index)
         {
             if (_index != index)
                 throw new InvalidCastException($"Union is instance of '{_type.FullName}'");
             return (T)_value;
         }
-
         protected void Set<T>(byte index, T value) where T : notnull
         {
             _index = index;
             _type = typeof(T);
             _value = value;
         }
-
         public static bool operator ==(AvroUnion left, AvroUnion right) => EqualityComparer<AvroUnion>.Default.Equals(left, right);
-
         public static bool operator !=(AvroUnion left, AvroUnion right) => !(left == right);
     }
 

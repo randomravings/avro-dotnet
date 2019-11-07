@@ -614,7 +614,7 @@ namespace Avro
             }
         }
 
-        private static void WriteFields(TextWriter writer, IEnumerable<RecordFieldSchema> fields, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
+        private static void WriteFields(TextWriter writer, IEnumerable<FieldSchema> fields, WriterMode mode, string parentNamespace, ISet<string> namedSchemas, bool stripNs)
         {
             var i = 0;
             foreach (var field in fields)

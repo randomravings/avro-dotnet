@@ -49,14 +49,14 @@ namespace Test.Avro.Schema
                 yield return new Func<AvroSchema>(() => new RecordSchema());
                 yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema"));
                 yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", "TestNamespace"));
-                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", new List<RecordFieldSchema>() { new RecordFieldSchema("X", new IntSchema()) }));
-                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", "TestNamespace", new List<RecordFieldSchema>() { new RecordFieldSchema("TestField") }));
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", new List<FieldSchema>() { new FieldSchema("X", new IntSchema()) }));
+                yield return new Func<AvroSchema>(() => new RecordSchema("TestRecordSchema", "TestNamespace", new List<FieldSchema>() { new FieldSchema("TestField") }));
 
                 yield return new Func<AvroSchema>(() => new ErrorSchema());
                 yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema"));
                 yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace"));
-                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", new List<RecordFieldSchema>()));
-                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace", new List<RecordFieldSchema>() { new RecordFieldSchema("TestField") }));
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", new List<FieldSchema>()));
+                yield return new Func<AvroSchema>(() => new ErrorSchema("TestErrorSchema", "TestNamespace", new List<FieldSchema>() { new FieldSchema("TestField") }));
             }
         }
 

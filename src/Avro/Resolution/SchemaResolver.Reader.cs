@@ -30,20 +30,33 @@ namespace Avro.Resolution
 
             var stream = Expression.Parameter(typeof(IAvroDecoder));
             var value = Expression.Parameter(type);
+
+            if (typeof(AvroUnion).IsAssignableFrom(type) && !(targetSchema is UnionSchema))
+            {
+                value = Expression.Parameter(
+                    type.GetMethods()
+                    .Where(r => r.Name == "op_Implicit" && r.ReturnType.Equals(GetTypeFromSchema(targetSchema, assemblies)))
+                    .Select(r => r.ReturnType)
+                    .FirstOrDefault()
+                );                
+            }
+
             (var read, var skip) = ResolveDecoder(assemblies, targetSchema, sourceSchema, stream, value);
             if (read == null)
-                throw new AvroException($"Unable to resolve reader: '{targetSchema}' using writer: '{sourceSchema}' for type: '{type}'");
+                throw new AvroException($"Unable to resolve target schema: '{targetSchema}' from source schema: '{sourceSchema}'");
 
-            return (
-                Expression.Lambda<Func<IAvroDecoder, T>>(
-                    read.CanReduce ? read.Reduce() : read,
-                    stream
-                ).Compile(),
-                Expression.Lambda<Action<IAvroDecoder>>(
-                    skip,
-                    stream
-                ).Compile()
-             );
+            read = Expression.Convert(read, type);
+            return
+                (
+                    Expression.Lambda<Func<IAvroDecoder, T>>(
+                        read.Reduce(),
+                        stream
+                    ).Compile(),
+                    Expression.Lambda<Action<IAvroDecoder>>(
+                        skip.Reduce(),
+                        stream
+                    ).Compile()
+                 );
         }
 
         private static (Expression, Expression) ResolveDecoder(Assembly[] assemblies, AvroSchema targetSchema, AvroSchema sourceSchema, ParameterExpression stream, ParameterExpression value) =>
@@ -86,9 +99,12 @@ namespace Avro.Resolution
                 (EnumSchema t, EnumSchema s) => CreateEnumDecoder(stream, value, t, s),
                 (FixedSchema t, FixedSchema s) => CreateFixedDecoder(stream, value, t, s),
                 (RecordSchema t, RecordSchema s) => CreateRecordDecoder(stream, value, assemblies, t, s),
+                (ErrorSchema t, ErrorSchema s) => CreateErrorDecoder(stream, value, assemblies, t, s),
                 (UnionSchema t, AvroSchema s) => CreateUnionFromAnyDecoder(stream, value, assemblies, t, s),
                 (AvroSchema t, UnionSchema s) => CreateAnyFromUnionDecoder(stream, value, assemblies, t, s),
-                (_, _) => default,
+                (LogicalSchema t, AvroSchema s) => ResolveDecoder(assemblies, t.Type, s, stream, value),
+                (AvroSchema t, LogicalSchema s) => ResolveDecoder(assemblies, t, s.Type, stream, value),
+                _ => default
             };
 
         private static (Expression, Expression) CreateNullDecoder(ParameterExpression stream, ParameterExpression value) =>
@@ -411,57 +427,105 @@ namespace Avro.Resolution
             };
 
         private static (Expression, Expression) CreateArrayDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ArraySchema targetSchema, ArraySchema sourceSchema) =>
-            ResolveDecoder(assemblies, targetSchema.Items, sourceSchema.Items, stream, Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            GetListInterfaceDefinition(value.Type) switch
             {
-                (Expression read, Expression skip) =>
-                (
-                    Expression.Call(
-                        stream,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadArray)).MakeGenericMethod(value.Type.GetGenericArguments().Last()),
-                        Expression.Lambda(
-                            typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), value.Type.GetGenericArguments().Last()),
-                            read,
-                            stream
+                (bool isInterface, Type i, Type t) => ResolveDecoder(assemblies, targetSchema.Items, sourceSchema.Items, stream, Expression.Parameter(t)) switch
+                {
+                    (Expression read, Expression skip) =>
+                    (
+                        Expression.Call(
+                            stream,
+                            isInterface switch
+                            {
+                                true =>
+                                    typeof(IAvroDecoder).GetMethods()
+                                    .First(r =>
+                                        r.Name == nameof(IAvroDecoder.ReadArray) &&
+                                        r.ContainsGenericParameters &&
+                                        r.GetGenericArguments().Count() == 1
+                                    )
+                                    .MakeGenericMethod(t),
+                                false =>
+                                    typeof(IAvroDecoder).GetMethods()
+                                    .First(r =>
+                                        r.Name == nameof(IAvroDecoder.ReadArray) &&
+                                        r.ContainsGenericParameters &&
+                                        r.GetGenericArguments().Count() == 2 &&
+                                        r.GetParameters().Count() == 1 &&
+                                        r.ReturnType.Equals(r.GetGenericArguments()[0]) &&
+                                        r.GetParameters()[0].ParameterType.Equals(typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), r.GetGenericArguments()[1]))
+                                    )
+                                    .MakeGenericMethod(value.Type, t)
+                            },
+                            Expression.Lambda(
+                                typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), t),
+                                read,
+                                stream
+                            )
+                        ),
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipArray)),
+                            Expression.Lambda(
+                                typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
+                                skip,
+                                stream
+                            )
                         )
                     ),
-                    Expression.Call(
-                        stream,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipArray)),
-                        Expression.Lambda(
-                            typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
-                            skip,
-                            stream
-                        )
-                    )
-                ),
-                _ => default
+                    _ => default
+                }
             };
 
         private static (Expression, Expression) CreateMapDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, MapSchema targetSchema, MapSchema sourceSchema) =>
-            ResolveDecoder(assemblies, targetSchema.Values, sourceSchema.Values, stream, Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            GetDictionaryInterfaceDefinition(value.Type) switch
             {
-                (Expression read, Expression skip) =>
-                (
-                    Expression.Call(
-                        stream,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadMap)).MakeGenericMethod(value.Type.GetGenericArguments().Last()),
-                        Expression.Lambda(
-                            typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), value.Type.GetGenericArguments().Last()),
-                            read,
-                            stream
+                (bool isInterface, Type i, Type t) => ResolveDecoder(assemblies, targetSchema.Values, sourceSchema.Values, stream, Expression.Parameter(t)) switch
+                {
+                    (Expression read, Expression skip) =>
+                    (
+                        Expression.Call(
+                            stream,
+                            isInterface switch
+                            {
+                                true =>
+                                    typeof(IAvroDecoder).GetMethods()
+                                    .First(r =>
+                                        r.Name == nameof(IAvroDecoder.ReadMap) &&
+                                        r.ContainsGenericParameters &&
+                                        r.GetGenericArguments().Count() == 1
+                                    )
+                                    .MakeGenericMethod(t),
+                                false =>
+                                    typeof(IAvroDecoder).GetMethods()
+                                    .First(r =>
+                                        r.Name == nameof(IAvroDecoder.ReadMap) &&
+                                        r.ContainsGenericParameters &&
+                                        r.GetGenericArguments().Count() == 2 &&
+                                        r.GetParameters().Count() == 1 &&
+                                        r.ReturnType.Equals(r.GetGenericArguments()[0]) &&
+                                        r.GetParameters()[0].ParameterType.Equals(typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), r.GetGenericArguments()[1]))
+                                    )
+                                    .MakeGenericMethod(value.Type, t)                                
+                            },
+                            Expression.Lambda(
+                                typeof(Func<,>).MakeGenericType(typeof(IAvroDecoder), t),
+                                read,
+                                stream
+                            )
+                        ),
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipMap)),
+                            Expression.Lambda(
+                                typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
+                                skip,
+                                stream
+                            )
                         )
                     ),
-                    Expression.Call(
-                        stream,
-                        typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.SkipMap)),
-                        Expression.Lambda(
-                            typeof(Action<>).MakeGenericType(typeof(IAvroDecoder)),
-                            skip,
-                            stream
-                        )
-                    )
-                ),
-                _ => default
+                    _ => default
+                }
             };
 
         private static (Expression, Expression) CreateEnumDecoder(ParameterExpression stream, ParameterExpression value, EnumSchema targetSchema, EnumSchema sourceSchema) =>
@@ -494,12 +558,12 @@ namespace Avro.Resolution
                             stream,
                             typeof(IAvroDecoder)
                             .GetMethods()
-                            .First(
-                                r => r.Name == nameof(IAvroDecoder.ReadEnum) &&
-                                     r.GetGenericArguments().Length == 1 &&
-                                     r.GetGenericArguments()[0]
-                                        .GetGenericParameterConstraints()
-                                        .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
+                            .First(r =>
+                                r.Name == nameof(IAvroDecoder.ReadEnum) &&
+                                r.GetGenericArguments().Length == 1 &&
+                                r.GetGenericArguments()[0]
+                                    .GetGenericParameterConstraints()
+                                    .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
                             ).MakeGenericMethod(value.Type)
                         ),
                         Expression.Call(
@@ -525,12 +589,12 @@ namespace Avro.Resolution
                                 stream,
                                 typeof(IAvroDecoder)
                                 .GetMethods()
-                                .First(
-                                    r => r.Name == nameof(IAvroDecoder.ReadEnum) &&
-                                         r.GetGenericArguments().Length == 1 &&
-                                         r.GetGenericArguments()[0]
-                                            .GetGenericParameterConstraints()
-                                            .Any(c => c.Equals(typeof(IAvroEnum)))
+                                .First(r =>
+                                    r.Name == nameof(IAvroDecoder.ReadEnum) &&
+                                    r.GetGenericArguments().Length == 1 &&
+                                    r.GetGenericArguments()[0]
+                                        .GetGenericParameterConstraints()
+                                        .Any(c => c.Equals(typeof(IAvroEnum)))
                                 ).MakeGenericMethod(value.Type),
                                 value
                             )
@@ -641,12 +705,12 @@ namespace Avro.Resolution
                             stream,
                             typeof(IAvroDecoder)
                             .GetMethods()
-                            .First(
-                                r => r.Name == nameof(IAvroDecoder.ReadFixed) &&
-                                     r.GetGenericArguments().Length == 1 &&
-                                     r.GetGenericArguments()[0]
-                                        .GetGenericParameterConstraints()
-                                        .Any(c => c.Equals(typeof(IAvroFixed)))
+                            .First(r =>
+                                r.Name == nameof(IAvroDecoder.ReadFixed) &&
+                                r.GetGenericArguments().Length == 1 &&
+                                r.GetGenericArguments()[0]
+                                    .GetGenericParameterConstraints()
+                                    .Any(c => c.Equals(typeof(IAvroFixed)))
                             ).MakeGenericMethod(t),
                             value
                         ),
@@ -688,12 +752,42 @@ namespace Avro.Resolution
                     ),
             };
 
-        private static IEnumerable<RecordFieldSchema> GetRecordUnmappedFields(RecordSchema targetSchema, RecordSchema sourceSchema) =>
+        private static IEnumerable<FieldSchema> GetRecordUnmappedFields(FieldsSchema targetSchema, FieldsSchema sourceSchema) =>
             targetSchema.Where(f => !sourceSchema.Any(w => w.Name == f.Name)) switch
             {
                 var x when x.Count(f => f.Default.Equals(JsonUtil.EmptyDefault)) > 0 =>
                     throw new AvroException($"Unmapped field without default: '{string.Join(", ", x.Select(f => f.Name))}'"),
                 var x => x
+            };
+
+        private static Expression GetErrorInitializer(ParameterExpression value, ErrorSchema targetSchema) =>
+            value switch
+            {
+                var x when x.Type.Equals(typeof(GenericError)) =>
+                    Expression.Assign(
+                        value,
+                        Expression.New(
+                            typeof(GenericError).GetConstructor(
+                                new Type[] {
+                                    typeof(GenericError),
+                                    typeof(bool)
+                                }
+                            ),
+                            Expression.Constant(
+                                new GenericError(targetSchema),
+                                typeof(GenericError)
+                            ),
+                            Expression.Constant(
+                                false,
+                                typeof(bool)
+                            )
+                        )
+                    ),
+                _ =>
+                    Expression.Assign(
+                        value,
+                        Expression.New(value.Type)
+                    )
             };
 
         private static Expression GetRecordInitializer(ParameterExpression value, RecordSchema targetSchema) =>
@@ -726,7 +820,7 @@ namespace Avro.Resolution
                     )
             };
 
-        private static IEnumerable<(Expression, Expression)> GetRecordFieldExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema) =>
+        private static IEnumerable<(Expression, Expression)> GetFieldExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, FieldsSchema targetSchema, FieldsSchema sourceSchema) =>
             sourceSchema.Select(
                 r => targetSchema.IndexOf(r.Name) switch
                 {
@@ -738,7 +832,7 @@ namespace Avro.Resolution
                     {
                         (var read, var skip) => value.Type switch
                         {
-                            var t when typeof(GenericRecord).IsAssignableFrom(t) =>
+                            var t when t.Equals(typeof(GenericRecord)) || t.Equals(typeof(GenericError)) =>
                                 (
                                     Expression.Assign(
                                         Expression.MakeIndex(
@@ -769,8 +863,26 @@ namespace Avro.Resolution
                 }
             );
 
-        private static (Expression, Expression) GetRecordExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema, IEnumerable<RecordFieldSchema> defaults) =>
-            GetRecordFieldExpressions(stream, value, assemblies, targetSchema, sourceSchema) switch
+        private static (Expression, Expression) GetErrorExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ErrorSchema targetSchema, ErrorSchema sourceSchema, IEnumerable<FieldSchema> unmappedFields) =>
+            GetFieldExpressions(stream, value, assemblies, targetSchema, sourceSchema) switch
+            {
+                var x =>
+                (
+                    Expression.Block(
+                        value.Type,
+                        new ParameterExpression[] { value },
+                        x.Select(r => r.Item1)
+                        .Prepend(GetErrorInitializer(value, targetSchema))
+                        .Append(value)
+                    ),
+                    Expression.Block(
+                        x.Select(r => r.Item2)
+                    )
+                )
+            };
+
+        private static (Expression, Expression) GetRecordExpressions(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema, IEnumerable<FieldSchema> unmappedFields) =>
+            GetFieldExpressions(stream, value, assemblies, targetSchema, sourceSchema) switch
             {
                 var x =>
                 (
@@ -785,6 +897,13 @@ namespace Avro.Resolution
                         x.Select(r => r.Item2)
                     )
                 )
+            };
+
+        private static (Expression, Expression) CreateErrorDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ErrorSchema targetSchema, ErrorSchema sourceSchema) =>
+            targetSchema.Equals(sourceSchema) switch
+            {
+                true => GetErrorExpressions(stream, value, assemblies, targetSchema, sourceSchema, GetRecordUnmappedFields(targetSchema, sourceSchema)),
+                _ => throw new ArgumentException("Error Source and Target Schema mismatch")
             };
 
         private static (Expression, Expression) CreateRecordDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema targetSchema, RecordSchema sourceSchema) =>
@@ -1016,117 +1135,78 @@ namespace Avro.Resolution
                 }
             };
 
-        private static (Expression, Expression) CreateAnyFromUnionDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema readSchema, IEnumerable<AvroSchema> writeSchemas)
-        {
-            var unionToNonUnionReadCases = new SwitchCase[writeSchemas.Count()];
-            var unionToNonUnionSkipCases = new SwitchCase[writeSchemas.Count()];
-            var unionToNonUnionTypeIndex =
-                Expression.Variable(
-                    typeof(long),
-                    "unionTypeIndex"
-                );
-
-            for (int i = 0; i < writeSchemas.Count(); i++)
+        private static (Expression, Expression) CreateAnyFromUnionDecoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema targetSchema, UnionSchema sourceSchema) =>
+            sourceSchema.Select((r, i) => GetAnyFromUnionDecodeSwitchCase(stream, value, assemblies, targetSchema, r, i)) switch
             {
-                (var read, var skip) = ResolveDecoder(assemblies, readSchema, writeSchemas.ElementAt(i), stream, value);
-                if (read != null)
-                {
-                    unionToNonUnionReadCases[i] =
-                        Expression.SwitchCase(
-                            Expression.Assign(
-                                value,
-                                Expression.Convert(
-                                    read,
-                                    value.Type
-                                )
+                var s when s.Where(r => r.Item1 == default).Count() > 0 =>
+                (
+                    Expression.Block(
+                        new[] { value },
+                        Expression.Switch(
+                            typeof(void),
+                            Expression.Call(
+                                stream,
+                                typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
                             ),
-                            Expression.Constant(
-                                (long)i,
-                                typeof(long)
-                            )
-                        );
-                }
-                else
-                {
-                    unionToNonUnionReadCases[i] =
-                        Expression.SwitchCase(
                             Expression.Throw(
                                 Expression.Constant(
-                                    new InvalidCastException()
+                                    new IndexOutOfRangeException()
                                 )
                             ),
-                            Expression.Constant(
-                                (long)i,
-                                typeof(long)
-                            )
-                        );
-                    var skipParameter = Expression.Variable(GetTypeFromSchema(writeSchemas.ElementAt(i), assemblies));
-                    (read, skip) = ResolveDecoder(assemblies, writeSchemas.ElementAt(i), writeSchemas.ElementAt(i), stream, skipParameter);
-                }
+                            default,
+                            s.Where(r => r.Item1 != default)
+                            .Select(r => r.Item1)
+                            .ToArray()
+                        ),
+                        value
+                    ),
+                    Expression.Switch(
+                        Expression.Call(
+                            stream,
+                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
+                        ),
+                        s.Select(r => r.Item2)
+                        .ToArray()
+                    )
+                ),
+                _ => throw new Exception()
+            };
 
-                unionToNonUnionSkipCases[i] =
+        private static (SwitchCase, SwitchCase) GetAnyFromUnionDecodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema targetSchema, AvroSchema sourceSchema, long index) =>
+            ResolveDecoder(assemblies, targetSchema, sourceSchema, stream, value) switch
+            {
+                (Expression read, Expression skip) =>
+                (
+                    Expression.SwitchCase(
+                        Expression.Assign(
+                            value,
+                            read
+                        ),
+                        Expression.Constant(
+                            index
+                        )
+                    ),
                     Expression.SwitchCase(
                         skip,
                         Expression.Constant(
-                            (long)i,
-                            typeof(long)
+                            index
                         )
-                    );
-            }
-
-            return (
-                Expression.Block(
-                    value.Type,
-                    new List<ParameterExpression>()
-                    {
-                        unionToNonUnionTypeIndex,
-                        value
-                    },
-                    Expression.Assign(
-                        unionToNonUnionTypeIndex,
-                        Expression.Call(
-                            stream,
-                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                        )
-                    ),
-                    Expression.Switch(
-                        typeof(void),
-                        unionToNonUnionTypeIndex,
-                        Expression.Throw(
-                            Expression.Constant(
-                                new IndexOutOfRangeException()
-                            )
-                        ),
-                        null,
-                        unionToNonUnionReadCases
-                    ),
-                    value
-                ),
-                Expression.Block(
-                    new List<ParameterExpression>()
-                    {
-                                unionToNonUnionTypeIndex
-                    },
-                    Expression.Assign(
-                        unionToNonUnionTypeIndex,
-                        Expression.Call(
-                            stream,
-                            typeof(IAvroDecoder).GetMethod(nameof(IAvroDecoder.ReadLong))
-                        )
-                    ),
-                    Expression.Switch(
-                        typeof(void),
-                        unionToNonUnionTypeIndex,
-                        Expression.Throw(
-                            Expression.Constant(
-                                new IndexOutOfRangeException()
-                            )
-                        ),
-                        null,
-                        unionToNonUnionSkipCases
                     )
-                )
-            );
-        }
+                ),
+                _ => ResolveDecoder(assemblies, sourceSchema, sourceSchema, stream, value) switch
+                {
+                    (_, Expression skip) =>
+                    (
+                        default,
+                        Expression.SwitchCase(
+                            skip,
+                            Expression.Constant(
+                                index
+                            )
+                        )
+                    ),
+                    _ => default
+                }
+            };
     }
 }

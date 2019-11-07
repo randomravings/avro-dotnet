@@ -11,8 +11,8 @@ namespace Test.Avro.Perf
     [AvroNamedType("Test.Avro.Perf", "TestRecord")]
     public class TestRecord : IAvroRecord
     {
-        public static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>("{\"name\":\"Test.Avro.Perf.TestRecord\",\"type\":\"record\",\"fields\":[{\"name\":\"Bool\",\"type\":\"boolean\"},{\"name\":\"Int32\",\"type\":\"int\"},{\"name\":\"Int64\",\"type\":\"long\"},{\"name\":\"Single\",\"type\":\"float\"},{\"name\":\"Double\",\"type\":\"double\"},{\"name\":\"String\",\"type\":\"string\"}]}");
-        public RecordSchema Schema => _SCHEMA;
+        public static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>("{\"name\":\"Test.Avro.Perf.TestRecord\",\"type\":\"record\",\"fields\":[{\"name\":\"Bool\",\"type\":\"boolean\"},{\"name\":\"Int32\",\"type\":\"int\"},{\"name\":\"Int64\",\"type\":\"long\"},{\"name\":\"Single\",\"type\":\"float\"},{\"name\":\"Double\",\"type\":\"double\"},{\"name\":\"String\",\"type\":\"string\"}]}");
+        public RecordSchema Schema => SCHEMA;
         public int FieldCount => 6;
         /// <summary></summary>
         [AvroField("Bool")]

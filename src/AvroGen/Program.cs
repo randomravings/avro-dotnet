@@ -16,20 +16,6 @@ namespace Avro
 
         static int Main(string[] args)
         {
-            var foo = typeof(IO.IAvroDecoder).GetMethods().Where(r => r.Name == "ReadEnum");
-            var bar = foo.SelectMany(r => r.GetGenericArguments()).Select(g => g.GetGenericParameterConstraints());
-
-
-            var x = typeof(IO.IAvroDecoder)
-                            .GetMethods()
-                            .First(
-                                r => r.Name == nameof(IO.IAvroDecoder.ReadEnum) &&
-                                     r.GetGenericArguments().Length == 1 &&
-                                     r.GetGenericArguments()[0]
-                                        .GetGenericParameterConstraints()
-                                        .SequenceEqual(new[] { typeof(Enum), typeof(ValueType) })
-                            );
-
             return Parser.Default.ParseArguments<NewOption, AddOption, ExampleOptions>(args)
             .MapResult(
                 (NewOption opts) => GenerateCode(opts.Project, opts),

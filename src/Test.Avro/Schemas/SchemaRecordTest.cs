@@ -12,14 +12,14 @@ namespace Test.Avro.Schema
         public void AddEmptyField()
         {
             var record = new RecordSchema("TestRecord");
-            Assert.Throws(typeof(AvroParseException), () => record.Add(new RecordFieldSchema()));
+            Assert.Throws(typeof(AvroParseException), () => record.Add(new FieldSchema()));
         }
 
         [TestCase]
         public void AddDuplicateField()
         {
             var record = new RecordSchema("TestRecord");
-            var field = new RecordFieldSchema("TestField");
+            var field = new FieldSchema("TestField");
             record.Add(field);
             Assert.Throws(typeof(AvroParseException), () => record.Add(field));
         }
@@ -28,7 +28,7 @@ namespace Test.Avro.Schema
         public void RemoveField()
         {
             var record = new RecordSchema("TestRecord");
-            var field = new RecordFieldSchema("TestField");
+            var field = new FieldSchema("TestField");
             record.Add(field);
             Assert.IsFalse(record.Remove("X"));
             Assert.IsTrue(record.Remove(field.Name));

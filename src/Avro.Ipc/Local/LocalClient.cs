@@ -1,21 +1,19 @@
 ﻿using Avro.Ipc.IO;
-using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Avro.Ipc.Local
 {
-    public class LocalTranceiver : ITranceiver, IDisposable
+    public sealed class LocalClient : IClient
     {
-        private bool _disposed = false;
-        private readonly BlockingCollection<FrameStream> _server;
         private readonly BlockingCollection<FrameStream> _client;
+        private readonly BlockingCollection<FrameStream> _server;
 
-        public LocalTranceiver()
+        public LocalClient(BlockingCollection<FrameStream> client, BlockingCollection<FrameStream> server)
         {
-            _server = new BlockingCollection<FrameStream>();
-            _client = new BlockingCollection<FrameStream>();
+            _client = client;
+            _server = server;
         }
 
         public string LocalEndPoint => string.Empty;
@@ -47,30 +45,19 @@ namespace Avro.Ipc.Local
             {
                 _server.Add(frames, token);
                 return _client.Take(token);
-            }, token).ConfigureAwait(false); ;
+            }, token).ConfigureAwait(false);
         }
 
-        public bool TestConnection()
+        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token = default)
         {
-            return true;
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_disposed)
-                return;
-            if (disposing)
+            await Task.Factory.StartNew(() =>
             {
-                _server.Dispose();
-                _client.Dispose();
-            }
-            _disposed = true;
+                _server.Add(frames, token);
+            }, token).ConfigureAwait(false);
         }
+
+        public bool TestConnection() => true;
+
+        public void Dispose() { }
     }
 }

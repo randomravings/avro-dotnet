@@ -19,9 +19,12 @@ namespace Avro.IO
             _leaveOpen = leaveOpen;
         }
 
-        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
+        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader) => ReadArray<List<T>, T>(itemsReader);
+        public IList<T> ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader) => ReadArrayBlock<List<T>, T>(itemsReader);
+        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, ref IList<T> array) => ReadArrayBlock(itemsReader, ref array);
+        public M ReadArray<M, T>(Func<IAvroDecoder, T> itemsReader) where M : notnull, IList<T>, new()
         {
-            var array = new List<T>();
+            var array = new M();
             long len;
             do
             {
@@ -38,9 +41,15 @@ namespace Avro.IO
             return array;
         }
 
-        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array)
+        public M ReadArrayBlock<M, T>(Func<IAvroDecoder, T> itemsReader) where M : notnull, IList<T>, new()
         {
-            array = new List<T>();
+            var array = new M();
+            ReadArrayBlock(itemsReader, ref array);
+            return array;
+        }
+
+        public bool ReadArrayBlock<M, T>(Func<IAvroDecoder, T> itemsReader, ref M array) where M : notnull, IList<T>
+        {
             var len = ReadLong();
             if (len == 0)
                 return false;
@@ -210,9 +219,13 @@ namespace Avro.IO
             return (-(value & 0x01L)) ^ ((value >> 1) & 0x7FFFFFFFFFFFFFFFL);
         }
 
-        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
+        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader) => ReadMap<Dictionary<string, T>, T>(valuesReader);
+        public IDictionary<string, T> ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader) => ReadMapBlock<Dictionary<string, T>, T>(valuesReader);
+        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, ref IDictionary<string, T> map) => ReadMapBlock(valuesReader, ref map);
+
+        public M ReadMap<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new()
         {
-            var map = new Dictionary<string, T>() as IDictionary<string, T>;
+            var map = new M();
             long len;
             do
             {
@@ -230,9 +243,15 @@ namespace Avro.IO
             return map;
         }
 
-        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map)
+        public M ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new()
         {
-            map = new Dictionary<string, T>() as IDictionary<string, T>;
+            var map = new M();
+            ReadMapBlock(valuesReader, ref map);
+            return map;
+        }
+
+        public bool ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader, ref M map) where M : notnull, IDictionary<string, T>
+        {
             var len = ReadLong();
             if (len == 0)
                 return false;

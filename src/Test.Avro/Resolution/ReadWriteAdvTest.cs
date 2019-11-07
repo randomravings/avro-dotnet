@@ -379,8 +379,8 @@ namespace Test.Avro.Resolution
         {
             var writerSchema = new ArraySchema(new IntSchema());
             var readerSchema = new ArraySchema(new LongSchema());
-            var writer = new DatumWriter<IList<int>>(writerSchema);
-            var reader = new DatumReader<IList<long>>(readerSchema, writerSchema);
+            var writer = new DatumWriter<List<int>>(writerSchema);
+            var reader = new DatumReader<List<long>>(readerSchema, writerSchema);
 
             var expectedArray = new List<int> { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
@@ -399,8 +399,8 @@ namespace Test.Avro.Resolution
         {
             var writerSchema = new MapSchema(new FloatSchema());
             var readerSchema = new MapSchema(new DoubleSchema());
-            var writer = new DatumWriter<IDictionary<string, float>>(writerSchema);
-            var reader = new DatumReader<IDictionary<string, double>>(readerSchema, writerSchema);
+            var writer = new DatumWriter<Dictionary<string, float>>(writerSchema);
+            var reader = new DatumReader<Dictionary<string, double>>(readerSchema, writerSchema);
 
             var expectedMap = new Dictionary<string, float> { { "Key1", 1.1F }, { "Key2", 2.2F }, { "Key3", 3.3F }, { "Key4", 4.4F }, { "Key5", 5.5F } };
 
@@ -429,9 +429,9 @@ namespace Test.Avro.Resolution
 
     public class TestRecord : IAvroRecord
     {
-        private static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecord).Namespace}.{typeof(TestRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldA"",""type"":""int""}},{{""name"":""FieldB"",""type"":""string""}},{{""name"":""FieldC"",""type"":{{""name"":""{typeof(TestSubRecord).Namespace}.{typeof(TestSubRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldD"",""type"":""boolean""}}]}}}},{{""name"":""FieldX"",""type"":{{""name"":""{typeof(TestEnum).Namespace}.{typeof(TestEnum).Name}"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}}}},{{""name"":""TestFixed"",""type"":{{""name"":""{typeof(TestFixed).Namespace}.{typeof(TestFixed).Name}"",""type"":""fixed"",""size"":40}}}}]}}");
+        private static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecord).Namespace}.{typeof(TestRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldA"",""type"":""int""}},{{""name"":""FieldB"",""type"":""string""}},{{""name"":""FieldC"",""type"":{{""name"":""{typeof(TestSubRecord).Namespace}.{typeof(TestSubRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldD"",""type"":""boolean""}}]}}}},{{""name"":""FieldX"",""type"":{{""name"":""{typeof(TestEnum).Namespace}.{typeof(TestEnum).Name}"",""type"":""enum"",""symbols"":[""A"",""B"",""C""]}}}},{{""name"":""TestFixed"",""type"":{{""name"":""{typeof(TestFixed).Namespace}.{typeof(TestFixed).Name}"",""type"":""fixed"",""size"":40}}}}]}}");
 
-        public RecordSchema Schema { get => _SCHEMA; }
+        public RecordSchema Schema { get => SCHEMA; }
 
         public int FieldCount { get => 2; }
 
@@ -484,9 +484,9 @@ namespace Test.Avro.Resolution
 
     public class TestSubRecord : IAvroRecord
     {
-        private static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestSubRecord).Namespace}.{typeof(TestSubRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldD"",""type"":""boolean""}}]}}");
+        private static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestSubRecord).Namespace}.{typeof(TestSubRecord).Name}"",""type"":""record"",""fields"":[{{""name"":""FieldD"",""type"":""boolean""}}]}}");
 
-        public RecordSchema Schema { get => _SCHEMA; }
+        public RecordSchema Schema { get => SCHEMA; }
 
         public int FieldCount { get => 1; }
 
@@ -515,10 +515,10 @@ namespace Test.Avro.Resolution
 
     public class TestFixed : IAvroFixed
     {
-        private static readonly FixedSchema _SCHEMA = AvroParser.ReadSchema<FixedSchema>(@$"{{""name"":""{typeof(TestFixed).Namespace}.{typeof(TestFixed).Name}"",""type"":""fixed"",""size"":40}}");
+        private static readonly FixedSchema SCHEMA = AvroParser.ReadSchema<FixedSchema>(@$"{{""name"":""{typeof(TestFixed).Namespace}.{typeof(TestFixed).Name}"",""type"":""fixed"",""size"":40}}");
         public const int _SIZE = 40;
         private readonly byte[] _value;
-        public FixedSchema Schema => _SCHEMA;
+        public FixedSchema Schema => SCHEMA;
         public int Size => _SIZE;
         public TestFixed()
         {
@@ -559,9 +559,9 @@ namespace Test.Avro.Resolution
 
     public class TestRecordWithDefault : IAvroRecord
     {
-        private static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithDefault).Namespace}.{typeof(TestRecordWithDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""ID"",""type"":""int"",""default"":-1}},{{""name"":""Name"",""type"":""string""}}]}}");
+        private static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithDefault).Namespace}.{typeof(TestRecordWithDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""ID"",""type"":""int"",""default"":-1}},{{""name"":""Name"",""type"":""string""}}]}}");
 
-        public RecordSchema Schema { get => _SCHEMA; }
+        public RecordSchema Schema { get => SCHEMA; }
 
         public int FieldCount { get => 2; }
 
@@ -596,9 +596,9 @@ namespace Test.Avro.Resolution
 
     public class TestRecordWithoutDefault : IAvroRecord
     {
-        private static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithoutDefault).Namespace}.{typeof(TestRecordWithoutDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""ID"",""type"":""int""}},{{""name"":""Name"",""type"":""string""}}]}}");
+        private static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithoutDefault).Namespace}.{typeof(TestRecordWithoutDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""ID"",""type"":""int""}},{{""name"":""Name"",""type"":""string""}}]}}");
 
-        public RecordSchema Schema { get => _SCHEMA; }
+        public RecordSchema Schema { get => SCHEMA; }
 
         public int FieldCount { get => 2; }
 
@@ -633,9 +633,9 @@ namespace Test.Avro.Resolution
 
     public class TestRecordWithExtraField : IAvroRecord
     {
-        private static readonly RecordSchema _SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithDefault).Namespace}.{typeof(TestRecordWithDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""Name"",""type"":""string""}},{{""name"":""Desc"",""type"":""string""}}]}}");
+        private static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>(@$"{{""name"":""{typeof(TestRecordWithDefault).Namespace}.{typeof(TestRecordWithDefault).Name}"",""type"":""record"",""fields"":[{{""name"":""Name"",""type"":""string""}},{{""name"":""Desc"",""type"":""string""}}]}}");
 
-        public RecordSchema Schema { get => _SCHEMA; }
+        public RecordSchema Schema { get => SCHEMA; }
 
         public int FieldCount { get => 2; }
 

@@ -1,5 +1,4 @@
 ﻿using Avro.IO;
-using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
 using Avro.Utils;
@@ -51,10 +50,10 @@ namespace Avro.Protocol
 
             var requestReaders = new Dictionary<string, IAvroReader<GenericRecord>>();
             var requestWriters = new Dictionary<string, IAvroWriter<GenericRecord>>();
-            var responseReaders = new Dictionary<string, IAvroReader<object>>();
-            var responseWriters = new Dictionary<string, IAvroWriter<object>>();
-            var errorReaders = new Dictionary<string, IAvroReader<object>>();
-            var errorWriters = new Dictionary<string, IAvroWriter<object>>();
+            var responseReaders = new Dictionary<string, IAvroReader<GenericResponse>>();
+            var responseWriters = new Dictionary<string, IAvroWriter<GenericResponse>>();
+            var errorReaders = new Dictionary<string, IAvroReader<GenericResponseError>>();
+            var errorWriters = new Dictionary<string, IAvroWriter<GenericResponseError>>();
 
             var messagePairs =
                 from lm in local.Messages
@@ -67,13 +66,13 @@ namespace Avro.Protocol
                 var localRequestParameters =
                     from p in localMessage.RequestParameters
                     join t in local.Types on p.Type.FullName equals t.FullName
-                    select new RecordFieldSchema(p.Name, t)
+                    select new FieldSchema(p.Name, t)
                 ;
 
                 var remoteRequestParameters =
                     from p in remoteMessage.RequestParameters
                     join t in remote.Types on p.Type.FullName equals t.FullName
-                    select new RecordFieldSchema(p.Name, t)
+                    select new FieldSchema(p.Name, t)
                 ;
 
                 var localRequest = new RecordSchema($"{local.FullName}.messages.{messageName}", localRequestParameters);
@@ -85,14 +84,14 @@ namespace Avro.Protocol
                 requestReaders.Add(messageName, requestReader);
                 requestWriters.Add(messageName, requestWriter);
 
-                var responseReader = new DatumReader<object>(localMessage.Response, remoteMessage.Response);
-                var responseWriter = new DatumWriter<object>(localMessage.Response);
+                var responseReader = new DatumReader<GenericResponse>(localMessage.Response, remoteMessage.Response);
+                var responseWriter = new DatumWriter<GenericResponse>(localMessage.Response);
 
                 responseReaders.Add(messageName, responseReader);
                 responseWriters.Add(messageName, responseWriter);
 
-                var errorReader = new DatumReader<object>(localMessage.Error, remoteMessage.Error);
-                var errorWriter = new DatumWriter<object>(localMessage.Error);
+                var errorReader = new DatumReader<GenericResponseError>(localMessage.Error, remoteMessage.Error);
+                var errorWriter = new DatumWriter<GenericResponseError>(localMessage.Error);
 
                 errorReaders.Add(messageName, errorReader);
                 errorWriters.Add(messageName, errorWriter);
@@ -110,9 +109,9 @@ namespace Avro.Protocol
         public byte[] RemoteHash { get; private set; }
         public IReadOnlyDictionary<string, IAvroReader<GenericRecord>> RequestReaders { get; private set; }
         public IReadOnlyDictionary<string, IAvroWriter<GenericRecord>> RequestWriters { get; private set; }
-        public Dictionary<string, IAvroReader<object>> ResponseReaders { get; private set; }
-        public Dictionary<string, IAvroWriter<object>> ResponseWriters { get; private set; }
-        public Dictionary<string, IAvroReader<object>> ErrorReaders { get; private set; }
-        public Dictionary<string, IAvroWriter<object>> ErrorWriters { get; private set; }
+        public Dictionary<string, IAvroReader<GenericResponse>> ResponseReaders { get; private set; }
+        public Dictionary<string, IAvroWriter<GenericResponse>> ResponseWriters { get; private set; }
+        public Dictionary<string, IAvroReader<GenericResponseError>> ErrorReaders { get; private set; }
+        public Dictionary<string, IAvroWriter<GenericResponseError>> ErrorWriters { get; private set; }
     }
 }

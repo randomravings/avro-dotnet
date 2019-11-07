@@ -6,8 +6,10 @@ using System.Linq;
 
 namespace Avro.Types
 {
-    public class GenericFixed : IAvroFixed
+    public sealed class GenericFixed : IAvroFixed
     {
+        public static GenericFixed Empty { get; } = new GenericFixed(AvroParser.ReadSchema<FixedSchema>(@"{""name"":""com.acme.void.fixed"",""size"":0}"));
+
         public GenericFixed(FixedSchema schema)
         {
             Schema = schema;

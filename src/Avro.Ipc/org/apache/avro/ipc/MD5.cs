@@ -11,7 +11,7 @@ namespace org.apache.avro.ipc
     [AvroNamedType("org.apache.avro.ipc", "MD5")]
     public class MD5 : IAvroFixed
     {
-        public static readonly FixedSchema _SCHEMA = AvroParser.ReadSchema<FixedSchema>("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");
+        public static readonly FixedSchema SCHEMA = AvroParser.ReadSchema<FixedSchema>("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");
         public const int _SIZE = 16;
         public MD5()
         {
@@ -25,7 +25,7 @@ namespace org.apache.avro.ipc
             Value = value;
         }
 
-        public FixedSchema Schema => _SCHEMA;
+        public FixedSchema Schema => SCHEMA;
         public int Size => _SIZE;
         public byte[] Value { get; private set; }
         public byte this[int i]

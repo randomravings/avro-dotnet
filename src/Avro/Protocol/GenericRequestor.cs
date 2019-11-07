@@ -16,19 +16,13 @@ namespace Avro.Protocol
         public AvroProtocol Local { get; private set; }
         public AvroProtocol Remote { get; private set; }
 
-        public void WriteRequest<T>(IAvroEncoder encoder, string message, T record) where T : GenericRecord
-        {
+        public void WriteRequest(IAvroEncoder encoder, string message, GenericRecord record) =>
             _protocolPair.RequestWriters[message].Write(encoder, record);
-        }
 
-        public T ReadResponse<T>(IAvroDecoder decoder, string message) where T : class
-        {
-            return (T)_protocolPair.ResponseReaders[message].Read(decoder);
-        }
+        public GenericResponse ReadResponse(IAvroDecoder decoder, string message) =>
+            _protocolPair.ResponseReaders[message].Read(decoder);
 
-        public T ReadError<T>(IAvroDecoder decoder, string message) where T : class
-        {
-            return (T)_protocolPair.ErrorReaders[message].Read(decoder);
-        }
+        public GenericResponseError ReadError(IAvroDecoder decoder, string message) =>
+            _protocolPair.ErrorReaders[message].Read(decoder);
     }
 }

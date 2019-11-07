@@ -268,24 +268,43 @@ namespace Avro.IO
             return i;
         }
 
-        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader)
+        public IList<T> ReadArray<T>(Func<IAvroDecoder, T> itemsReader) => ReadArray<List<T>, T>(itemsReader);
+        public IList<T> ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader) => ReadArrayBlock<List<T>, T>(itemsReader);
+        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, ref IList<T> array) => ReadArrayBlock(itemsReader, ref array);
+
+        public A ReadArray<A, T>(Func<IAvroDecoder, T> itemsReader) where A : notnull, IList<T>, new()
         {
+            var array = new A();
             var end = _actions[Increment()].Invoke(_reader, 0, out _);
             var loop = _index;
-            var items = new List<T>();
             while (_reader.TokenType != JsonToken.EndArray)
             {
                 _index = loop;
-                items.Add(itemsReader.Invoke(this));
+                array.Add(itemsReader.Invoke(this));
             }
             _index = end;
             _actions[Increment()].Invoke(_reader, 0, out _);
-            return items;
+            return array;
         }
 
-        public bool ReadArrayBlock<T>(Func<IAvroDecoder, T> itemsReader, out IList<T> array)
+        public A ReadArrayBlock<A, T>(Func<IAvroDecoder, T> itemsReader) where A : notnull, IList<T>, new()
         {
-            array = ReadArray(itemsReader);
+            var array = new A();
+            ReadArrayBlock(itemsReader, ref array);
+            return array;
+        }
+
+        public bool ReadArrayBlock<A, T>(Func<IAvroDecoder, T> itemsReader, ref A array) where A : notnull, IList<T>
+        {
+            var end = _actions[Increment()].Invoke(_reader, 0, out _);
+            var loop = _index;
+            while (_reader.TokenType != JsonToken.EndArray)
+            {
+                _index = loop;
+                array.Add(itemsReader.Invoke(this));
+            }
+            _index = end;
+            _actions[Increment()].Invoke(_reader, 0, out _);
             return false;
         }
 
@@ -405,27 +424,50 @@ namespace Avro.IO
             return long.Parse(s);
         }
 
-        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader)
+        public IDictionary<string, T> ReadMap<T>(Func<IAvroDecoder, T> valuesReader) => ReadMap<Dictionary<string, T>, T>(valuesReader);
+        public IDictionary<string, T> ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader) => ReadMapBlock<Dictionary<string, T>, T>(valuesReader);
+        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, ref IDictionary<string, T> map) => ReadMapBlock(valuesReader, ref map);
+
+        public M ReadMap<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new()
         {
+            var map = new M();
             var end = _actions[Increment()].Invoke(_reader, 0, out _);
             var loop = _index;
-            var items = new Dictionary<string, T>();
             while (_reader.TokenType != JsonToken.EndObject)
             {
                 _index = loop;
                 var key = _reader.Value.ToString();
                 _reader.Read();
                 var value = valuesReader.Invoke(this);
-                items.Add(key, value);
+                map.Add(key, value);
             }
             _index = end;
             _actions[Increment()].Invoke(_reader, 0, out _);
-            return items;
+            return map;
         }
 
-        public bool ReadMapBlock<T>(Func<IAvroDecoder, T> valuesReader, out IDictionary<string, T> map)
+        public M ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader) where M : notnull, IDictionary<string, T>, new()
         {
-            map = ReadMap(valuesReader);
+            var array = new M();
+            ReadMapBlock(valuesReader, ref array);
+            return array;
+        }
+
+        public bool ReadMapBlock<M, T>(Func<IAvroDecoder, T> valuesReader, ref M map) where M : notnull, IDictionary<string, T>
+        {
+
+            var end = _actions[Increment()].Invoke(_reader, 0, out _);
+            var loop = _index;
+            while (_reader.TokenType != JsonToken.EndObject)
+            {
+                _index = loop;
+                var key = _reader.Value.ToString();
+                _reader.Read();
+                var value = valuesReader.Invoke(this);
+                map.Add(key, value);
+            }
+            _index = end;
+            _actions[Increment()].Invoke(_reader, 0, out _);
             return false;
         }
 

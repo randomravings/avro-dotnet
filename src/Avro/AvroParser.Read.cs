@@ -247,40 +247,42 @@ namespace Avro
             var name = JsonUtil.GetValue<string>(jToken, "name");
             var fields = JsonUtil.GetValue<JArray>(jToken, "fields");
 
-            var recordSchema = new RecordSchema(name);
+            FieldsSchema fieldsSchema;
             if (type.ToString() == "error")
-                recordSchema = new ErrorSchema(name);
-            recordSchema.AddTags(tags);
+                fieldsSchema = new ErrorSchema(name);
+            else
+                fieldsSchema = new RecordSchema(name);
+            fieldsSchema.AddTags(tags);
 
-            if (recordSchema.Namespace == string.Empty && JsonUtil.TryGetValue<string>(jToken, "namespace", out var ns))
-                recordSchema.Namespace = ns;
+            if (fieldsSchema.Namespace == string.Empty && JsonUtil.TryGetValue<string>(jToken, "namespace", out var ns))
+                fieldsSchema.Namespace = ns;
 
-            if (string.IsNullOrEmpty(recordSchema.Namespace))
-                recordSchema.Namespace = enclosingNamespace.Peek();
+            if (string.IsNullOrEmpty(fieldsSchema.Namespace))
+                fieldsSchema.Namespace = enclosingNamespace.Peek();
 
-            enclosingNamespace.Push(recordSchema.Namespace);
+            enclosingNamespace.Push(fieldsSchema.Namespace);
 
             if (JsonUtil.TryGetValue<JArray>(jToken, "aliases", out var aliases))
-                recordSchema.Aliases = aliases.Values<string>().ToArray();
+                fieldsSchema.Aliases = aliases.Values<string>().ToArray();
 
             if (JsonUtil.TryGetValue<string>(jToken, "doc", out var doc))
-                recordSchema.Doc = doc;
+                fieldsSchema.Doc = doc;
 
-            namedTypes.Add(recordSchema.FullName, recordSchema);
+            namedTypes.Add(fieldsSchema.FullName, fieldsSchema);
 
             foreach (var field in ParseRecordFieldSchema(fields, namedTypes, enclosingNamespace))
-                recordSchema.Add(field);
+                fieldsSchema.Add(field);
 
             enclosingNamespace.Pop();
 
-            return recordSchema;
+            return fieldsSchema;
         }
 
-        private static IList<RecordFieldSchema> ParseRecordFieldSchema(JArray jArray, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
+        private static IList<FieldSchema> ParseRecordFieldSchema(JArray jArray, IDictionary<string, NamedSchema> namedTypes, Stack<string> enclosingNamespace)
         {
             var keys = new HashSet<string>() { "type", "name" };
             var optionalKeys = new HashSet<string>() { "aliases", "doc", "default", "order" };
-            var fields = new List<RecordFieldSchema>();
+            var fields = new List<FieldSchema>();
             foreach (var jToken in jArray)
             {
                 JsonUtil.AssertKeys(jToken, keys, optionalKeys, out var tags);
@@ -289,7 +291,7 @@ namespace Avro
                 var type = JsonUtil.GetValue<JToken>(jToken, "type");
 
                 var fieldType = ParseSchema(type, namedTypes, enclosingNamespace);
-                var recordFieldSchema = new RecordFieldSchema(name, fieldType);
+                var recordFieldSchema = new FieldSchema(name, fieldType);
                 recordFieldSchema.AddTags(tags);
 
                 if (JsonUtil.TryGetValue<JArray>(jToken, "aliases", out var aliases))

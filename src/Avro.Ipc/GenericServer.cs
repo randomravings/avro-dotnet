@@ -12,19 +12,20 @@ namespace Avro.Ipc
 
     public class GenericServer : Session
     {
+        private readonly IServer _server;
         private readonly GenericResponder _protocol;
 
-        public GenericServer(AvroProtocol protocol, ITranceiver tranceiver)
-            : base(protocol, tranceiver)
+        public GenericServer(AvroProtocol protocol, IServer server)
+            : base(protocol)
         {
-            RemoteProtocol = protocol;
+            _server = server;
             _protocol = new GenericResponder(Protocol, RemoteProtocol);
         }
 
         public async Task<GenericContext> ReceiveAsync(CancellationToken token)
         {
             var context = new GenericContext();
-            using var requestData = await _tranceiver.ReceiveAsync(token);
+            using var requestData = await _server.ReceiveAsync(token);
             using var decoder = new BinaryDecoder(requestData);
 
             requestData.Seek(0, SeekOrigin.Begin);
@@ -44,7 +45,7 @@ namespace Avro.Ipc
             }
             context.Metadata = META_READER.Read(decoder);
             context.MessageName = decoder.ReadString();
-            context.RequestParameters = _protocol.ReadRequest<GenericRecord>(decoder, context.MessageName);
+            context.RequestParameters = _protocol.ReadRequest(decoder, context.MessageName);
             return context;
         }
 
@@ -60,23 +61,10 @@ namespace Avro.Ipc
             }
             META_WRITER.Write(encoder, EMPTY_META);
             encoder.WriteBoolean(rpcContext.IsError);
-            if (rpcContext.IsError)
-            {
-                if (rpcContext.Error == null)
-                    _protocol.WriteError(encoder, rpcContext.MessageName, "Avro.Ipc Error: Empty Error");
-                else
-                    _protocol.WriteError(encoder, rpcContext.MessageName, rpcContext.Error);
-            }
-            else
-            {
-                if (rpcContext.Response == null)
-                    _protocol.WriteError(encoder, rpcContext.MessageName, "Avro.Ipc Error: Empty Response");
-                else
-                    _protocol.WriteReponse(encoder, rpcContext.MessageName, rpcContext.Response);
-            }
+            _protocol.WriteReponse(encoder, rpcContext.MessageName, rpcContext.Response);
             encoder.WriteBytes(END_OF_FRAME);
             responseData.Seek(0, SeekOrigin.Begin);
-            return await _tranceiver.SendAsync(responseData, token);
+            return await _server.SendAsync(responseData, token);
         }
 
         protected static HandshakeResponse NewHandshakeResponse(HandshakeMatch match, MD5 serverHash, string serverProtocol)

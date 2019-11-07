@@ -10,12 +10,28 @@ namespace Avro.Resolution
 {
     public static partial class SchemaResolver
     {
-        private static ParameterExpression GetValueParameter(Type type) =>
+        private static readonly Assembly[] EMPTY_ASSEMBLIES = new Assembly[0];
+
+        private static (bool, Type, Type) GetListInterfaceDefinition(Type type) =>
             type switch
             {
-                var t when t.IsGenericType && typeof(IDictionary<,>).Equals(type.GetGenericTypeDefinition()) => Expression.Parameter(t.GetGenericArguments().Last()),
-                var t when t.IsGenericType && typeof(IList<>).Equals(type.GetGenericTypeDefinition()) => Expression.Parameter(t.GetGenericArguments().Last()),
-                _ => Expression.Parameter(type)
+                Type t when t.GetGenericTypeDefinition().Equals(typeof(IList<>)) => (true, t.GetGenericTypeDefinition(), t.GetGenericArguments().Last()),
+                _ => type.GetInterface(typeof(IList<>).Name) switch
+                {
+                    Type i => (false, i.GetGenericTypeDefinition(), i.GetGenericArguments().Last()),
+                    _ => throw new ArgumentException($"Type: '{type.FullName}' does not implement ")
+                }
+            };
+
+        private static (bool, Type, Type) GetDictionaryInterfaceDefinition(Type type) =>
+            type switch
+            {
+                Type t when t.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>)) => (true, t.GetGenericTypeDefinition(), t.GetGenericArguments().Last()),
+                _ => type.GetInterface(typeof(IDictionary<,>).Name) switch
+                {
+                    Type i => (false, i.GetGenericTypeDefinition(), i.GetGenericArguments().Last()),
+                    _ => throw new ArgumentException($"Type: '{type.FullName}' does not implement ")
+                }
             };
 
         private static Expression CastOrExpression(Expression expression, Type type)
@@ -30,6 +46,8 @@ namespace Avro.Resolution
 
 
         }
+
+        public static Type GetTypeFromSchema(AvroSchema schema) => GetTypeFromSchema(schema, EMPTY_ASSEMBLIES);
 
         public static Type GetTypeFromSchema(AvroSchema schema, Assembly[] assemblies) =>
             schema switch
@@ -56,6 +74,7 @@ namespace Avro.Resolution
                 UuidSchema r => typeof(Guid),
                 EnumSchema r => assemblies.SelectMany(m => m.GetTypes()).FirstOrDefault(t => t.FullName == r.FullName) ?? typeof(GenericEnum),
                 FixedSchema r => assemblies.SelectMany(m => m.GetTypes()).FirstOrDefault(t => t.FullName == r.FullName) ?? typeof(GenericFixed),
+                ErrorSchema r => assemblies.SelectMany(m => m.GetTypes()).FirstOrDefault(t => t.FullName == r.FullName) ?? typeof(GenericError),
                 RecordSchema r => assemblies.SelectMany(m => m.GetTypes()).FirstOrDefault(t => t.FullName == r.FullName) ?? typeof(GenericRecord),
                 UnionSchema r when r.Count == 2 && r.NullIndex > -1 =>
                     r[(r.NullIndex + 1) % 2] switch

@@ -1,7 +1,11 @@
-﻿namespace Avro.Types
+﻿using Avro.Schema;
+
+namespace Avro.Types
 {
-    public interface IAvroError : IAvroRecord
+    public interface IAvroError
     {
-        AvroException Exception { get; }
+        ErrorSchema Schema { get; }
+        int FieldCount { get; }
+        object? this[int i] { get; set; }
 }
 }

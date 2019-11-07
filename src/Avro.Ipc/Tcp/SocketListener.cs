@@ -17,10 +17,10 @@ namespace Avro.Ipc.Tcp
         }
         public void Start() => _server.Start();
         public void Stop() => _server.Stop();
-        public async Task<ITranceiver> ListenAsync()
+        public async Task<SocketServer> ListenAsync()
         {
             var tcpClient = await _server.AcceptTcpClientAsync();
-            return new SocketTranceiver(tcpClient);
+            return new SocketServer(tcpClient);
         }
     }
 }

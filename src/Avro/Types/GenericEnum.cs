@@ -6,6 +6,7 @@ namespace Avro.Types
 {
     public sealed class GenericEnum : IAvroEnum, IEquatable<IAvroEnum>
     {
+        public static GenericEnum Empty { get; } = new GenericEnum(AvroParser.ReadSchema<EnumSchema>(@"{""name"":""com.acme.void.enum"",""symbols"":[]}"));
         private int _value;
         public GenericEnum(EnumSchema schema)
         {

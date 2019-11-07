@@ -27,15 +27,46 @@ namespace Avro.Resolution
             .Select(g => g.First())
             .ToArray();
 
-            var streamParameter = Expression.Parameter(typeof(IAvroEncoder));
-            var valueParameter = Expression.Parameter(type);
-            var writeExpression = ResolveEncoder(sourceSchema, targetSchema, assemblies, streamParameter, valueParameter);
+            var stream = Expression.Parameter(typeof(IAvroEncoder));
+            var value = Expression.Parameter(type);
+            if (typeof(AvroUnion).IsAssignableFrom(type) && !(targetSchema is UnionSchema))
+            {
+                value = Expression.Parameter(
+                    type.GetMethods()
+                    .Where(r => r.Name == "op_Implicit" && r.ReturnType.Equals(GetTypeFromSchema(targetSchema, assemblies)))
+                    .Select(r => r.ReturnType)
+                    .FirstOrDefault()
+                );
+            }
+
+            var writeExpression = ResolveEncoder(sourceSchema, targetSchema, assemblies, stream, value);
             if (writeExpression == null)
                 throw new AvroException($"Unable to resolve writer: '{sourceSchema}' for type: '{type}'");
+
+            var outerValue = value;
+
+            if (typeof(AvroUnion).IsAssignableFrom(type) && !(targetSchema is UnionSchema))
+            {
+                outerValue = Expression.Parameter(type);
+                writeExpression =
+                    Expression.Invoke(
+                        Expression.Lambda(
+                            writeExpression,
+                            stream,
+                            value
+                        ),
+                        stream,
+                        Expression.Convert(
+                            outerValue,
+                            value.Type
+                        )
+                    );
+            }
+
             return Expression.Lambda<Action<IAvroEncoder, T>>(
-                writeExpression,
-                streamParameter,
-                valueParameter
+                writeExpression.Reduce(),
+                stream,
+                outerValue
             ).Compile();
         }
 
@@ -78,6 +109,7 @@ namespace Avro.Resolution
                 (MapSchema s, MapSchema t) => CreateMapEncoder(stream, value, assemblies, s, t),
                 (EnumSchema s, EnumSchema t) => CreateEnumEncoder(stream, value, s, t),
                 (FixedSchema s, FixedSchema t) => CreateFixedEncoder(stream, value, s, t),
+                (ErrorSchema s, ErrorSchema t) => CreateErrorEncoder(stream, value, assemblies, s, t),
                 (RecordSchema s, RecordSchema t) => CreateRecordEncoder(stream, value, assemblies, s, t),
                 (UnionSchema s, UnionSchema t) => CreateUnionToAnyEncoder(stream, value, assemblies, s, t),
                 (UnionSchema s, AvroSchema t) => CreateUnionToSingleEncoder(stream, value, assemblies, s, t),
@@ -247,47 +279,89 @@ namespace Avro.Resolution
             };
 
         private static Expression? CreateArrayEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ArraySchema sourceSchema, ArraySchema targetSchema) =>
-            (value.Type.GetGenericTypeDefinition(), Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
+            GetListInterfaceDefinition(value.Type) switch
             {
-                (var g, var p) when typeof(IList<>).Equals(g) =>
-                    ResolveEncoder(sourceSchema.Items, targetSchema.Items, assemblies, stream, p) switch
-                    {
-                        Expression write =>
-                            Expression.Call(
-                                stream,
-                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteArray)).MakeGenericMethod(p.Type),
-                                value,
-                                Expression.Lambda(
-                                    write,
+                (bool isInterface, Type d, Type t) => Expression.Parameter(t) switch
+                {
+                    ParameterExpression p =>
+                        ResolveEncoder(sourceSchema.Items, targetSchema.Items, assemblies, stream, p) switch
+                        {
+                            Expression write =>
+                                Expression.Call(
                                     stream,
-                                    p
-                                )
-                            ),
-                        _ => default
-                    },
-                _ => default
+                                    isInterface switch
+                                    {
+                                        true =>
+                                            typeof(IAvroEncoder).GetMethods()
+                                            .First(r =>
+                                                r.Name == nameof(IAvroEncoder.WriteArray) &&
+                                                r.ContainsGenericParameters &&
+                                                r.GetGenericArguments().Count() == 1
+                                            )
+                                            .MakeGenericMethod(t),
+                                        false =>
+                                            typeof(IAvroEncoder).GetMethods()
+                                            .First(r =>
+                                                r.Name == nameof(IAvroEncoder.WriteArray) &&
+                                                r.ContainsGenericParameters &&
+                                                r.GetGenericArguments().Count() == 2
+                                            )
+                                            .MakeGenericMethod(value.Type, t)
+                                    },
+                                    value,
+                                    Expression.Lambda(
+                                        write,
+                                        stream,
+                                        p
+                                    )
+                                ),
+                            _ => default
+                        },
+                    _ => default
+                }
             };
 
         private static Expression? CreateMapEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, MapSchema sourceSchema, MapSchema targetSchema) =>
-            (value.Type.GetGenericTypeDefinition(), value.Type.GetGenericArguments().First(), Expression.Parameter(value.Type.GetGenericArguments().Last())) switch
-            {
-                (var g, var t, var p) when typeof(IDictionary<,>).Equals(g) && typeof(string).Equals(t) =>
-                    ResolveEncoder(sourceSchema.Values, targetSchema.Values, assemblies, stream, p) switch
-                    {
-                        Expression write =>
-                            Expression.Call(
-                                stream,
-                                typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteMap)).MakeGenericMethod(p.Type),
-                                value,
-                                Expression.Lambda(
-                                    write,
+            GetDictionaryInterfaceDefinition(value.Type) switch
+            { 
+                (bool isInterface, Type d, Type t) => Expression.Parameter(t) switch
+                {
+                    ParameterExpression p =>
+                        ResolveEncoder(sourceSchema.Values, targetSchema.Values, assemblies, stream, p) switch
+                        {
+                            Expression write =>
+                                Expression.Call(
                                     stream,
-                                    p
-                                )
-                            ),
-                        _ => default
-                    },
-                _ => default
+                                    isInterface switch
+                                    {
+                                        true =>
+                                            typeof(IAvroEncoder).GetMethods()
+                                            .First(r =>
+                                                r.Name == nameof(IAvroEncoder.WriteMap) &&
+                                                r.ContainsGenericParameters &&
+                                                r.GetGenericArguments().Count() == 1
+                                            )
+                                            .MakeGenericMethod(t),
+                                        false =>
+                                            typeof(IAvroEncoder).GetMethods()
+                                            .First(r =>
+                                                r.Name == nameof(IAvroEncoder.WriteMap) &&
+                                                r.ContainsGenericParameters &&
+                                                r.GetGenericArguments().Count() == 2
+                                            )
+                                            .MakeGenericMethod(value.Type, t)
+                                    },
+                                    value,
+                                    Expression.Lambda(
+                                        write,
+                                        stream,
+                                        p
+                                    )
+                                ),
+                            _ => default
+                        },
+                    _ => default
+                }
             };
 
         private static Expression CreateEnumEncoder(ParameterExpression stream, ParameterExpression value, EnumSchema sourceSchema, EnumSchema targetSchema)
@@ -352,7 +426,7 @@ namespace Avro.Resolution
                 _ => default
             };
 
-        private static Expression? CreateRecordEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, IEnumerable<RecordFieldSchema> sourceFields, IEnumerable<RecordFieldSchema> targetFields)
+        private static Expression? CreateErrorEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, ErrorSchema sourceSchema, ErrorSchema targetSchema)
         {
             var recordVariable = Expression.Variable(
                 value.Type
@@ -369,7 +443,78 @@ namespace Avro.Resolution
                 )
             };
             int x = 0;
-            foreach (var field in sourceFields)
+            foreach (var field in sourceSchema)
+            {
+                var fieldValueExpression = default(Expression);
+                var fieldWriteExpression = default(Expression);
+                var fieldType = GetTypeFromSchema(field.Type, assemblies);
+                var fieldParameter = Expression.Parameter(fieldType);
+                fieldVariables.Add(fieldParameter);
+                if (typeof(GenericError).IsAssignableFrom(value.Type))
+                {
+                    var recordProperty = typeof(IAvroError).GetProperty("Item", typeof(object), new Type[] { typeof(int) });
+                    fieldValueExpression =
+                        Expression.Convert(
+                            Expression.MakeIndex(
+                                Expression.TypeAs(
+                                    value,
+                                    typeof(IAvroError)
+                                ),
+                                recordProperty,
+                                new Expression[] {
+                                    Expression.Constant(
+                                        x,
+                                        typeof(int)
+                                    )
+                                }
+                            ),
+                            fieldType
+                        );
+                    fieldWriteExpression = ResolveEncoder(field.Type, field.Type, assemblies, stream, fieldParameter);
+                }
+                else
+                {
+                    var recordProperty = value.Type.GetProperty(field.Name);
+                    fieldType = recordProperty.PropertyType;
+                    fieldValueExpression =
+                        Expression.MakeMemberAccess(
+                            recordVariable,
+                            recordProperty
+                        );
+                    fieldWriteExpression = ResolveEncoder(field.Type, field.Type, assemblies, stream, fieldParameter);
+                }
+
+                if (fieldWriteExpression == null)
+                    return default;
+                fieldExpressions.Add(Expression.Assign(fieldParameter, fieldValueExpression));
+                fieldExpressions.Add(fieldWriteExpression);
+                x++;
+            }
+            return Expression.Block(
+                typeof(void),
+                fieldVariables.ToArray(),
+                fieldExpressions
+            );
+        }
+
+        private static Expression? CreateRecordEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, RecordSchema sourceSchema, RecordSchema targetSchema)
+        {
+            var recordVariable = Expression.Variable(
+                value.Type
+            );
+            var fieldVariables = new List<ParameterExpression>
+            {
+                recordVariable
+            };
+            var fieldExpressions = new List<Expression>
+            {
+                Expression.Assign(
+                    recordVariable,
+                    value
+                )
+            };
+            int x = 0;
+            foreach (var field in sourceSchema)
             {
                 var fieldValueExpression = default(Expression);
                 var fieldWriteExpression = default(Expression);
@@ -466,22 +611,34 @@ namespace Avro.Resolution
         private static SwitchCase? GetUnionEncodeSwitchCase(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, AvroSchema sourceSchema, UnionSchema targetSchema, long index) =>
             FindMatch(sourceSchema, targetSchema) switch
             {
-                (-1, _) => default,
-                (var i, var s) => ResolveEncoder(s, sourceSchema, assemblies, stream, value) switch
+                (int i, AvroSchema s) => Expression.Parameter(GetTypeFromSchema(s)) switch
                 {
-                    var write =>
-                        Expression.SwitchCase(
-                            Expression.Block(
-                                Expression.Call(
-                                    stream,
-                                    typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
-                                    Expression.Constant((long)i)
+                    var v => ResolveEncoder(sourceSchema, s, assemblies, stream, v) switch
+                    {
+                        var write =>
+                            Expression.SwitchCase(
+                                Expression.Block(
+                                    typeof(void),
+                                    new[] { v },
+                                    Expression.Assign(
+                                        v,
+                                        Expression.Convert(
+                                            value,
+                                            v.Type
+                                        )
+                                    ),
+                                    Expression.Call(
+                                        stream,
+                                        typeof(IAvroEncoder).GetMethod(nameof(IAvroEncoder.WriteLong)),
+                                        Expression.Constant((long)i)
+                                    ),
+                                    write
                                 ),
-                                write
-                            ),
-                            Expression.Constant(index)
-                        )
-                }
+                                Expression.Constant(index)
+                            )
+                    }
+                },
+                _ => default
             };
 
         private static Expression CreateNullableEncoder(ParameterExpression stream, ParameterExpression value, Assembly[] assemblies, UnionSchema sourceSchema, AvroSchema targetSchema) =>
