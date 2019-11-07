@@ -3,9 +3,9 @@
 namespace Avro
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Enum, AllowMultiple = false, Inherited = false)]
-    public sealed class AvroNamedType : Attribute
+    public sealed class AvroType : Attribute
     {
-        public AvroNamedType(string ns, string name)
+        public AvroType(string ns, string name)
         {
             Namespace = ns;
             Name = name;

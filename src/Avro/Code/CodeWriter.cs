@@ -26,8 +26,8 @@ namespace Avro.Code
                 path = Path.ChangeExtension(path, "cs");
                 _fileSystem.Directory.CreateDirectory(Path.GetDirectoryName(path));
 
-                using (var streamWriter = new StreamWriter(_fileSystem.File.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite)))
-                    streamWriter.Write(item.Value);
+                using var streamWriter = new StreamWriter(_fileSystem.File.Open(path, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite));
+                streamWriter.Write(item.Value);
             }
 
             if (!string.IsNullOrEmpty(projectName))

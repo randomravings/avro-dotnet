@@ -2,6 +2,7 @@ using Avro;
 using Avro.Code;
 using Avro.Schema;
 using NUnit.Framework;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -103,11 +104,18 @@ namespace Test.Avro.Code
             Assert.AreEqual(expectedTypeString, actualTypeString);
         }
 
+        [TestCase]
+        public void TestGetSystemTypeError()
+        {
+            var schema = new CodeGenTestSchema();
+            Assert.Throws<NotSupportedException>(() => SyntaxGenerator.GetSystemType(schema));
+        }
+
         class SchemaSource : IEnumerable
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object[] { new NullSchema(), "object" };
+                yield return new object[] { new NullSchema(), "AvroNull" };
 
                 yield return new object[] { new BooleanSchema(), "bool" };
                 yield return new object[] { new IntSchema(), "int" };
@@ -122,11 +130,11 @@ namespace Test.Avro.Code
                 yield return new object[] { new UnionSchema() { new LongSchema(), new NullSchema() }, "long?" };
                 yield return new object[] { new UnionSchema() { new FloatSchema(), new NullSchema() }, "float?" };
                 yield return new object[] { new UnionSchema() { new DoubleSchema(), new NullSchema() }, "double?" };
-                yield return new object[] { new UnionSchema() { new StringSchema(), new NullSchema() }, "string" };
-                yield return new object[] { new UnionSchema() { new BytesSchema(), new NullSchema() }, "byte[]" };
+                yield return new object[] { new UnionSchema() { new StringSchema(), new NullSchema() }, "string?" };
+                yield return new object[] { new UnionSchema() { new BytesSchema(), new NullSchema() }, "byte[]?" };
 
                 yield return new object[] { new UnionSchema() { new IntSchema() }, "int" };
-                yield return new object[] { new UnionSchema() { new BytesSchema(), new DoubleSchema() }, "object" };
+                yield return new object[] { new UnionSchema() { new BytesSchema(), new DoubleSchema() }, "AvroUnion<byte[], double>" };
 
                 yield return new object[] { new ArraySchema(new BooleanSchema()), "IList<bool>" };
                 yield return new object[] { new MapSchema(new FloatSchema()), "IDictionary<string, float>" };
@@ -159,9 +167,8 @@ namespace Test.Avro.Code
                 yield return new object[] { new UnionSchema() { new NullSchema(), new UuidSchema() }, "Guid?" };
 
                 yield return new object[] { new CodeGenTestLogicalSchema(), "byte[]" };
-                yield return new object[] { new UnionSchema() { new IntSchema(), new UuidSchema() }, "object" };
-                yield return new object[] { new UnionSchema() { new LongSchema(), new StringSchema(), new ArraySchema(new BooleanSchema()) }, "object" };
-                yield return new object[] { new CodeGenTestSchema(), "object" };
+                yield return new object[] { new UnionSchema() { new IntSchema(), new UuidSchema() }, "AvroUnion<int, Guid>" };
+                yield return new object[] { new UnionSchema() { new LongSchema(), new StringSchema(), new ArraySchema(new BooleanSchema()) }, "AvroUnion<long, string, IList<bool>>" };
             }
         }
 

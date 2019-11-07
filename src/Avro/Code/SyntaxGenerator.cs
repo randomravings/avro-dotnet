@@ -1,4 +1,3 @@
-using Avro.Protocol;
 using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Types;
@@ -42,7 +41,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroNamedType))
+                                    IdentifierName(nameof(AvroType))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -92,7 +91,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroNamedType))
+                                    IdentifierName(nameof(AvroType))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -239,7 +238,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroNamedType))
+                                    IdentifierName(nameof(AvroType))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -386,7 +385,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroNamedType))
+                                    IdentifierName(nameof(AvroType))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -1192,7 +1191,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroField))
+                                    IdentifierName(nameof(AvroName))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -1271,80 +1270,81 @@ namespace Avro.Code
         {
             return
                 IndexerDeclaration(
+                    NullableType(
                         PredefinedType(
                             Token(SyntaxKind.ObjectKeyword)
                         )
                     )
-                    .WithModifiers(
-                        TokenList(
-                            Token(SyntaxKind.PublicKeyword)
-                        )
+                )
+                .WithModifiers(
+                    TokenList(
+                        Token(SyntaxKind.PublicKeyword)
                     )
-                    .WithParameterList(
-                        BracketedParameterList(
-                            SingletonSeparatedList(
-                                Parameter(
-                                    Identifier("i")
-                                )
-                                .WithType(
-                                    PredefinedType(
-                                        Token(SyntaxKind.IntKeyword)
-                                    )
+                )
+                .WithParameterList(
+                    BracketedParameterList(
+                        SingletonSeparatedList(
+                            Parameter(
+                                Identifier("i")
+                            )
+                            .WithType(
+                                PredefinedType(
+                                    Token(SyntaxKind.IntKeyword)
                                 )
                             )
                         )
                     )
-                    .WithAccessorList(
-                        AccessorList(
-                            List(
-                                new AccessorDeclarationSyntax[]{
-                                    AccessorDeclaration(
-                                        SyntaxKind.GetAccessorDeclaration
-                                    )
-                                    .WithBody(
-                                        Block(
-                                            SwitchStatement(
-                                                IdentifierName("i")
-                                            )
-                                            .WithOpenParenToken(
-                                                Token(SyntaxKind.OpenParenToken)
-                                            )
-                                            .WithCloseParenToken(
-                                                Token(SyntaxKind.CloseParenToken)
-                                            )
-                                            .WithSections(
-                                                List(
-                                                    getSwitchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
-                                                )
-                                            )
+                )
+                .WithAccessorList(
+                    AccessorList(
+                        List(
+                            new AccessorDeclarationSyntax[]{
+                                AccessorDeclaration(
+                                    SyntaxKind.GetAccessorDeclaration
+                                )
+                                .WithBody(
+                                    Block(
+                                        SwitchStatement(
+                                            IdentifierName("i")
                                         )
-                                    ),
-                                    AccessorDeclaration(
-                                        SyntaxKind.SetAccessorDeclaration
-                                    )
-                                    .WithBody(
-                                        Block(
-                                            SwitchStatement(
-                                                IdentifierName("i")
-                                            )
-                                            .WithOpenParenToken(
-                                                Token(SyntaxKind.OpenParenToken)
-                                            )
-                                            .WithCloseParenToken(
-                                                Token(SyntaxKind.CloseParenToken)
-                                            )
-                                            .WithSections(
-                                                List(
-                                                    switchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
-                                                )
+                                        .WithOpenParenToken(
+                                            Token(SyntaxKind.OpenParenToken)
+                                        )
+                                        .WithCloseParenToken(
+                                            Token(SyntaxKind.CloseParenToken)
+                                        )
+                                        .WithSections(
+                                            List(
+                                                getSwitchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
                                             )
                                         )
                                     )
-                                }
-                            )
+                                ),
+                                AccessorDeclaration(
+                                    SyntaxKind.SetAccessorDeclaration
+                                )
+                                .WithBody(
+                                    Block(
+                                        SwitchStatement(
+                                            IdentifierName("i")
+                                        )
+                                        .WithOpenParenToken(
+                                            Token(SyntaxKind.OpenParenToken)
+                                        )
+                                        .WithCloseParenToken(
+                                            Token(SyntaxKind.CloseParenToken)
+                                        )
+                                        .WithSections(
+                                            List(
+                                                switchSectionSyntaxes.Append(SwitchCaseDefaultIndexOutOfRange(maxRange))
+                                            )
+                                        )
+                                    )
+                                )
+                            }
                         )
                     )
-                ;
+                );
         }
 
         public static SwitchSectionSyntax SwitchCaseGetProperty(int caseLabel, string propertyName)
@@ -1791,68 +1791,100 @@ namespace Avro.Code
             return
                 CompilationUnit()
                 .WithUsings(
-                    List(
-                        new UsingDirectiveSyntax[]{
-                            UsingDirective(
-                                IdentifierName("Avro")
-                            ),
-                            UsingDirective(
-                                IdentifierName("Avro.Schema")
-                            ),
-                            UsingDirective(
-                                IdentifierName("Avro.Types")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System.Collections")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System.Collections.Generic")
+                    List(USINGS)
+                )
+                .WithMembers(
+                    SingletonList(memberDeclarationSyntax)
+                )
+                .WithLeadingTrivia(
+                    TriviaList(PRAGMA)
+                );
+        }
+
+        private static UsingDirectiveSyntax[] USINGS = new UsingDirectiveSyntax[]{
+            UsingDirective(
+                IdentifierName("Avro")
+            ),
+            UsingDirective(
+                IdentifierName("Avro.Schema")
+            ),
+            UsingDirective(
+                IdentifierName("Avro.Types")
+            ),
+            UsingDirective(
+                IdentifierName("System")
+            ),
+            UsingDirective(
+                IdentifierName("System.Collections")
+            ),
+            UsingDirective(
+                IdentifierName("System.Collections.Generic")
+            )
+        };
+
+        private static SyntaxTrivia[] PRAGMA = new[]{
+            Trivia(
+                PragmaWarningDirectiveTrivia(
+                    Token(SyntaxKind.DisableKeyword),
+                    true
+                )
+                .WithErrorCodes(
+                    SeparatedList<ExpressionSyntax>(
+                        new SyntaxNodeOrToken[]{
+                            IdentifierName("CS8600"),
+                            Token(SyntaxKind.CommaToken),
+                            IdentifierName("CS8601"),
+                            Token(SyntaxKind.CommaToken),
+                            IdentifierName(
+                                Identifier(
+                                    TriviaList(),
+                                    "CS8618",
+                                    TriviaList(
+                                        Comment("// Nullability warnings.")
+                                    )
+                                )
                             )
                         }
                     )
                 )
-                .WithMembers(
-                    SingletonList(
-                        memberDeclarationSyntax
+            ),
+            Trivia(
+                PragmaWarningDirectiveTrivia(
+                    Token(SyntaxKind.DisableKeyword),
+                    true
+                )
+                .WithErrorCodes(
+                    SeparatedList<ExpressionSyntax>(
+                        new SyntaxNodeOrToken[]{
+                            IdentifierName("IDE1006"),
+                            Token(SyntaxKind.CommaToken),
+                            IdentifierName(
+                                Identifier(
+                                    TriviaList(),
+                                    "IDE0066",
+                                    TriviaList(
+                                        Comment("// Style warnings.")
+                                    )
+                                )
+                            )
+                        }
                     )
-                );
-        }
+                )
+            )
+        };
 
         public static CompilationUnitSyntax CreateCompileUnit(IEnumerable<MemberDeclarationSyntax> memberDeclarationSyntaxes)
         {
             return
                 CompilationUnit()
                 .WithUsings(
-                    List(
-                        new UsingDirectiveSyntax[]{
-                            UsingDirective(
-                                IdentifierName("Avro")
-                            ),
-                            UsingDirective(
-                                IdentifierName("Avro.Schema")
-                            ),
-                            UsingDirective(
-                                IdentifierName("Avro.Types")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System.Collections")
-                            ),
-                            UsingDirective(
-                                IdentifierName("System.Collections.Generic")
-                            )
-                        }
-                    )
+                    List(USINGS)
                 )
                 .WithMembers(
-                    List(
-                        memberDeclarationSyntaxes
-                    )
+                    List(memberDeclarationSyntaxes)
+                )
+                .WithLeadingTrivia(
+                    TriviaList(PRAGMA)
                 );
         }
 
@@ -1864,11 +1896,6 @@ namespace Avro.Code
                 .Select(asm => MetadataReference.CreateFromFile(asm))
                 .Append(MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location))
                 .ToArray();
-            //var references = new[] {
-            //    MetadataReference.CreateFromFile(typeof(object).GetTypeInfo().Assembly.Location),
-            //    MetadataReference.CreateFromFile(typeof(IAvroRecord).GetTypeInfo().Assembly.Location),
-            //    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-            //};
 
             var compilationUnit = ParseCompilationUnit(code);
 
@@ -1910,117 +1937,49 @@ namespace Avro.Code
             return assembly;
         }
 
-        public static string GetSystemType(AvroSchema schema, bool nullable = false)
-        {
-            switch (schema)
+        public static string GetSystemType(AvroSchema schema) =>
+            schema switch
             {
-                case NullSchema _:
-                    return "object";
-
-                case BooleanSchema _:
-                    if (nullable)
-                        return "bool?";
-                    else
-                        return "bool";
-
-                case IntSchema _:
-                    if (nullable)
-                        return "int?";
-                    else
-                        return "int";
-
-                case LongSchema _:
-                    if (nullable)
-                        return "long?";
-                    else
-                        return "long";
-
-                case FloatSchema _:
-                    if (nullable)
-                        return "float?";
-                    else
-                        return "float";
-
-                case DoubleSchema _:
-                    if (nullable)
-                        return "double?";
-                    else
-                        return "double";
-
-                case BytesSchema _:
-                    return "byte[]";
-
-                case StringSchema _:
-                    return "string";
-
-                case ArraySchema s:
-                    return GetSystemType(s);
-
-                case MapSchema s:
-                    return GetSystemType(s);
-
-                case FixedSchema s:
-                    return GetSystemType(s);
-                case EnumSchema s:
-                    return GetSystemType(s);
-                case ErrorSchema s:
-                    return GetSystemType(s);
-                case RecordSchema s:
-                    return GetSystemType(s);
-
-                case UnionSchema s:
-                    return GetSystemType(s);
-
-                case DecimalSchema _:
-                    if (nullable)
-                        return "decimal?";
-                    else
-                        return "decimal";
-
-                case TimeMillisSchema _:
-                case TimeMicrosSchema _:
-                case TimeNanosSchema _:
-                    if (nullable)
-                        return "TimeSpan?";
-                    else
-                        return "TimeSpan";
-
-                case TimestampMillisSchema _:
-                case TimestampMicrosSchema _:
-                case TimestampNanosSchema _:
-                case DateSchema _:
-                    if (nullable)
-                        return "DateTime?";
-                    else
-                        return "DateTime";
-
-                case DurationSchema _:
-                    if (nullable)
-                        return "AvroDuration?";
-                    else
-                        return "AvroDuration";
-
-                case UuidSchema _:
-                    if (nullable)
-                        return "Guid?";
-                    else
-                        return "Guid";
-
-                case LogicalSchema s:
-                    return GetSystemType(s);
-
-                default:
-                    return "object";
-            }
-        }
+                NullSchema _ => "AvroNull",
+                BooleanSchema _ => "bool",
+                IntSchema _ => "int",
+                LongSchema _ => "long",
+                FloatSchema _ => "float",
+                DoubleSchema _ => "double",
+                BytesSchema _ => "byte[]",
+                StringSchema _ => "string",
+                ArraySchema s => GetSystemType(s),
+                MapSchema s => GetSystemType(s),
+                FixedSchema s => GetSystemType(s),
+                EnumSchema s => GetSystemType(s),
+                ErrorSchema s => GetSystemType(s),
+                RecordSchema s => GetSystemType(s),
+                UnionSchema s => GetSystemType(s),
+                DecimalSchema _ => "decimal",
+                DateSchema _ => "DateTime",
+                TimeMillisSchema _ => "TimeSpan",
+                TimeMicrosSchema _ => "TimeSpan",
+                TimeNanosSchema _ => "TimeSpan",
+                TimestampMillisSchema _ => "DateTime",
+                TimestampMicrosSchema _ => "DateTime",
+                TimestampNanosSchema _ => "DateTime",
+                DurationSchema _ => "AvroDuration",
+                UuidSchema _ => "Guid",
+                LogicalSchema s => GetSystemType(s),
+                _ => throw new NotSupportedException()
+            };
 
         public static string GetSystemTypeInitialization(AvroSchema schema, JToken value)
         {
             var defaultInit = string.Empty;
             switch (schema)
             {
+
+                case UnionSchema { Count: 2, NullIndex: 0 } u:
+                    defaultInit = "default";
+                    break;
                 case NullSchema _:
-                    defaultInit = "null";
+                    defaultInit = "AvroNull.Value";
                     break;
                 case BooleanSchema _:
                     defaultInit = value.ToString().ToLower();
@@ -2112,22 +2071,16 @@ namespace Avro.Code
             return GetSystemType(schema.Type);
         }
 
-        private static string GetSystemType(UnionSchema schema)
-        {
-            switch (schema.Count())
+        private static string GetSystemType(UnionSchema schema) =>
+            schema switch
             {
-                case 1:
-                    return GetSystemType(schema.First());
-                case 2:
-                    if (schema[0].GetType().Equals(typeof(NullSchema)))
-                        return GetSystemType(schema[1], true);
-                    else if (schema[1].GetType().Equals(typeof(NullSchema)))
-                        return GetSystemType(schema[0], true);
-                    else
-                        return "object";
-                default:
-                    return "object";
-            }
-        }
+                { Count: 1 } => GetSystemType(schema[0]),
+                { Count: 2, NullIndex: -1 } => $"AvroUnion<{GetSystemType(schema[0])}, {GetSystemType(schema[1])}>",
+                { Count: 3, NullIndex: -1 } => $"AvroUnion<{GetSystemType(schema[0])}, {GetSystemType(schema[1])}, {GetSystemType(schema[2])}>",
+                { Count: 4, NullIndex: -1 } => $"AvroUnion<{GetSystemType(schema[0])}, {GetSystemType(schema[1])}, {GetSystemType(schema[2])}, {GetSystemType(schema[3])}>",
+                { Count: 5, NullIndex: -1 } => $"AvroUnion<{GetSystemType(schema[0])}, {GetSystemType(schema[1])}, {GetSystemType(schema[2])}, {GetSystemType(schema[3])}, {GetSystemType(schema[4])}>",
+                { Count: 2 } => $"{GetSystemType(schema[(schema.NullIndex + 1) % 2])}?",
+                _ => throw new NotSupportedException()
+            };
     }
 }

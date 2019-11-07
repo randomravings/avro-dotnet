@@ -1,8 +1,8 @@
-using Microsoft.Extensions.DependencyModel;
 using Avro.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +10,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Xml;
-using System;
 
 namespace Avro.Code
 {

@@ -3,9 +3,9 @@
 namespace Avro
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
-    public sealed class AvroField : Attribute
+    public sealed class AvroName : Attribute
     {
-        public AvroField(string name)
+        public AvroName(string name)
         {
             Name = name;
         }

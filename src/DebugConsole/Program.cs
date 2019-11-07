@@ -11,6 +11,7 @@ using Avro.Types;
 using Test.Avro.IO;
 using Test.Avro.Code;
 using Avro.Schema;
+using Newtonsoft.Json.Linq;
 
 namespace DebugConsole
 {
@@ -41,8 +42,8 @@ namespace DebugConsole
 
         static void Main()
         {
-            var foo = new SocketTest();
-            foo.TestHelloWorldLocal();
+            var foo = new ClassBuilderTest();
+            foo.RecordFieldDefault(new RecordSchema("X") { new FieldSchema("Field1", new UnionSchema(new NullSchema(), new IntSchema())) { Default = JValue.CreateNull() } }, "Field1", null, null);
         }
     }
 }

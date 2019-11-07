@@ -200,7 +200,7 @@ namespace Test.Avro.Code
         {
             public IEnumerator GetEnumerator()
             {
-                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new NullSchema()) { Default = JValue.CreateNull() } }, "Field1", null, null };
+                yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new NullSchema()) { Default = JValue.CreateNull() } }, "Field1", AvroNull.Value, null };
                 yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new BooleanSchema()) { Default = true } }, "Field1", true, null };
                 yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new IntSchema()) { Default = 123 } }, "Field1", 123, null };
                 yield return new object?[] { new RecordSchema("X") { new FieldSchema("Field1", new LongSchema()) { Default = 987654321L } }, "Field1", 987654321L, null };
