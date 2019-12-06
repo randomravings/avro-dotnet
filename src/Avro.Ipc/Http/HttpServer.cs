@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace Avro.Ipc.Http
 {
-    public class HttpServer : IServer
+    public class HttpServer : ITransportServer
     {
         private readonly HttpListener _httpListener;
-        private HttpListenerContext? _context;
 
         public HttpServer(IEnumerable<string> uriPrefixes)
         {
@@ -19,25 +18,26 @@ namespace Avro.Ipc.Http
             _httpListener.Start();
         }
 
+        public bool Stateful => false;
+
         public string LocalEndPoint => string.Join(";", _httpListener.Prefixes);
 
         public string RemoteEndPoint => "";
 
-        public async Task<int> SendAsync(FrameStream frames, CancellationToken token = default)
+        public ITransportContext Receive()
         {
-            var len = (int)(frames.Length - frames.Position);
-            await frames.CopyToAsync(_context.Response.OutputStream);
-            _context.Response.OutputStream.Flush();
-            _context.Response.Close();
-            return len;
+            var requestData = new FrameStream();
+            var context = _httpListener.GetContext();
+            context.Request.InputStream.CopyTo(requestData);
+            return new HttpContext(requestData, context);
         }
 
-        public async Task<FrameStream> ReceiveAsync(CancellationToken token = default)
+        public async Task<ITransportContext> ReceiveAsync(CancellationToken token)
         {
-            var frames = new FrameStream();
-            _context = await _httpListener.GetContextAsync();
-            await _context.Request.InputStream.CopyToAsync(frames);
-            return frames;
+            var requestData = new FrameStream();
+            var context = await _httpListener.GetContextAsync();
+            await context.Request.InputStream.CopyToAsync(requestData);
+            return new HttpContext(requestData, context);
         }
 
         public void Close()
@@ -46,6 +46,6 @@ namespace Avro.Ipc.Http
             _httpListener.Close();
         }
 
-        public void Dispose() => _context = null;
+        public void Dispose() => _httpListener.Close();
     }
 }

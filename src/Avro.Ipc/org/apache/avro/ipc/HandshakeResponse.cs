@@ -1,6 +1,6 @@
 #pragma warning disable CS8600, CS8601, CS8618 // Nullability warnings.
 
-#pragma warning disable IDE1006, IDE0066 // Style warnings.
+#pragma warning disable IDE1006, IDE0066, CS8605 // Style warnings.
 
 using Avro;
 using Avro.Schema;

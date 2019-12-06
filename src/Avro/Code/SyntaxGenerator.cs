@@ -1858,10 +1858,12 @@ namespace Avro.Code
                         new SyntaxNodeOrToken[]{
                             IdentifierName("IDE1006"),
                             Token(SyntaxKind.CommaToken),
+                            IdentifierName("IDE0066"),
+                            Token(SyntaxKind.CommaToken),
                             IdentifierName(
                                 Identifier(
                                     TriviaList(),
-                                    "IDE0066",
+                                    "CS8605",
                                     TriviaList(
                                         Comment("// Style warnings.")
                                     )

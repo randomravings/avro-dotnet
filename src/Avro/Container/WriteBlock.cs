@@ -31,7 +31,7 @@ namespace Avro.Container
             Count++;
         }
         public byte[] Data => _baseStream.GetBuffer();
-        public async void WriteAsync(T item, CancellationToken token = default) => await Task.Factory.StartNew(() => Write(item), token);
+        public async void WriteAsync(T item, CancellationToken token) => await Task.Factory.StartNew(() => Write(item), token);
         private static Stream CreateDataStream(Stream stream, Codec codec) => codec switch
         {
             Codec.Null => stream,

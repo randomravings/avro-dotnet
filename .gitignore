@@ -1,7 +1,9 @@
 bin/
 obj/
+packages/
 TestResults/
 Properties/
 
 .vs/
 .vscode/
+

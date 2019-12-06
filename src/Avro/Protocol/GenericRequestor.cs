@@ -16,8 +16,8 @@ namespace Avro.Protocol
         public AvroProtocol Local { get; private set; }
         public AvroProtocol Remote { get; private set; }
 
-        public void WriteRequest(IAvroEncoder encoder, string message, GenericRecord record) =>
-            _protocolPair.RequestWriters[message].Write(encoder, record);
+        public void WriteRequest(IAvroEncoder encoder, string message, GenericRecord parameters) =>
+            _protocolPair.RequestWriters[message].Write(encoder, parameters);
 
         public GenericResponse ReadResponse(IAvroDecoder decoder, string message) =>
             _protocolPair.ResponseReaders[message].Read(decoder);

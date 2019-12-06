@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Avro.Ipc.Local
 {
-    public sealed class LocalClient : IClient
+    public sealed class LocalClient : ITransportClient
     {
         private readonly BlockingCollection<FrameStream> _client;
         private readonly BlockingCollection<FrameStream> _server;
@@ -16,43 +16,39 @@ namespace Avro.Ipc.Local
             _server = server;
         }
 
+        public bool Stateful => true;
+
         public string LocalEndPoint => string.Empty;
 
         public string RemoteEndPoint => string.Empty;
 
         public void Close() { }
 
-        public async Task<FrameStream> ReceiveAsync(CancellationToken token)
+        public FrameStream Request(string messageName, FrameStream frames)
         {
-            return await Task<FrameStream>.Factory.StartNew(() =>
-            {
-                return _server.Take(token);
-            }, token).ConfigureAwait(false);
-        }
-
-        public async Task<int> SendAsync(FrameStream frames, CancellationToken token)
-        {
-            return await Task<int>.Factory.StartNew(() =>
-            {
-                _client.Add(frames, token);
-                return (int)frames.Length;
-            }, token).ConfigureAwait(false); ;
+            _server.Add(frames);
+            return _client.Take();
         }
 
         public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             return await Task<FrameStream>.Factory.StartNew(() =>
             {
-                _server.Add(frames, token);
-                return _client.Take(token);
+                _client.Add(frames, token);
+                return _server.Take(token);
             }, token).ConfigureAwait(false);
         }
 
-        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token = default)
+        public void RequestOneWay(string messageName, FrameStream frames)
+        {
+            _client.Add(frames);
+        }
+
+        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             await Task.Factory.StartNew(() =>
             {
-                _server.Add(frames, token);
+                _client.Add(frames, token);
             }, token).ConfigureAwait(false);
         }
 

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Avro.Ipc.Tcp
 {
-    public sealed class SocketClient : IClient
+    public sealed class SocketClient : ITransportClient
     {
         private readonly TcpClient _client;
 
@@ -15,10 +15,11 @@ namespace Avro.Ipc.Tcp
             _client.NoDelay = true;
         }
 
+        public bool Stateful => true;
         public string LocalEndPoint => _client.Client.LocalEndPoint.ToString();
         public string RemoteEndPoint => _client.Client.RemoteEndPoint.ToString();
 
-        public static async Task<SocketClient> ConnectAsync(string host, int port, CancellationToken token = default)
+        public static async Task<SocketClient> ConnectAsync(string host, int port, CancellationToken token)
         {
             var tcpClient = new TcpClient();
             await tcpClient.ConnectAsync(host, port);
@@ -29,13 +30,24 @@ namespace Avro.Ipc.Tcp
 
         public void Dispose() => _client.Dispose();
 
+        public FrameStream Request(string messageName, FrameStream frames)
+        {   
+            SocketUtils.Send(_client.GetStream(), frames);
+            return SocketUtils.Receive(_client.GetStream());
+        }
+
         public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             await SocketUtils.SendAsync(_client.GetStream(), frames, token);
             return await SocketUtils.ReceiveAsync(_client.GetStream(), token);
         }
 
-        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token = default)
+        public void RequestOneWay(string messageName, FrameStream frames)
+        {
+            SocketUtils.Send(_client.GetStream(), frames);
+        }
+
+        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             await SocketUtils.SendAsync(_client.GetStream(), frames, token);
         }

@@ -104,6 +104,7 @@ namespace Avro.Resolution
                     5 => typeof(AvroUnion<,,,,>).MakeGenericType(r.Select(s => GetTypeFromSchema(s, assemblies)).ToArray()),
                     var c => throw new ArgumentException($"Union schema invalid variant count: '{c}', must be [1:5]")
                 },
+                FieldSchema r => GetTypeFromSchema(r.Type, assemblies),
                 LogicalSchema r => GetTypeFromSchema(r.Type, assemblies),
                 var r => throw new ArgumentException($"Unsupported schema: '{r.GetType().Name}'")
             };

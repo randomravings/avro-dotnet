@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Avro.Schema;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Avro.Types
 {
@@ -16,13 +18,13 @@ namespace Avro.Types
         public override bool Equals(object obj) => _value.Equals(obj);
         public bool Equals(AvroUnion other) => EqualityComparer<object>.Default.Equals(Value, other.Value);
         public override int GetHashCode() => HashCode.Combine(Value);
-        protected T Get<T>(int index)
+        protected T Get<T>(int index) where T : notnull
         {
             if (_index != index)
                 throw new InvalidCastException($"Union is instance of '{_type.FullName}'");
             return (T)_value;
         }
-        protected void Set<T>(byte index, T value) where T : notnull
+        protected void Set<T>(int index, T value) where T : notnull
         {
             _index = index;
             _type = typeof(T);
@@ -30,6 +32,69 @@ namespace Avro.Types
         }
         public static bool operator ==(AvroUnion left, AvroUnion right) => EqualityComparer<AvroUnion>.Default.Equals(left, right);
         public static bool operator !=(AvroUnion left, AvroUnion right) => !(left == right);
+    }
+
+    public abstract class GenericUnion<TImpl> : AvroUnion where TImpl : GenericUnion<TImpl>
+    {
+        private readonly object _default;
+        protected GenericUnion()
+        {
+            _index = -1;
+            _type = typeof(object);
+            _value = new object();
+            _default = new object();
+            Schema = new UnionSchema();
+            Types = new Type[0];
+        }
+        public GenericUnion(UnionSchema schema, Type[] types, object defaultValue)
+        {
+            Schema = schema;
+            Types = types;
+            _default = defaultValue;
+            if (schema.Count != types.Length)
+                throw new ArgumentException("Schema and Types count mismatch");
+            if (!IsValid(this, _index, _default))
+                throw new ArgumentException("Default Type mismatch");
+            SetDefault();
+        }
+        public GenericUnion(TImpl model)
+        {
+            _default = model._default;
+            Schema = model.Schema;
+            Types = Types;
+            SetDefault();
+        }
+        public UnionSchema Schema { get; private set; }
+        public Type[] Types { get; private set; }
+        public void SetValue<T>(int index, T value) where T : notnull
+        {
+            if (!IsValid(this, index, value))
+                throw new ArgumentException("Type mismatch");
+            Set(index, value);
+        }
+        public T GetValue<T>() where T : notnull
+        {
+            if (!IsValid(this, _index, _value))
+                throw new ArgumentException("Type mismatch");
+            return Get<T>(_index);
+        }
+        public void SetDefault()
+        {
+            _index = 0;
+            _type = Types[0];
+            _value = _default;
+        }
+        public static bool IsValid(GenericUnion<TImpl> union, int index, object value) =>
+            value.GetType().Equals(union.Types[index]) && value switch
+            {
+                GenericEnum e => e.Schema.Equals(union.Schema[index]),
+                GenericError e => e.Schema.Equals(union.Schema[index]),
+                GenericFixed e => e.Schema.Equals(union.Schema[index]),
+                GenericRecord e => e.Schema.Equals(union.Schema[index]),
+                _ => true
+            };
+
+        protected abstract TImpl New();
     }
 
     public class AvroUnion<T1> :
@@ -46,7 +111,7 @@ namespace Avro.Types
 
     public class AvroUnion<T1, T2> :
         AvroUnion<T1>
-        where T1 : notnull 
+        where T1 : notnull
         where T2 : notnull
     {
         protected AvroUnion() { }

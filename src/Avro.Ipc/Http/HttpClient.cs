@@ -6,7 +6,7 @@ using Avro.Ipc.IO;
 
 namespace Avro.Ipc.Http
 {
-    public class HttpClient : IClient
+    public class HttpClient : ITransportClient
     {
         private readonly Uri _remoteUri;
 
@@ -14,6 +14,8 @@ namespace Avro.Ipc.Http
         {
             _remoteUri = remoteUrl;
         }
+
+        public bool Stateful => false;
 
         public string LocalEndPoint => IPAddress.Loopback.ToString();
 
@@ -31,7 +33,24 @@ namespace Avro.Ipc.Http
 
         public void Dispose() { }
 
-        public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token = default)
+        public FrameStream Request(string messageName, FrameStream frames)
+        {
+            var request = WebRequest.CreateHttp(new Uri(_remoteUri, messageName));
+            request.Method = "POST";
+            request.ContentType = "avro/binary";
+
+            var requestStream = request.GetRequestStream();
+            frames.CopyTo(requestStream);
+
+            var response = request.GetResponse();
+
+            var result = new FrameStream();
+            using var resonseStream = response.GetResponseStream();
+            resonseStream.CopyTo(result);
+            return result;
+        }
+
+        public async Task<FrameStream> RequestAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             var request = WebRequest.CreateHttp(new Uri(_remoteUri, messageName));
             request.Method = "POST";
@@ -48,7 +67,12 @@ namespace Avro.Ipc.Http
             return result;
         }
 
-        public Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token = default)
+        public void RequestOneWay(string messageName, FrameStream frames)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task RequestOneWayAsync(string messageName, FrameStream frames, CancellationToken token)
         {
             throw new NotImplementedException();
         }

@@ -9,6 +9,21 @@ namespace Avro.Ipc.Tcp
 {
     internal static class SocketUtils
     {
+        public static int Send(NetworkStream stream, FrameStream frames)
+        {
+            var bytesSent = 0;
+            foreach (var frame in frames.GetBuffers())
+            {
+                var frameBytes = new byte[4];
+                MessageFramingUtil.EncodeLength((int)frame.Length, frameBytes, 0);
+                stream.Write(frameBytes, 0, 4);
+                bytesSent += 4;
+                stream.Write(frame.GetBuffer(), 0, (int)frame.Length);
+                bytesSent += (int)frame.Length;
+            }
+            return bytesSent;
+        }
+
         public static async Task<int> SendAsync(NetworkStream stream, FrameStream frames, CancellationToken token)
         {
             var bytesSent = 0;
@@ -22,6 +37,22 @@ namespace Avro.Ipc.Tcp
                 bytesSent += (int)frame.Length;
             }
             return bytesSent;
+        }
+
+        public static FrameStream Receive(NetworkStream stream)
+        {
+            var result = new FrameStream();
+            var frameSizeBytes = new byte[4];
+            ReadBytes(stream, frameSizeBytes, 0, 4);
+            var frameSize = MessageFramingUtil.DecodeLength(frameSizeBytes, 0);
+            if (frameSize == 0)
+                return FrameStream.EMPTY;
+
+            var frame = new MemoryStream(new byte[frameSize], 0, frameSize, true, true);
+            ReadBytes(stream, frame.GetBuffer(), 0, frameSize);
+            frame.SetLength(frameSize);
+            result.AppendFrame(frame);
+            return result;
         }
 
         public static async Task<FrameStream> ReceiveAsync(NetworkStream stream, CancellationToken token)
@@ -38,6 +69,13 @@ namespace Avro.Ipc.Tcp
             frame.SetLength(frameSize);
             result.AppendFrame(frame);
             return result;
+        }
+
+        private static void ReadBytes(NetworkStream stream, byte[] buffer, int offset, int count)
+        {
+            var bytesRead = offset;
+            while (bytesRead < count)
+                bytesRead += stream.Read(buffer, bytesRead, count - bytesRead);
         }
 
         private static async Task ReadBytesAsync(NetworkStream stream, byte[] buffer, int offset, int count, CancellationToken token)

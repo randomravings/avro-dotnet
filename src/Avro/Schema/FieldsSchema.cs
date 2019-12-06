@@ -141,5 +141,7 @@ namespace Avro.Schema
         }
 
         public bool Equals(FieldsSchema other) => other != null && Name == other.Name;
+
+        public override string ToString() => Name;
     }
 }

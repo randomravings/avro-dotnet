@@ -1,7 +1,6 @@
 using Avro.Code;
 using CommandLine;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +11,7 @@ namespace Avro
 {
     public class AvroGen
     {
+        private delegate void TextLogger(TextWriter writer, params string[] entries);
         private static readonly MD5 HASH_FUNC = MD5.Create();
 
         static int Main(string[] args)
@@ -21,7 +21,7 @@ namespace Avro
                 (NewOption opts) => GenerateCode(opts.Project, opts),
                 (AddOption opts) => GenerateCode(string.Empty, opts),
                 (ExampleOptions ops) => ShowExample(),
-                errs => 1
+                errs => errs.Count()
             ); ;
         }
 
@@ -38,13 +38,11 @@ namespace Avro
             return 0;
         }
 
-        private static void Log(string entry, bool quiet, int newLineCount = 0)
+        private static void Log(TextWriter writer, string entry, int newLineCount = 0)
         {
-            if(quiet)
-                return;
-            Console.WriteLine(entry);
+            writer.WriteLine(entry);
             for(int i = 0; i < newLineCount; i++)
-                Console.WriteLine();
+                writer.WriteLine();
         }
 
         static IEnumerable<FileInfo> GetFiles(string fileOrDirectory, string fileExt)
@@ -66,12 +64,18 @@ namespace Avro
             var protocolHashes = new Dictionary<string, string>();
             var typeHashes = new Dictionary<string, string>();
 
+            var logger = options.Quiet switch
+            {
+                false => new TextLogger((w, s) => w.Write(string.Join(w.NewLine, s))),
+                true => new TextLogger((w, s) => { })
+            };
+
             if (options.Schema)
             {
-                Log("Parsing Schema File(s) ...", options.Quiet);
+                logger.Invoke(Console.Out, "Parsing Schema File(s) ...");
                 foreach (var schemaFile in GetFiles(options.Path, ".avsc"))
                 {
-                    Log($"    '{schemaFile.FullName}' ...", options.Quiet);
+                    logger.Invoke(Console.Out, $"    '{schemaFile.FullName}' ...");
                     using var reader = new StreamReader(schemaFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8);
 
                     var text = reader.ReadToEnd();
@@ -84,26 +88,26 @@ namespace Avro
                             typeHashes.Add(s.Name, hash);
                         else
                             if (hash != existingHash)
-                            Log("           Hash mismatch:", options.Quiet);
-                        Log($"        T: '{s.FullName}'", options.Quiet);
+                            Log(Console.Out, "           Hash mismatch:");
+                        Log(Console.Out, $"        T: '{s.FullName}'");
                     }
                 }
             }
 
             if (options.Protocol)
             {
-                Log("Parsing Schema File(s) ...", options.Quiet);
+                Log(Console.Out, "Parsing Schema File(s) ...");
                 foreach (var protocolFile in GetFiles(options.Path, ".avpr"))
                 {
-                    Log($"    '{protocolFile.FullName}' ...", options.Quiet);
+                    Log(Console.Out, $"    '{protocolFile.FullName}' ...");
                     using var reader = new StreamReader(protocolFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8);
 
                     var text = reader.ReadToEnd();
                     var protocol = AvroParser.ReadProtocol(text, out var schemas);
                     codeGen.AddProtocol(protocol);
-                    Log($"        P: '{protocol.FullName}'", options.Quiet);
+                    Log(Console.Out, $"        P: '{protocol.FullName}'");
                     foreach (var s in schemas)
-                        Log($"        T: '{s.FullName}'", options.Quiet);
+                        Log(Console.Out, $"        T: '{s.FullName}'");
                 }
             }
 

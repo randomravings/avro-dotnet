@@ -1,12 +1,11 @@
 ﻿using Avro.Ipc.IO;
-using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Avro.Ipc.Local
 {
-    public sealed class LocalServer : IServer
+    public sealed class LocalServer : ITransportServer
     {
         private readonly BlockingCollection<FrameStream> _server;
         private readonly BlockingCollection<FrameStream> _client;
@@ -17,27 +16,35 @@ namespace Avro.Ipc.Local
             _client = client;
         }
 
+        public bool Stateful => true;
+
         public string LocalEndPoint => string.Empty;
 
         public string RemoteEndPoint => string.Empty;
 
         public void Close() { }
 
-        public async Task<FrameStream> ReceiveAsync(CancellationToken token)
+        public ITransportContext Receive()
         {
-            return await Task<FrameStream>.Factory.StartNew(() =>
-            {
-                return _server.Take(token);
-            }, token).ConfigureAwait(false);
+            var requestData = _client.Take();
+            return new LocalContext(
+                requestData,
+                (b) => { _server.Add(b); return (int)b.Length; },
+                (b, c) => Task<int>.Factory.StartNew(() => { _server.Add(b); return (int)b.Length; }, c)
+            );
         }
 
-        public async Task<int> SendAsync(FrameStream frames, CancellationToken token)
+        public async Task<ITransportContext> ReceiveAsync(CancellationToken token)
         {
-            return await Task<int>.Factory.StartNew(() =>
+            var requestData = await Task<FrameStream>.Factory.StartNew(() =>
             {
-                _client.Add(frames, token);
-                return (int)frames.Length;
-            }, token).ConfigureAwait(false); ;
+                return _client.Take(token);
+            }, token).ConfigureAwait(false);
+            return new LocalContext(
+                requestData,
+                (b) => { _server.Add(b); return (int)b.Length; },
+                (b, c) => Task<int>.Factory.StartNew(() => { _server.Add(b); return (int)b.Length; }, c)
+            );
         }
 
         public void Dispose() { }

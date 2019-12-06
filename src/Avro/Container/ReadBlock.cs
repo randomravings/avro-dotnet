@@ -38,7 +38,7 @@ namespace Avro.Container
             _ => throw new NotSupportedException($"Codec: '{codec}' is not supported"),
         };
 
-        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token = default)
+        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token)
         {
             using var decoder = new BinaryDecoder(CreateDataStream(_data, _codec));
             for (var i = 0L; i < Count; i++)

@@ -1,17 +1,11 @@
-﻿using Avro.Container;
-using Avro.IO;
-using System.Collections.Generic;
-using Test.Avro.IO.Container;
-using System.Linq;
-using System;
-using Test.Avro.Resolution;
+﻿using Avro;
 using Avro.Ipc.Test.Tcp;
-using Avro;
-using Avro.Types;
-using Test.Avro.IO;
-using Test.Avro.Code;
 using Avro.Schema;
 using Newtonsoft.Json.Linq;
+using Test.Avro.Code;
+using Test.Avro.IO;
+using Test.Avro.IO.Container;
+using Test.Avro.Resolution;
 
 namespace DebugConsole
 {
@@ -42,8 +36,8 @@ namespace DebugConsole
 
         static void Main()
         {
-            var foo = new ClassBuilderTest();
-            foo.RecordFieldDefault(new RecordSchema("X") { new FieldSchema("Field1", new UnionSchema(new NullSchema(), new IntSchema())) { Default = JValue.CreateNull() } }, "Field1", null, null);
+            var foo = new JsonEncoderTest();
+            foo.TestSimple();
         }
     }
 }

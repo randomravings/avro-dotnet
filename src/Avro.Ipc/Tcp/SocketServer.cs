@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Avro.Ipc.Tcp
 {
-    public sealed class SocketServer : IServer
+    public sealed class SocketServer : ITransportServer
     {
         private readonly TcpClient _client;
 
@@ -20,12 +20,32 @@ namespace Avro.Ipc.Tcp
             return _client.Connected;
         }
 
+        public bool Stateful => true;
+
         public string LocalEndPoint => _client.Client.LocalEndPoint.ToString();
         public string RemoteEndPoint => _client.Client.RemoteEndPoint.ToString();
 
         public async Task<int> SendAsync(FrameStream frames, CancellationToken token) => await SocketUtils.SendAsync(_client.GetStream(), frames, token);
 
-        public async Task<FrameStream> ReceiveAsync(CancellationToken token) => await SocketUtils.ReceiveAsync(_client.GetStream(), token);
+        public ITransportContext Receive()
+        {
+            var requetsData = SocketUtils.Receive(_client.GetStream());
+            return new SocketContext(
+                requetsData,
+                (b) => SocketUtils.Send(_client.GetStream(), requetsData),
+                (b, c) => SocketUtils.SendAsync(_client.GetStream(), requetsData, c)
+            );
+        }
+
+        public async Task<ITransportContext> ReceiveAsync(CancellationToken token)
+        {
+            var requetsData = await SocketUtils.ReceiveAsync(_client.GetStream(), token);
+            return new SocketContext(
+                requetsData,
+                (b) => SocketUtils.Send(_client.GetStream(), requetsData),
+                (b, c) => SocketUtils.SendAsync(_client.GetStream(), requetsData, c)
+            );
+        }
 
         public void Close() => _client.Close();
 
