@@ -12,8 +12,6 @@ namespace Avro
         public static AvroProtocol ReadProtocol(string text, out IEnumerable<NamedSchema> namedSchemas)
         {
             var namedTypes = new Dictionary<string, NamedSchema>();
-            //var jString = JSonEncodeString(text);
-
             var json = JToken.Parse(text);
             var protocol = ParseProtocol(json, namedTypes, new Stack<string>(new string[] { string.Empty }));
             namedSchemas = namedTypes.Values;

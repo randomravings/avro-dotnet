@@ -1,4 +1,3 @@
-using Avro.Protocol;
 using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Utils;

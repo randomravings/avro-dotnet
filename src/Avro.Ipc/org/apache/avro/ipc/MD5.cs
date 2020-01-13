@@ -8,11 +8,12 @@ using Avro.Types;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    [AvroType("org.apache.avro.ipc", "MD5")]
+    [DataContract(Name = "MD5", Namespace = "org.apache.avro.ipc")]
     public class MD5 : IAvroFixed
     {
         public static readonly FixedSchema SCHEMA = AvroParser.ReadSchema<FixedSchema>("{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}");

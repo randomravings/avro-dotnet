@@ -8,15 +8,19 @@ using Avro.Types;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    [AvroType("org.apache.avro.ipc", "HandshakeMatch")]
+    [DataContract(Name = "HandshakeMatch", Namespace = "org.apache.avro.ipc")]
     public enum HandshakeMatch
     {
+        [EnumMember(Value = "BOTH")]
         BOTH,
+        [EnumMember(Value = "CLIENT")]
         CLIENT,
+        [EnumMember(Value = "NONE")]
         NONE
     }
 }

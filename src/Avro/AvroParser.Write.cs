@@ -1,8 +1,6 @@
-using Avro.Protocol;
 using Avro.Protocol.Schema;
 using Avro.Schema;
 using Avro.Utils;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;

@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Xml;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -41,7 +42,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroType))
+                                    IdentifierName(nameof(DataContractAttribute))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -50,14 +51,24 @@ namespace Avro.Code
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(ns)
+                                                        Literal(name)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Name))
                                                     )
                                                 ),
                                                 Token(SyntaxKind.CommaToken),
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(name)
+                                                        Literal(ns)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Namespace))
                                                     )
                                                 )
                                             }
@@ -91,7 +102,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroType))
+                                    IdentifierName(nameof(DataContractAttribute))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -100,14 +111,24 @@ namespace Avro.Code
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(ns ?? string.Empty)
+                                                        Literal(name)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Name))
                                                     )
                                                 ),
                                                 Token(SyntaxKind.CommaToken),
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(name)
+                                                        Literal(ns)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Namespace))
                                                     )
                                                 )
                                             }
@@ -238,7 +259,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroType))
+                                    IdentifierName(nameof(DataContractAttribute))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -247,14 +268,24 @@ namespace Avro.Code
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(ns ?? string.Empty)
+                                                        Literal(name)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Name))
                                                     )
                                                 ),
                                                 Token(SyntaxKind.CommaToken),
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(name)
+                                                        Literal(ns)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Namespace))
                                                     )
                                                 )
                                             }
@@ -385,7 +416,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroType))
+                                    IdentifierName(nameof(DataContractAttribute))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -394,14 +425,24 @@ namespace Avro.Code
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(ns ?? string.Empty)
+                                                        Literal(name)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Name))
                                                     )
                                                 ),
                                                 Token(SyntaxKind.CommaToken),
                                                 AttributeArgument(
                                                     LiteralExpression(
                                                         SyntaxKind.StringLiteralExpression,
-                                                        Literal(name)
+                                                        Literal(ns)
+                                                    )
+                                                )
+                                                .WithNameEquals(
+                                                    NameEquals(
+                                                        IdentifierName(nameof(DataContractAttribute.Namespace))
                                                     )
                                                 )
                                             }
@@ -1191,7 +1232,7 @@ namespace Avro.Code
                         AttributeList(
                             SingletonSeparatedList(
                                 Attribute(
-                                    IdentifierName(nameof(AvroName))
+                                    IdentifierName(nameof(DataMemberAttribute))
                                 )
                                 .WithArgumentList(
                                     AttributeArgumentList(
@@ -1200,6 +1241,11 @@ namespace Avro.Code
                                                 LiteralExpression(
                                                     SyntaxKind.StringLiteralExpression,
                                                     Literal(field.Name)
+                                                )
+                                            )
+                                            .WithNameEquals(
+                                                NameEquals(
+                                                    IdentifierName(nameof(DataMemberAttribute.Name))
                                                 )
                                             )
                                         )
@@ -1801,7 +1847,7 @@ namespace Avro.Code
                 );
         }
 
-        private static UsingDirectiveSyntax[] USINGS = new UsingDirectiveSyntax[]{
+        private static readonly UsingDirectiveSyntax[] USINGS = new UsingDirectiveSyntax[]{
             UsingDirective(
                 IdentifierName("Avro")
             ),
@@ -1819,6 +1865,9 @@ namespace Avro.Code
             ),
             UsingDirective(
                 IdentifierName("System.Collections.Generic")
+            ),
+            UsingDirective(
+                IdentifierName("System.Runtime.Serialization")
             )
         };
 

@@ -6,20 +6,20 @@ using Avro;
 using Avro.Schema;
 using Avro.Types;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace org.apache.avro.ipc
 {
     /// <summary></summary>
-    [AvroType("org.apache.avro.ipc", "HandshakeRequest")]
+    [DataContract(Name = "HandshakeRequest", Namespace = "org.apache.avro.ipc")]
     public class HandshakeRequest : IAvroRecord
     {
         public static readonly RecordSchema SCHEMA = AvroParser.ReadSchema<RecordSchema>("{\"name\":\"org.apache.avro.ipc.HandshakeRequest\",\"type\":\"record\",\"fields\":[{\"name\":\"clientHash\",\"type\":{\"name\":\"org.apache.avro.ipc.MD5\",\"type\":\"fixed\",\"size\":16}},{\"name\":\"clientProtocol\",\"type\":[\"null\",\"string\"]},{\"name\":\"serverHash\",\"type\":\"org.apache.avro.ipc.MD5\"},{\"name\":\"meta\",\"type\":[\"null\",{\"type\":\"map\",\"values\":\"bytes\"}]}]}");
         public RecordSchema Schema => SCHEMA;
         public int FieldCount => 4;
         /// <summary></summary>
-        [AvroName("clientHash")]
+        [DataMember(Name = "clientHash")]    
         public MD5 clientHash
         {
             get;
@@ -27,7 +27,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        [AvroName("clientProtocol")]
+        [DataMember(Name = "clientProtocol")]
         public string? clientProtocol
         {
             get;
@@ -35,7 +35,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        [AvroName("serverHash")]
+        [DataMember(Name = "serverHash")]
         public MD5 serverHash
         {
             get;
@@ -43,7 +43,7 @@ namespace org.apache.avro.ipc
         }
 
         /// <summary></summary>
-        [AvroName("meta")]
+        [DataMember(Name = "meta")]
         public IDictionary<string, byte[]>? meta
         {
             get;
