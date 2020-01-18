@@ -1,11 +1,6 @@
 ﻿using Avro;
-using Avro.Ipc.Test.Tcp;
-using Avro.Schema;
-using Newtonsoft.Json.Linq;
-using Test.Avro.Code;
-using Test.Avro.IO;
-using Test.Avro.IO.Container;
-using Test.Avro.Resolution;
+using Avro.Monad;
+using System.Linq;
 
 namespace DebugConsole
 {
@@ -36,8 +31,19 @@ namespace DebugConsole
 
         static void Main()
         {
-            var foo = new JsonEncoderTest();
-            foo.TestSimple();
+
+            var result = from a in Maybe<int>.Some(4)
+                         from b in Maybe<int>.Some(6)
+                         select a + b;
+
+            var foo = 
+                Maybe<int>.Some(42)
+                .Bind<bool>(r => (r % 2) == 0);
+            foo.GetOrElse(r => r.ToString(), string.Empty);
+
+
+            //var foo = new JsonEncoderTest();
+            //foo.TestSimple();
         }
     }
 }

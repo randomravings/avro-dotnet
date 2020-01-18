@@ -43,8 +43,6 @@ namespace Avro.Resolution
                     expression,
                     type
                 );
-
-
         }
 
         public static Type GetTypeFromSchema(AvroSchema schema) => GetTypeFromSchema(schema, EMPTY_ASSEMBLIES);
